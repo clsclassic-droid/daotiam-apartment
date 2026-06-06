@@ -541,7 +541,31 @@ function populateMonthSels(){
 async function loadMeters(){
   const month = document.getElementById('meter-month-sel').value;
   meters = await api({action:'getMeters', month}) || [];
+  const prevMonth = getPrevMonth(month);
+  const prevMeters = await api({action:'getMeters', month: prevMonth}) || [];
+  if(prevMeters.length > 0){
+    meters = tenants.map(t=>{
+      const curr = meters.find(x=>String(x.room)===String(t.room));
+      const prev = prevMeters.find(x=>String(x.room)===String(t.room));
+      return {
+        room: t.room,
+        elecPrev:  prev ? parseFloat(prev.elecCurr)||0  : 0,
+        elecCurr:  curr ? parseFloat(curr.elecCurr)||0  : 0,
+        waterPrev: prev ? parseFloat(prev.waterCurr)||0 : 0,
+        waterCurr: curr ? parseFloat(curr.waterCurr)||0 : 0,
+      };
+    });
+  }
   renderMeterGrid();
+}
+
+function getPrevMonth(month){
+  const parts = month.split('_');
+  let year = parseInt(parts[0]);
+  let mon  = parseInt(parts[1]);
+  mon--;
+  if(mon < 1){ mon = 12; year--; }
+  return year + '_' + String(mon).padStart(2,'0');
 }
 
 function renderMeterGrid(){
@@ -584,9 +608,9 @@ async function saveMeters(){
   const month = document.getElementById('meter-month-sel').value;
   const data = tenants.map(t=>({
     room: t.room,
-    elecPrev: meters.find(m=>String(m.room)===String(t.room))?.elecPrev||0,
-    elecCurr: parseFloat(document.getElementById('elec-'+t.room)?.value||0),
-    waterPrev: meters.find(m=>String(m.room)===String(t.room))?.waterPrev||0,
+    elecPrev:  parseFloat(meters.find(m=>String(m.room)===String(t.room))?.elecPrev)||0,
+    elecCurr:  parseFloat(document.getElementById('elec-'+t.room)?.value||0),
+    waterPrev: parseFloat(meters.find(m=>String(m.room)===String(t.room))?.waterPrev)||0,
     waterCurr: parseFloat(document.getElementById('water-'+t.room)?.value||0),
     date: new Date().toLocaleDateString('th-TH')
   })).filter(m=>m.elecCurr>0||m.waterCurr>0);

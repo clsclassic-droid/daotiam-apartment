@@ -154,7 +154,7 @@ body{font-family:'Sarabun',sans-serif;background:#F2F4F7;color:#111;font-size:14
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
       <div class="slabel" style="margin-bottom:0"><i class="ti ti-gauge"></i> กรอกมิเตอร์ประจำเดือน</div>
       <div style="display:flex;gap:8px;align-items:center">
-        <select id="meter-month-sel" style="font-size:13px;padding:6px 10px;border:1px solid #ddd;border-radius:6px"></select>
+        <select id="meter-month-sel" onchange="loadMeters()" style="font-size:13px;padding:6px 10px;border:1px solid #ddd;border-radius:6px"></select>
         <button class="btn btn-green" onclick="saveMeters()"><i class="ti ti-device-floppy"></i> บันทึกทั้งหมด</button>
       </div>
     </div>

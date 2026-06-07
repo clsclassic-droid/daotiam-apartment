@@ -146,9 +146,28 @@ body{font-family:'Sarabun',sans-serif;background:#F2F4F7;color:#111;font-size:14
       </div>
     </div>
     <div class="card" style="margin-bottom:0">
-      <div class="slabel"><i class="ti ti-cash"></i> สรุปการเงินเดือนนี้ <span id="dash-fin-month" style="font-size:12px;font-weight:400;color:#aaa;margin-left:4px"></span></div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px" id="dash-finance">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+        <div class="slabel" style="margin-bottom:0"><i class="ti ti-cash"></i> สรุปการเงิน</div>
+        <div style="display:flex;gap:4px;align-items:center">
+          <div style="display:flex;border:1px solid #ddd;border-radius:6px;overflow:hidden">
+            <button id="fin-btn-month" onclick="setFinView('month')" style="font-size:12px;padding:5px 12px;border:none;background:#111;color:#fff;cursor:pointer">รายเดือน</button>
+            <button id="fin-btn-year"  onclick="setFinView('year')"  style="font-size:12px;padding:5px 12px;border:none;background:#fff;color:#555;cursor:pointer">รายปี</button>
+          </div>
+          <select id="dash-fin-sel" onchange="renderDashFinance()" style="font-size:12px;padding:5px 10px;border:1px solid #ddd;border-radius:6px;background:#fff;color:#333"></select>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px" id="dash-fin-cards">
         <div style="text-align:center;padding:8px;color:#aaa;font-size:13px;grid-column:span 4">กำลังโหลด...</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div>
+          <div style="font-size:12px;font-weight:600;color:#1D9E75;margin-bottom:8px;display:flex;align-items:center;gap:5px"><i class="ti ti-trending-up" style="font-size:14px"></i> รายรับแยกประเภท</div>
+          <div id="dash-fin-income"></div>
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:600;color:#A32D2D;margin-bottom:8px;display:flex;align-items:center;gap:5px"><i class="ti ti-trending-down" style="font-size:14px"></i> รายจ่ายแยกประเภท</div>
+          <div id="dash-fin-expense"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -533,33 +552,118 @@ function renderDashboard(){
   renderDashFinance();
 }
 
-async function renderDashFinance(){
+let finView = 'month';
+
+function populateFinSel(){
   const now = new Date();
-  const month = now.getFullYear()+'_'+String(now.getMonth()+1).padStart(2,'0');
+  const currentYear = now.getFullYear();
   const MONTHS_TH2=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
-  document.getElementById('dash-fin-month').textContent = MONTHS_TH2[now.getMonth()]+' '+(now.getFullYear()+543);
-  const txns = await api({action:'getTransactions', month}) || [];
-  const totalIn  = txns.filter(t=>t.type.endsWith('-in')).reduce((s,t)=>s+parseFloat(t.amount||0),0);
-  const totalOut = txns.filter(t=>t.type.endsWith('-out')).reduce((s,t)=>s+parseFloat(t.amount||0),0);
+  const sel = document.getElementById('dash-fin-sel');
+  if(!sel) return;
+  sel.innerHTML = '';
+  if(finView === 'month'){
+    for(let y=currentYear; y>=currentYear-2; y--){
+      const maxM = y===currentYear ? now.getMonth()+1 : 12;
+      for(let m=maxM; m>=1; m--){
+        const key=y+'_'+String(m).padStart(2,'0');
+        const lbl=MONTHS_TH2[m-1]+' '+(y+543);
+        const o=document.createElement('option');
+        o.value=key; o.textContent=lbl;
+        if(y===currentYear && m===now.getMonth()+1) o.selected=true;
+        sel.appendChild(o);
+      }
+    }
+  } else {
+    for(let y=currentYear; y>=currentYear-2; y--){
+      const o=document.createElement('option');
+      o.value='year_'+y; o.textContent='ปี '+(y+543);
+      sel.appendChild(o);
+    }
+  }
+}
+
+function setFinView(v){
+  finView=v;
+  const bm=document.getElementById('fin-btn-month');
+  const by=document.getElementById('fin-btn-year');
+  if(bm){ bm.style.background=v==='month'?'#111':'#fff'; bm.style.color=v==='month'?'#fff':'#555'; }
+  if(by){ by.style.background=v==='year'?'#111':'#fff';  by.style.color=v==='year'?'#fff':'#555'; }
+  populateFinSel();
+  renderDashFinance();
+}
+
+async function renderDashFinance(){
+  const sel = document.getElementById('dash-fin-sel');
+  if(!sel) return;
+  const selVal = sel.value;
+  let txns = [];
+  if(finView==='month'){
+    txns = await api({action:'getTransactions', month:selVal}) || [];
+  } else {
+    // รายปี — ดึงทุกเดือนในปีนั้น
+    const year = selVal.replace('year_','');
+    const now = new Date();
+    const maxM = parseInt(year)===now.getFullYear() ? now.getMonth()+1 : 12;
+    const allTxns = await Promise.all(
+      Array.from({length:maxM},(_,i)=>api({action:'getTransactions', month:year+'_'+String(i+1).padStart(2,'0')}))
+    );
+    txns = allTxns.flat().filter(Boolean);
+  }
+
+  const INC_TYPES = ['rent-in','elec-in','water-in','washer-in','advance-in','clean-in','other-in'];
+  const EXP_TYPES = ['elec-out','water-out','internet-out','repair-out','tax-out','other-out'];
+  const INC_LABELS = {'rent-in':'ค่าเช่าห้อง','elec-in':'ค่าไฟฟ้า (เก็บ)','water-in':'ค่าน้ำประปา (เก็บ)','washer-in':'ค่าเครื่องซักผ้า','advance-in':'ค่าเช่าล่วงหน้า','clean-in':'ค่าทำความสะอาด','other-in':'รายรับอื่นๆ'};
+  const EXP_LABELS = {'elec-out':'ค่าไฟฟ้า (จ่าย)','water-out':'ค่าน้ำประปา (จ่าย)','internet-out':'ค่าอินเตอร์เน็ต','repair-out':'ค่าซ่อมบำรุง','tax-out':'ค่าภาษี','other-out':'รายจ่ายอื่นๆ'};
+
+  const totalIn  = txns.filter(t=>t.type&&t.type.endsWith('-in')).reduce((s,t)=>s+parseFloat(t.amount||0),0);
+  const totalOut = txns.filter(t=>t.type&&t.type.endsWith('-out')).reduce((s,t)=>s+parseFloat(t.amount||0),0);
   const net = totalIn - totalOut;
   const fmtN = n=>Math.round(n).toLocaleString('th-TH');
-  document.getElementById('dash-finance').innerHTML = `
-    <div style="background:#F2F4F7;border-radius:8px;padding:12px 14px">
-      <div style="font-size:12px;color:#888;margin-bottom:4px">รายรับรวม</div>
+
+  // cards
+  document.getElementById('dash-fin-cards').innerHTML = `
+    <div style="background:#E8F8F2;border-radius:8px;padding:12px 14px">
+      <div style="font-size:12px;color:#0F6E56;margin-bottom:4px">รายรับรวม</div>
       <div style="font-size:20px;font-weight:700;color:#1D9E75">฿${fmtN(totalIn)}</div>
     </div>
-    <div style="background:#F2F4F7;border-radius:8px;padding:12px 14px">
-      <div style="font-size:12px;color:#888;margin-bottom:4px">รายจ่ายรวม</div>
+    <div style="background:#FEF0F0;border-radius:8px;padding:12px 14px">
+      <div style="font-size:12px;color:#A32D2D;margin-bottom:4px">รายจ่ายรวม</div>
       <div style="font-size:20px;font-weight:700;color:#A32D2D">฿${fmtN(totalOut)}</div>
     </div>
-    <div style="background:#F2F4F7;border-radius:8px;padding:12px 14px">
-      <div style="font-size:12px;color:#888;margin-bottom:4px">กำไรสุทธิ</div>
+    <div style="background:${net>=0?'#E8F8F2':'#FEF0F0'};border-radius:8px;padding:12px 14px">
+      <div style="font-size:12px;color:${net>=0?'#0F6E56':'#A32D2D'};margin-bottom:4px">กำไรสุทธิ</div>
       <div style="font-size:20px;font-weight:700;color:${net>=0?'#1D9E75':'#A32D2D'}">฿${fmtN(Math.abs(net))}</div>
     </div>
     <div style="background:#F2F4F7;border-radius:8px;padding:12px 14px">
-      <div style="font-size:12px;color:#888;margin-bottom:4px">จำนวนรายการ</div>
-      <div style="font-size:20px;font-weight:700;color:#333">${txns.length} รายการ</div>
+      <div style="font-size:12px;color:#888;margin-bottom:4px">เงินสด / ธนาคาร</div>
+      <div style="font-size:15px;font-weight:700;color:#333">— / —</div>
     </div>`;
+
+  // income breakdown
+  const incRows = INC_TYPES.map(type=>{
+    const val = txns.filter(t=>t.type===type).reduce((s,t)=>s+parseFloat(t.amount||0),0);
+    const pct = totalIn>0 ? Math.round(val/totalIn*100) : 0;
+    return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #f5f5f5">
+      <div style="font-size:12px;color:#444;width:130px;flex-shrink:0">${INC_LABELS[type]}</div>
+      <div style="flex:1;height:5px;background:#f0f0f0;border-radius:3px;overflow:hidden"><div style="width:${pct}%;height:100%;background:#1D9E75;border-radius:3px"></div></div>
+      <div style="font-size:12px;font-weight:600;color:#1D9E75;width:70px;text-align:right;flex-shrink:0">฿${fmtN(val)}</div>
+    </div>`;
+  });
+  incRows.push(`<div style="display:flex;justify-content:space-between;padding:7px 0 0;font-size:13px;font-weight:700"><span>รวม</span><span style="color:#1D9E75">฿${fmtN(totalIn)}</span></div>`);
+  document.getElementById('dash-fin-income').innerHTML = incRows.join('');
+
+  // expense breakdown
+  const expRows = EXP_TYPES.map(type=>{
+    const val = txns.filter(t=>t.type===type).reduce((s,t)=>s+parseFloat(t.amount||0),0);
+    const pct = totalOut>0 ? Math.round(val/totalOut*100) : 0;
+    return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #f5f5f5">
+      <div style="font-size:12px;color:#444;width:130px;flex-shrink:0">${EXP_LABELS[type]}</div>
+      <div style="flex:1;height:5px;background:#f0f0f0;border-radius:3px;overflow:hidden"><div style="width:${pct}%;height:100%;background:#E24B4A;border-radius:3px"></div></div>
+      <div style="font-size:12px;font-weight:600;color:#A32D2D;width:70px;text-align:right;flex-shrink:0">฿${fmtN(val)}</div>
+    </div>`;
+  });
+  expRows.push(`<div style="display:flex;justify-content:space-between;padding:7px 0 0;font-size:13px;font-weight:700"><span>รวม</span><span style="color:#A32D2D">฿${fmtN(totalOut)}</span></div>`);
+  document.getElementById('dash-fin-expense').innerHTML = expRows.join('');
 }
 
 // ===== METER =====
@@ -748,6 +852,18 @@ async function loadTenants(){
   document.getElementById('tenant-card').style.display='block';
 }
 
+function formatDate(val){
+  if(!val) return '';
+  if(typeof val === 'string' && val.includes('T')){
+    const d = new Date(val);
+    const dd = String(d.getDate()).padStart(2,'0');
+    const mm = String(d.getMonth()+1).padStart(2,'0');
+    const yy = String(d.getFullYear()).slice(-2);
+    return dd+'/'+mm+'/'+yy;
+  }
+  return val;
+}
+
 function renderTenantTable(list){
   const sm = {active:{cls:'b-active',lbl:'มีผู้เช่า'},new:{cls:'b-new',lbl:'ผู้เช่าใหม่'},overdue:{cls:'b-overdue',lbl:'ค้างชำระ'}};
   document.getElementById('tenant-body').innerHTML = list.map(t=>{
@@ -755,8 +871,8 @@ function renderTenantTable(list){
     return `<tr>
       <td style="font-weight:600">ห้อง ${t.room}</td>
       <td>${t.name}</td><td>${t.phone}</td>
-      <td style="font-size:12px;color:#888">${t.checkin}</td>
-      <td style="font-size:12px;color:#888">${t.contract}</td>
+      <td style="font-size:12px;color:#888">${formatDate(t.checkin)}</td>
+      <td style="font-size:12px;color:#888">${formatDate(t.contract)}</td>
       <td>฿${fmtN(t.deposit)}</td>
       <td><span class="badge ${s.cls}">${s.lbl}</span></td>
       <td style="display:flex;gap:4px;flex-wrap:wrap">
@@ -776,7 +892,16 @@ function filterTenants(){
 function openTenantModal(t=null){
   document.getElementById('modal-tenant-title').textContent = t ? 'แก้ไขข้อมูลผู้เช่า' : 'เพิ่มผู้เช่าใหม่';
   ['room','name','phone','idcard','checkin','contract','deposit','note'].forEach(f=>{
-    document.getElementById('t-'+f).value = t?.(f)||'';
+    let val = t ? (t[f]||'') : '';
+    // แก้ format วันที่ที่มาจาก Sheets (ISO format) ให้เป็น dd/mm/yy
+    if(val && typeof val === 'string' && val.includes('T') && val.includes('Z')){
+      const d = new Date(val);
+      const dd = String(d.getDate()).padStart(2,'0');
+      const mm = String(d.getMonth()+1).padStart(2,'0');
+      const yy = String(d.getFullYear()).slice(-2);
+      val = dd+'/'+mm+'/'+yy;
+    }
+    document.getElementById('t-'+f).value = val;
   });
   if(t) document.getElementById('t-status').value = t.status||'active';
   document.getElementById('modal-tenant').classList.add('open');
@@ -1052,6 +1177,7 @@ async function sendLineAll(){
 
 // ===== INIT =====
 populateMonthSels();
+populateFinSel();
 const today=new Date();
 document.getElementById('inv-date').value=`${String(today.getDate()).padStart(2,'0')}/${String(today.getMonth()+1).padStart(2,'0')}/${String(today.getFullYear()).slice(-2)}`;
 loadDashboard();

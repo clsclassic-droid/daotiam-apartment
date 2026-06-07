@@ -435,7 +435,7 @@ body{font-family:'Sarabun',sans-serif;background:#F2F4F7;color:#111;font-size:14
 
 <script>
 // ===== CONFIG =====
-const API_URL = 'https://script.google.com/macros/s/AKfycbxg9Pc_ivr4BRccn-rQtqaT7s2syxaj7JQfuSxkAqckG_ec9gArE3hqK_4oF5QdeYvZ5w/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycby805V5ZXsb3dwj8BYBUxy8PGrLEqV2FFhDNMzYAPF8TseCDPSO91Ej9aY20pPT8C_A/exec';
 const RENT = 3500, ELEC_RATE = 6.5, WATER_RATE = 22;
 const MONTHS_TH = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 const MONTHS_FULL = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
@@ -582,48 +582,118 @@ function getPrevMonth(month){
 function renderMeterGrid(){
   const grid = document.getElementById('meter-grid');
   if(!tenants.length){ grid.innerHTML='<div style="color:#aaa;font-size:13px;grid-column:span 3">กรุณาโหลดข้อมูลผู้เช่าก่อน</div>'; return; }
+  const today = new Date().toISOString().split('T')[0];
   grid.innerHTML = tenants.map(t=>{
-    const m = meters.find(x=>String(x.room)===String(t.room))||{elecPrev:0,elecCurr:0,waterPrev:0,waterCurr:0};
-    return `<div style="background:#F8F9FA;border-radius:8px;padding:10px 12px;border:1px solid #e8e8e8">
-      <div style="display:flex;justify-content:space-between;margin-bottom:8px">
-        <span style="font-weight:600">ห้อง ${t.room}</span>
-        <span style="font-size:11px;color:#888">${t.name.split(' ')[0]}</span>
+    const m = meters.find(x=>String(x.room)===String(t.room))||{elecPrev:0,elecCurr:0,waterPrev:0,waterCurr:0,prevDate:'',currDate:today};
+    return `<div style="background:#fff;border-radius:10px;border:1px solid #e8e8e8;padding:14px 16px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px">
+        <span style="font-size:14px;font-weight:600">ห้อง ${t.room}</span>
+        <span style="font-size:12px;color:#888">${t.name.split(' ')[0]}</span>
       </div>
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
-        <span style="font-size:11px;color:#888;width:20px"><i class="ti ti-bolt" style="color:#F0A500"></i></span>
-        <input type="number" id="elec-${t.room}" value="${m.elecCurr||''}" placeholder="เลขมิเตอร์ไฟ" style="flex:1;font-size:12px;padding:4px 7px;border:1px solid #ddd;border-radius:5px" oninput="calcMeterCost('${t.room}')">
-        <span style="font-size:11px;color:#aaa">เดิม ${m.elecPrev||0}</span>
+
+      <!-- วันที่ 2 ช่อง -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px;padding:8px 10px;background:#f8f9fa;border:1px solid #e8e8e8;border-radius:8px">
+        <div style="display:flex;flex-direction:column;gap:3px">
+          <span style="font-size:10px;font-weight:500;color:#854F0B"><i class="ti ti-calendar" style="font-size:12px;vertical-align:-1px"></i> วันที่จดก่อนหน้า</span>
+          <input type="date" id="pd-${t.room}" value="${m.prevDate||''}" style="width:100%;font-size:11px;padding:4px 6px;border:1px solid #FAC775;border-radius:6px;background:#fff" oninput="calcDays('${t.room}')">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:3px">
+          <span style="font-size:10px;font-weight:500;color:#085041"><i class="ti ti-calendar-check" style="font-size:12px;vertical-align:-1px"></i> วันที่จดล่าสุด</span>
+          <input type="date" id="cd-${t.room}" value="${m.currDate||today}" style="width:100%;font-size:11px;padding:4px 6px;border:1px solid #9FE1CB;border-radius:6px;background:#fff" oninput="calcDays('${t.room}')">
+        </div>
+        <div id="days-${t.room}" style="grid-column:span 2;font-size:10px;color:#888;text-align:center;margin-top:2px"></div>
       </div>
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
-        <span style="font-size:11px;color:#888;width:20px"><i class="ti ti-droplet" style="color:#1A5FA8"></i></span>
-        <input type="number" id="water-${t.room}" value="${m.waterCurr||''}" placeholder="เลขมิเตอร์น้ำ" style="flex:1;font-size:12px;padding:4px 7px;border:1px solid #ddd;border-radius:5px" oninput="calcMeterCost('${t.room}')">
-        <span style="font-size:11px;color:#aaa">เดิม ${m.waterPrev||0}</span>
+
+      <!-- ไฟฟ้า -->
+      <div style="margin-bottom:8px">
+        <div style="font-size:11px;font-weight:500;color:#888;margin-bottom:5px;display:flex;align-items:center;justify-content:space-between">
+          <span><i class="ti ti-bolt" style="font-size:12px;color:#F0A500"></i> ไฟฟ้า</span>
+          <span id="ed-${t.room}" style="font-size:10px;color:#1D9E75;font-weight:500"></span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+          <div style="background:#FAEEDA;border-radius:8px;padding:6px 8px">
+            <div style="font-size:10px;font-weight:500;color:#854F0B;margin-bottom:3px">ก่อนหน้า</div>
+            <input type="number" id="ep-${t.room}" value="${m.elecPrev||''}" placeholder="เลขมิเตอร์" style="width:100%;font-size:13px;padding:5px 7px;border:1px solid #FAC775;border-radius:6px;background:#fff;font-weight:500" oninput="calcMeterCost('${t.room}')">
+          </div>
+          <div style="background:#E1F5EE;border-radius:8px;padding:6px 8px">
+            <div style="font-size:10px;font-weight:500;color:#085041;margin-bottom:3px">ล่าสุด</div>
+            <input type="number" id="ec-${t.room}" value="${m.elecCurr||''}" placeholder="เลขมิเตอร์" style="width:100%;font-size:13px;padding:5px 7px;border:1px solid #9FE1CB;border-radius:6px;background:#fff;font-weight:500" oninput="calcMeterCost('${t.room}')">
+          </div>
+        </div>
       </div>
-      <div id="mcost-${t.room}" style="font-size:12px;font-weight:600;color:#1D9E75">—</div>
+
+      <!-- น้ำประปา -->
+      <div style="margin-bottom:10px">
+        <div style="font-size:11px;font-weight:500;color:#888;margin-bottom:5px;display:flex;align-items:center;justify-content:space-between">
+          <span><i class="ti ti-droplet" style="font-size:12px;color:#1A5FA8"></i> น้ำประปา</span>
+          <span id="wd-${t.room}" style="font-size:10px;color:#1D9E75;font-weight:500"></span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+          <div style="background:#FAEEDA;border-radius:8px;padding:6px 8px">
+            <div style="font-size:10px;font-weight:500;color:#854F0B;margin-bottom:3px">ก่อนหน้า</div>
+            <input type="number" id="wp-${t.room}" value="${m.waterPrev||''}" placeholder="เลขมิเตอร์" style="width:100%;font-size:13px;padding:5px 7px;border:1px solid #FAC775;border-radius:6px;background:#fff;font-weight:500" oninput="calcMeterCost('${t.room}')">
+          </div>
+          <div style="background:#E1F5EE;border-radius:8px;padding:6px 8px">
+            <div style="font-size:10px;font-weight:500;color:#085041;margin-bottom:3px">ล่าสุด</div>
+            <input type="number" id="wc-${t.room}" value="${m.waterCurr||''}" placeholder="เลขมิเตอร์" style="width:100%;font-size:13px;padding:5px 7px;border:1px solid #9FE1CB;border-radius:6px;background:#fff;font-weight:500" oninput="calcMeterCost('${t.room}')">
+          </div>
+        </div>
+      </div>
+
+      <div id="mcost-${t.room}" style="padding:8px 10px;background:#f8f9fa;border-radius:8px;font-size:12px;color:#aaa;text-align:center">กรอกเลขมิเตอร์เพื่อคำนวณ</div>
     </div>`;
   }).join('');
+  tenants.forEach(t=>{ calcDays(t.room); calcMeterCost(t.room); });
+}
+
+function calcDays(room){
+  const pd=document.getElementById('pd-'+room)?.value;
+  const cd=document.getElementById('cd-'+room)?.value;
+  const el=document.getElementById('days-'+room);
+  if(!el) return;
+  if(pd&&cd){
+    const d=Math.round((new Date(cd)-new Date(pd))/(864e5));
+    el.textContent=d>0?'ห่างกัน '+d+' วัน':'วันที่ไม่ถูกต้อง';
+  } else { el.textContent=''; }
 }
 
 function calcMeterCost(room){
-  const m = meters.find(x=>String(x.room)===String(room))||{elecPrev:0,waterPrev:0};
-  const e=parseFloat(document.getElementById('elec-'+room)?.value||0);
-  const w=parseFloat(document.getElementById('water-'+room)?.value||0);
-  const el=document.getElementById('mcost-'+room);
-  if(e>m.elecPrev&&w>m.waterPrev){
-    const ec=Math.round((e-m.elecPrev)*ELEC_RATE), wc=Math.round((w-m.waterPrev)*WATER_RATE);
-    el.textContent=`ไฟ ฿${fmtN(ec)} · น้ำ ฿${fmtN(wc)} · รวม ฿${fmtN(RENT+ec+wc)}`;
-  } else { el.textContent='—'; }
+  const ep=parseFloat(document.getElementById('ep-'+room)?.value||0);
+  const ec=parseFloat(document.getElementById('ec-'+room)?.value||0);
+  const wp=parseFloat(document.getElementById('wp-'+room)?.value||0);
+  const wc=parseFloat(document.getElementById('wc-'+room)?.value||0);
+  const de=ec-ep, dw=wc-wp;
+  const edEl=document.getElementById('ed-'+room);
+  const wdEl=document.getElementById('wd-'+room);
+  const costEl=document.getElementById('mcost-'+room);
+  if(edEl) edEl.textContent=de>0?'+'+de+' หน่วย':'';
+  if(wdEl) wdEl.textContent=dw>0?'+'+dw+' หน่วย':'';
+  if(!costEl) return;
+  if(de>0&&dw>0){
+    const elecCost=Math.round(de*ELEC_RATE), waterCost=Math.round(dw*WATER_RATE);
+    costEl.innerHTML=`
+      <div style="display:flex;justify-content:space-between;color:#666;margin-bottom:2px;font-size:12px"><span>ไฟ ${de} หน่วย × ฿6.50</span><span>฿${fmtN(elecCost)}</span></div>
+      <div style="display:flex;justify-content:space-between;color:#666;margin-bottom:4px;font-size:12px"><span>น้ำ ${dw} หน่วย × ฿22</span><span>฿${fmtN(waterCost)}</span></div>
+      <div style="display:flex;justify-content:space-between;font-weight:600;color:#1D9E75;padding-top:4px;border-top:1px solid #e8e8e8;font-size:13px"><span>รวมทั้งสิ้น</span><span>฿${fmtN(RENT+elecCost+waterCost)}</span></div>`;
+    costEl.style.color='#333';
+    costEl.style.textAlign='left';
+  } else {
+    costEl.innerHTML='กรอกเลขมิเตอร์เพื่อคำนวณ';
+    costEl.style.color='#aaa';
+    costEl.style.textAlign='center';
+  }
 }
 
 async function saveMeters(){
   const month = document.getElementById('meter-month-sel').value;
   const data = tenants.map(t=>({
     room: t.room,
-    elecPrev:  parseFloat(meters.find(m=>String(m.room)===String(t.room))?.elecPrev)||0,
-    elecCurr:  parseFloat(document.getElementById('elec-'+t.room)?.value||0),
-    waterPrev: parseFloat(meters.find(m=>String(m.room)===String(t.room))?.waterPrev)||0,
-    waterCurr: parseFloat(document.getElementById('water-'+t.room)?.value||0),
-    date: new Date().toLocaleDateString('th-TH')
+    elecPrev:  parseFloat(document.getElementById('ep-'+t.room)?.value||0),
+    elecCurr:  parseFloat(document.getElementById('ec-'+t.room)?.value||0),
+    waterPrev: parseFloat(document.getElementById('wp-'+t.room)?.value||0),
+    waterCurr: parseFloat(document.getElementById('wc-'+t.room)?.value||0),
+    prevDate:  document.getElementById('pd-'+t.room)?.value||'',
+    currDate:  document.getElementById('cd-'+t.room)?.value||'',
   })).filter(m=>m.elecCurr>0||m.waterCurr>0);
   const res = await apiPost({action:'saveMeters', month, meters:data});
   if(res.success) showToast('✓ บันทึกมิเตอร์เรียบร้อยแล้ว');

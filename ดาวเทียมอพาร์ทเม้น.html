@@ -905,10 +905,14 @@ function printAllInv(){const month=document.getElementById('inv-month').value;co
 async function loadTx(){
   const month=document.getElementById('tx-sel').value;
   if(!month)return;
+  const now=new Date(),cy=now.getFullYear();
   let txns=[];
-  if(month.startsWith('year_')){
+  if(month==='all'){
+    const allP=[];
+    for(let y=2022;y<=cy;y++){const mxM=y===cy?now.getMonth()+1:12;for(let m=1;m<=mxM;m++)allP.push(api({action:'getTransactions',month:y+'_'+String(m).padStart(2,'0')}));}
+    const res=await Promise.all(allP);txns=res.flat().filter(Boolean);
+  } else if(month.startsWith('year_')){
     const yr=month.replace('year_','');
-    const now=new Date(),cy=now.getFullYear();
     const mxM=parseInt(yr)===cy?now.getMonth()+1:12;
     const all=await Promise.all(Array.from({length:mxM},(_,i)=>api({action:'getTransactions',month:yr+'_'+String(i+1).padStart(2,'0')})));
     txns=all.flat().filter(Boolean);

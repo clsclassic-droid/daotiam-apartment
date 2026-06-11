@@ -659,26 +659,25 @@ function populateTxSel(){
   const sel=document.getElementById('tx-sel');if(!sel)return;
   sel.innerHTML='';
   if(txYear==='all'){
-    const ao=document.createElement('option');
-    ao.value='all';ao.textContent='ทั้งหมดทุกปี';ao.selected=true;
-    sel.appendChild(ao);
+    // ทั้งหมด → ไม่มี dropdown เดือน ซ่อนไว้
+    sel.style.display='none';return;
   }
-  const years=txYear==='all'?Array.from({length:cy-2021},(_,i)=>String(cy-i)):[txYear];
-  years.forEach(yr=>{
-    const maxM=parseInt(yr)===cy?now.getMonth()+1:12;
-    const yo=document.createElement('option');
-    yo.value='year_'+yr;yo.textContent='ทั้งปี '+(parseInt(yr)+543);
-    sel.appendChild(yo);
-    for(let m=maxM;m>=1;m--){
-      const key=yr+'_'+String(m).padStart(2,'0');
-      const o=document.createElement('option');
-      o.value=key;o.textContent=MTH[m-1]+' '+(parseInt(yr)+543);
-      if(txYear!=='all'&&parseInt(yr)===cy&&m===now.getMonth()+1)o.selected=true;
-      sel.appendChild(o);
-    }
-  });
+  sel.style.display='';
+  const yr=txYear;
+  const maxM=parseInt(yr)===cy?now.getMonth()+1:12;
+  for(let m=maxM;m>=1;m--){
+    const key=yr+'_'+String(m).padStart(2,'0');
+    const o=document.createElement('option');
+    o.value=key;o.textContent=MTH[m-1]+' '+(parseInt(yr)+543);
+    if(parseInt(yr)===cy&&m===now.getMonth()+1)o.selected=true;
+    sel.appendChild(o);
+  }
 }
-function selectTxYear(y){txYear=y;buildTxTabs();loadTx();}
+function selectTxYear(y){
+  txYear=y;buildTxTabs();
+  // ถ้าเป็น all โหลดทันที ถ้าเป็นปีให้ dropdown populateTxSel แล้ว loadTx
+  loadTx();
+}
 
 // DASHBOARD
 async function loadDashboard(){
@@ -903,20 +902,15 @@ function printAllInv(){const month=document.getElementById('inv-month').value;co
 
 // CASHFLOW
 async function loadTx(){
-  const month=document.getElementById('tx-sel').value;
-  if(!month)return;
   const now=new Date(),cy=now.getFullYear();
   let txns=[];
-  if(month==='all'){
+  if(txYear==='all'){
     const allP=[];
     for(let y=2022;y<=cy;y++){const mxM=y===cy?now.getMonth()+1:12;for(let m=1;m<=mxM;m++)allP.push(api({action:'getTransactions',month:y+'_'+String(m).padStart(2,'0')}));}
     const res=await Promise.all(allP);txns=res.flat().filter(Boolean);
-  } else if(month.startsWith('year_')){
-    const yr=month.replace('year_','');
-    const mxM=parseInt(yr)===cy?now.getMonth()+1:12;
-    const all=await Promise.all(Array.from({length:mxM},(_,i)=>api({action:'getTransactions',month:yr+'_'+String(i+1).padStart(2,'0')})));
-    txns=all.flat().filter(Boolean);
   } else {
+    const month=document.getElementById('tx-sel').value;
+    if(!month)return;
     txns=await api({action:'getTransactions',month},'กำลังโหลดรายการ...')||[];
   }
   transactions=txns;

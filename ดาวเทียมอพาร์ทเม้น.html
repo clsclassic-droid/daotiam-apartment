@@ -776,6 +776,7 @@ async function loadDashboard(){
   const monthsWithExp=new Set(allTxns.filter(t=>t.type?.endsWith('-out')).map(t=>t.month));
   const totalExp=allTxns.filter(t=>t.type?.endsWith('-out')).reduce((s,t)=>s+parseFloat(t.amount||0),0);
   window._dashExpense=monthsWithExp.size>0?Math.round(totalExp/monthsWithExp.size):0;
+  window._dashExpenseMonths=monthsWithExp.size;
   const monthsWithInc=new Set(allTxns.filter(t=>t.type&&!t.type.endsWith('-out')).map(t=>t.month));
   const totalInc=allTxns.filter(t=>t.type&&!t.type.endsWith('-out')).reduce((s,t)=>s+parseFloat(t.amount||0),0);
   window._dashIncome=monthsWithInc.size>0?Math.round(totalInc/monthsWithInc.size):0;

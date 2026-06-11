@@ -112,7 +112,7 @@ input,select,textarea{font-family:'Sarabun',sans-serif}
 .fr2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .mrc{background:#fff;border-radius:var(--r);border:1px solid var(--border);padding:12px 14px}
 .mrc-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px}
-.mrc-num{font-size:13px;font-weight:700}.mrc-name{font-size:11px;color:var(--t2);font-weight:500;margin-top:1px}
+.mrc-num{font-size:13px;font-weight:700;white-space:nowrap}.mrc-name{font-size:11px;color:var(--t2);font-weight:500;margin-top:1px}
 .mrc-dates{display:grid;grid-template-columns:1fr 1fr;gap:5px;background:#f8f9fa;border-radius:6px;padding:7px;margin-bottom:8px}
 .mrc-dl{font-size:9px;font-weight:600;margin-bottom:2px}
 .mrc-dl.prev{color:#854F0B}.mrc-dl.curr{color:var(--gd)}
@@ -810,7 +810,7 @@ function renderMeterGrid(){
     return`<div class="mrc" id="mrc-${t.room}" style="position:relative">
       <button class="btn btn-sm" id="mrc-edit-${t.room}" onclick="toggleMeterEdit(${t.room})" style="position:absolute;top:8px;right:8px;font-size:10px;padding:3px 7px;color:var(--t2);z-index:1"><i class="ti ti-edit" style="font-size:10px"></i> แก้ไข</button>
       <div class="mrc-hd" style="padding-right:68px;margin-bottom:9px">
-        <div class="mrc-num">ห้อง ${t.room}</div>
+        <div class="mrc-num" style="white-space:nowrap">ห้อง ${t.room}</div>
         <div class="mrc-name">${t.name||'—'}</div>
       </div>
       <div class="mrc-dates">

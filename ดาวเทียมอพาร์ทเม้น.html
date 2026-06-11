@@ -45,14 +45,16 @@ input,select,textarea{font-family:'Sarabun',sans-serif}
 .tb-title{font-size:15px;font-weight:600}
 .tb-sub{font-size:11px;color:var(--t3);margin-top:1px}
 .content{flex:1;overflow-y:auto;padding:20px}
-.bottom-nav{display:none;background:#fff;border-top:1px solid var(--border);height:calc(var(--bot-h) + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);flex-shrink:0;position:relative;z-index:50}
+.bottom-nav{display:none;background:#0F1923;border-top:none;height:calc(var(--bot-h) + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);flex-shrink:0;position:relative;z-index:50}
 .bn-items{display:flex;height:100%}
 .bn-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;border:none;background:transparent;font-family:'Sarabun',sans-serif;position:relative;transition:all .15s}
-.bn-item i{font-size:20px;color:var(--t3)}
-.bn-item span{font-size:9px;color:var(--t3);font-weight:500}
-.bn-item.act i,.bn-item.act span{color:var(--green)}
-.bn-item.act span{font-weight:600}
-.bn-badge{position:absolute;top:4px;right:calc(50% - 18px);width:14px;height:14px;background:var(--red);border-radius:50%;font-size:8px;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700}
+.bn-item i{font-size:21px;color:rgba(255,255,255,.35)}
+.bn-item span{font-size:9px;color:rgba(255,255,255,.3);font-weight:500}
+.bn-item.act{background:rgba(29,158,117,.15)}
+.bn-item.act i{color:var(--green)}
+.bn-item.act span{color:#4cd4a0;font-weight:600}
+.bn-item.act::after{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:24px;height:2px;background:var(--green);border-radius:0 0 3px 3px}
+.bn-badge{position:absolute;top:6px;right:calc(50% - 18px);width:14px;height:14px;background:var(--red);border-radius:50%;font-size:8px;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700}
 .more-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:150;display:none;align-items:flex-end}
 .more-overlay.open{display:flex}
 .more-drawer{background:#fff;border-radius:14px 14px 0 0;padding:12px 16px 20px;width:100%}
@@ -152,7 +154,7 @@ input,select,textarea{font-family:'Sarabun',sans-serif}
 .od-pay-btn{font-size:11px;padding:4px 10px;border-radius:6px;cursor:pointer;border:none;font-family:'Sarabun',sans-serif;font-weight:500;white-space:nowrap}
 .pb-ov{background:var(--rl);color:var(--red)}.pb-pd{background:var(--gl);color:var(--gd)}
 .receipt{background:#fff;border:0.5px solid var(--border);border-radius:8px;padding:20px 22px}
-.toast{position:fixed;bottom:72px;right:16px;background:#1a1a2e;color:#fff;padding:10px 16px;border-radius:8px;font-size:12px;z-index:300;display:none;align-items:center;gap:7px;box-shadow:0 6px 20px rgba(0,0,0,.2);max-width:280px}
+.toast{position:fixed;bottom:80px;right:16px;background:#1a1a2e;color:#fff;padding:10px 16px;border-radius:8px;font-size:12px;z-index:300;display:none;align-items:center;gap:7px;box-shadow:0 6px 20px rgba(0,0,0,.2);max-width:280px}
 .toast.show{display:flex}
 .api-loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,.6);z-index:400;display:none;align-items:center;justify-content:center;flex-direction:column;gap:8px}
 .api-loading-overlay.show{display:flex}
@@ -167,7 +169,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
   .stats{grid-template-columns:repeat(2,1fr)}
   .g2,.g3{grid-template-columns:1fr}
   .content{padding:12px;padding-bottom:calc(var(--bot-h) + 12px)}
-  .toast{bottom:calc(var(--bot-h) + 12px)}
+  .toast{bottom:calc(var(--bot-h) + 16px)}
   .fin-tab-row{display:flex;gap:6px;margin-bottom:10px}
   .fin-2col{display:block}
   .fin-panel-exp{display:none}
@@ -695,37 +697,30 @@ function populateFinSel(){
 function setFinView(v){finView=v;buildFinTabs();renderFinance();}
 
 // DASHBOARD
-function buildStatsHTML(occ,vac,ov){
-  return`<div class="stat"><div class="stat-l">ห้องทั้งหมด</div><div class="stat-v">21</div></div>
+async function loadDashboard(){
+  if(!tenants.length)tenants=await api({action:'getTenants'},'กำลังโหลด...')||[];
+  if(!window._cachedSummary){
+    const s=await api({action:'getSummary'},'กำลังโหลดสรุป...');
+    if(s?.success){
+      window._dashIncome=s.avgInc||0;
+      window._dashIncomeMonths=s.incMonths||0;
+      window._dashExpense=s.avgExp||0;
+      window._dashExpenseMonths=s.expMonths||0;
+      window._cachedSummary=true;
+    }
+  }
+  renderDash();
+}
+function renderDash(){
+  const occ=tenants.length,vac=21-occ,ov=tenants.filter(t=>t.status==='overdue').length;
+  document.getElementById('dash-stats').innerHTML=`
+    <div class="stat"><div class="stat-l">ห้องทั้งหมด</div><div class="stat-v">21</div></div>
     <div class="stat"><div class="stat-l">มีผู้เช่า</div><div class="stat-v" style="color:var(--green)">${occ}</div><div class="stat-s">${Math.round(occ/21*100)}%</div></div>
     <div class="stat"><div class="stat-l">ห้องว่าง</div><div class="stat-v">${vac}</div></div>
     <div class="stat"><div class="stat-l">ค้างชำระ</div><div class="stat-v" style="color:var(--red)">${ov}</div></div>
     <div class="stat"><div class="stat-l">รายรับ/เดือน (เฉลี่ย)</div><div class="stat-v" style="font-size:16px;color:var(--green)">฿${fmtN(window._dashIncome||0)}</div><div class="stat-s">จาก ${window._dashIncomeMonths||0} เดือน</div></div>
     <div class="stat"><div class="stat-l">รายจ่าย/เดือน (เฉลี่ย)</div><div class="stat-v" style="font-size:16px;color:var(--red)">฿${fmtN(window._dashExpense||0)}</div><div class="stat-s">จาก ${window._dashExpenseMonths||0} เดือน</div></div>
     <div class="stat"><div class="stat-l">เงินประกันรวม</div><div class="stat-v" style="font-size:16px;color:var(--blue)">฿${fmtN(occ*3500)}</div></div>`;
-}
-async function loadDashboard(){
-  // Cache tenants in sessionStorage (same-day)
-  if(!tenants.length){
-    const cacheKey='dt_tenants';
-    const cacheDate='dt_tenants_date';
-    const today=new Date().toDateString();
-    const cached=sessionStorage.getItem(cacheKey);
-    const cachedDate=sessionStorage.getItem(cacheDate);
-    if(cached&&cachedDate===today){
-      tenants=JSON.parse(cached);
-    } else {
-      tenants=await api({action:'getTenants'},'กำลังโหลด...')||[];
-      sessionStorage.setItem(cacheKey,JSON.stringify(tenants));
-      sessionStorage.setItem(cacheDate,today);
-    }
-  }
-  renderDash();
-  // getSummary loads lazily via IntersectionObserver below
-}
-function renderDash(){
-  const occ=tenants.length,vac=21-occ,ov=tenants.filter(t=>t.status==='overdue').length;
-  document.getElementById('dash-stats').innerHTML=buildStatsHTML(occ,vac,ov);
   ['bdg-inv','bdg-ov'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=ov;});
   const bb=document.getElementById('bn-bdg-ov');if(bb){bb.textContent=ov;bb.style.display=ov>0?'flex':'none';}
   let rm='';for(let i=1;i<=21;i++){const t=tenants.find(x=>String(x.room)===String(i));const cls=!t?'vac':t.status==='overdue'?'ov':'occ';rm+=`<div class="rc ${cls}" title="${t?.name||'ว่าง'}"><div class="rn">${i}</div><div class="rs">${!t?'ว่าง':t.status==='overdue'?'ค้างชำระ':'มีผู้เช่า'}</div></div>`;}
@@ -733,53 +728,12 @@ function renderDash(){
   const odList=tenants.filter(t=>t.status==='overdue');
   document.getElementById('dash-overdue').innerHTML=odList.length?odList.map(t=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f5f5f5;font-size:12px"><div style="font-weight:500">ห้อง ${t.room} — ${t.name}</div><span class="bdg br">ค้างชำระ</span></div>`).join(''):'<div style="color:var(--t3);font-size:12px;padding:8px 0;text-align:center">ไม่มีห้องค้างชำระ 🎉</div>';
   document.getElementById('dash-repair').innerHTML='<div style="color:var(--t3);font-size:12px;padding:8px 0;text-align:center">ดูที่หน้าซ่อมบำรุง</div>';
-  // Lazy load summary stats (avg income/expense)
-  if(!window._cachedSummary){
-    const cacheKey='dt_summary';
-    const cacheDate='dt_summary_date';
-    const today=new Date().toDateString();
-    const cached=sessionStorage.getItem(cacheKey);
-    const cachedDate=sessionStorage.getItem(cacheDate);
-    if(cached&&cachedDate===today){
-      const s=JSON.parse(cached);
-      window._dashIncome=s.avgInc||0;
-      window._dashIncomeMonths=s.incMonths||0;
-      window._dashExpense=s.avgExp||0;
-      window._dashExpenseMonths=s.expMonths||0;
-      window._cachedSummary=true;
-      // Re-render stats with cached summary
-      const occ=tenants.length,vac=21-occ,ov=tenants.filter(t=>t.status==='overdue').length;
-      document.getElementById('dash-stats').innerHTML=buildStatsHTML(occ,vac,ov);
-    } else {
-      // Observe fin-cards, load summary when scrolled into view
-      const finEl=document.getElementById('fin-cards');
-      if(finEl&&!window._finObserver){
-        window._finObserver=new IntersectionObserver(async entries=>{
-          if(entries[0].isIntersecting){
-            window._finObserver.disconnect();window._finObserver=null;
-            const s=await api({action:'getSummary'},'กำลังโหลดสรุป...');
-            if(s?.success){
-              window._dashIncome=s.avgInc||0;
-              window._dashIncomeMonths=s.incMonths||0;
-              window._dashExpense=s.avgExp||0;
-              window._dashExpenseMonths=s.expMonths||0;
-              window._cachedSummary=true;
-              sessionStorage.setItem(cacheKey,JSON.stringify(s));
-              sessionStorage.setItem(cacheDate,today);
-              const occ=tenants.length,vac=21-occ,ov=tenants.filter(t=>t.status==='overdue').length;
-              document.getElementById('dash-stats').innerHTML=buildStatsHTML(occ,vac,ov);
-            }
-            renderFinance();
-          }
-        },{threshold:0.1});
-        window._finObserver.observe(finEl);
-      }
-    }
-  }
-  const finEl2=document.getElementById('fin-cards');
-  if(finEl2&&window._cachedSummary&&!window._finRendered){
-    window._finRendered=true;
-    renderFinance();
+  const finEl=document.getElementById('fin-cards');
+  if(finEl&&!window._finObserver){
+    window._finObserver=new IntersectionObserver(entries=>{
+      if(entries[0].isIntersecting){renderFinance();window._finObserver.disconnect();window._finObserver=null;}
+    },{threshold:0.1});
+    window._finObserver.observe(finEl);
   }
 }
 async function renderFinance(){
@@ -902,18 +856,7 @@ function importScan(rooms){
 
 // TENANT
 async function loadTenants(){
-  const cacheKey='dt_tenants';
-  const cacheDate='dt_tenants_date';
-  const today=new Date().toDateString();
-  const cached=sessionStorage.getItem(cacheKey);
-  const cachedDate=sessionStorage.getItem(cacheDate);
-  if(cached&&cachedDate===today&&tenants.length){
-    // already in memory, just re-render
-  } else {
-    tenants=await api({action:'getTenants'},'กำลังโหลดผู้เช่า...')||[];
-    sessionStorage.setItem(cacheKey,JSON.stringify(tenants));
-    sessionStorage.setItem(cacheDate,today);
-  }
+  tenants=await api({action:'getTenants'},'กำลังโหลดผู้เช่า...')||[];
   renderTenantTbl(tenants);populateInvRoom();
 }
 function renderTenantTbl(list){
@@ -938,7 +881,7 @@ async function saveTenant(){
   const d={room:document.getElementById('t-room').value,name:document.getElementById('t-name').value,phone:document.getElementById('t-phone').value,idcard:document.getElementById('t-idcard').value,checkin:document.getElementById('t-checkin').value,contract:document.getElementById('t-contract').value,deposit:document.getElementById('t-deposit').value,status:document.getElementById('t-status').value,note:document.getElementById('t-note').value};
   if(!d.room||!d.name){showToast('กรุณากรอกห้องและชื่อ','err');return;}
   const res=await apiPost({action:'saveTenant',...d},'กำลังบันทึก...');
-  if(res?.success){sessionStorage.removeItem('dt_tenants');sessionStorage.removeItem('dt_tenants_date');closeMo('mo-tenant');await loadTenants();showToast('✓ บันทึกผู้เช่าแล้ว');}
+  if(res?.success){closeMo('mo-tenant');await loadTenants();showToast('✓ บันทึกผู้เช่าแล้ว');}
 }
 
 // INVOICE
@@ -1108,7 +1051,6 @@ async function confirmCo(){
   const months=Math.max(1,Math.round((new Date(coDate)-new Date(t.checkin?.split('/').reverse().join('-')||coDate))/(30*864e5)));
   await apiPost({action:'saveHistory',room:t.room,name:t.name,phone:t.phone||'',checkin:t.checkin,checkout:coDate,months,reason,deposit:t.deposit||3500,depositReturn:depRet,status:'good',note:''},'กำลังบันทึกประวัติ...');
   await apiPost({action:'deleteTenant',room:coRoom},'กำลังย้ายออก...');
-  sessionStorage.removeItem('dt_tenants');sessionStorage.removeItem('dt_tenants_date');
   closeMo('mo-checkout');await loadTenants();
   showToast('✓ บันทึกย้ายออกแล้ว');
 }
@@ -1360,6 +1302,7 @@ function init(){
   document.getElementById('inv-mdate').value='31/'+String(mo-1||12).padStart(2,'0')+'/'+yr;
   populateSels();
   loadDashboard();
+  loadTenants();
 }
 init();
 </script>

@@ -247,8 +247,10 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
         <hr class="div">
         <div class="g4" id="fin-cards" style="margin-bottom:14px"></div>
         <div class="g2">
-          <div><div style="font-size:11px;font-weight:600;color:var(--green);margin-bottom:7px"><i class="ti ti-trending-up" style="font-size:13px"></i> รายรับแยกประเภท</div><div id="fin-income"></div></div>
-          <div><div style="font-size:11px;font-weight:600;color:var(--red);margin-bottom:7px"><i class="ti ti-trending-down" style="font-size:13px"></i> รายจ่ายแยกประเภท</div><div id="fin-expense"></div></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start" id="fin-breakdown">
+            <div><div style="font-size:11px;font-weight:600;color:var(--green);margin-bottom:7px"><i class="ti ti-trending-up" style="font-size:13px"></i> รายรับแยกประเภท</div><div id="fin-income"></div></div>
+            <div><div style="font-size:11px;font-weight:600;color:var(--red);margin-bottom:7px"><i class="ti ti-trending-down" style="font-size:13px"></i> รายจ่ายแยกประเภท</div><div id="fin-expense"></div></div>
+          </div>
         </div>
       </div>
     </div>
@@ -615,15 +617,19 @@ function populateFinSel(){
   const now=new Date(),cy=now.getFullYear();
   const sel=document.getElementById('fin-sel');if(!sel)return;
   sel.innerHTML='';
-  const years=finYear==='all'?Array.from({length:cy-2021},(_,i)=>String(cy-i)):[ finYear ];
+  // หาเดือนที่มีข้อมูลจริงจาก transactions
+  const hasData=new Set((window._allTxMonths||[]));
+  const years=finYear==='all'?Array.from({length:cy-2021},(_,i)=>String(cy-i)):[finYear];
   years.forEach(yr=>{
     const maxM=parseInt(yr)===cy?now.getMonth()+1:12;
     const allOpt=document.createElement('option');
-    allOpt.value='year_'+yr;allOpt.textContent=(finYear==='all'?'ทั้งปี ':'ทั้งปี ')+(parseInt(yr)+543);
+    allOpt.value='year_'+yr;allOpt.textContent='ทั้งปี '+(parseInt(yr)+543);
     sel.appendChild(allOpt);
     for(let m=maxM;m>=1;m--){
+      const key=yr+'_'+String(m).padStart(2,'0');
+      if(hasData.size>0&&!hasData.has(key))continue; // ข้ามเดือนที่ไม่มีข้อมูล
       const o=document.createElement('option');
-      o.value=yr+'_'+String(m).padStart(2,'0');
+      o.value=key;
       o.textContent=MTH[m-1]+' '+(parseInt(yr)+543);
       if(parseInt(yr)===cy&&m===now.getMonth()+1)o.selected=true;
       sel.appendChild(o);
@@ -635,6 +641,16 @@ function setFinView(v){finView=v;buildFinTabs();renderFinance();}
 // DASHBOARD
 async function loadDashboard(){
   if(!tenants.length)tenants=await api({action:'getTenants'},'กำลังโหลด...')||[];
+  // โหลดเดือนที่มีข้อมูลจริง (จาก meter-sel ซึ่งมี month keys ครบแล้ว)
+  if(!window._allTxMonths){
+    const now=new Date(),cy=now.getFullYear(),sy=2022;
+    const keys=[];
+    for(let y=sy;y<=cy;y++){const mx=y===cy?now.getMonth()+1:12;for(let m=1;m<=mx;m++)keys.push(y+'_'+String(m).padStart(2,'0'));}
+    // ลอง fetch แต่ละเดือนอย่างเร็วๆ โดยดูจาก meter-sel ที่มีอยู่แล้ว
+    const msel=document.getElementById('meter-sel');
+    if(msel){window._allTxMonths=Array.from(msel.options).map(o=>o.value).filter(v=>v.match(/^\d{4}_\d{2}$/));}
+    else{window._allTxMonths=keys;}
+  }
   renderDash();renderFinance();
 }
 function renderDash(){
@@ -679,9 +695,14 @@ async function renderFinance(){
     <div style="background:var(--rl);border-radius:8px;padding:11px 13px"><div style="font-size:9px;color:#791F1F;font-weight:600;margin-bottom:3px">รายจ่ายรวม</div><div style="font-size:20px;font-weight:700;color:var(--red)">฿${fmtN(tOut)}</div></div>
     <div style="background:${net>=0?'var(--gl)':'var(--rl)'};border-radius:8px;padding:11px 13px"><div style="font-size:9px;font-weight:600;margin-bottom:3px;color:${net>=0?'var(--gd)':'#791F1F'}">กำไรสุทธิ</div><div style="font-size:20px;font-weight:700;color:${net>=0?'var(--green)':'var(--red)'}">฿${fmtN(Math.abs(net))}</div></div>
     <div style="background:#F3F4F6;border-radius:8px;padding:11px 13px"><div style="font-size:9px;color:var(--t3);font-weight:600;margin-bottom:3px">รายการทั้งหมด</div><div style="font-size:20px;font-weight:700">${txns.length}</div></div>`;
-  const mkRows=(types,total,color)=>{const rows=types.map(tp=>{const val=txns.filter(t=>t.type===tp).reduce((s,t)=>s+parseFloat(t.amount||0),0);const pct=total>0?Math.round(val/total*100):0;return `<div class="fin-row"><div class="fin-lbl">${TX_L[tp]||tp}</div><div class="fin-bar"><div class="fin-fill" style="width:${pct}%;background:${color}"></div></div><div class="fin-amt" style="color:${color}">฿${fmtN(val)}</div></div>`;}).join("");return rows+`<div style="flex:1"></div><div style="display:flex;justify-content:space-between;padding:5px 0 0;border-top:0.5px solid #eee;font-size:12px;font-weight:600;margin-top:4px"><span>รวม</span><span style="color:${color}">฿${fmtN(total)}</span></div>`;};
-  document.getElementById("fin-income").innerHTML=`<div style="display:flex;flex-direction:column;height:100%">${mkRows(INC_T,tIn,"var(--green)")}</div>`;
-  document.getElementById("fin-expense").innerHTML=`<div style="display:flex;flex-direction:column;height:100%">${mkRows(EXP_T,tOut,"var(--red)")}</div>`;
+  const mkRow=(tp,total,color)=>{const val=txns.filter(t=>t.type===tp).reduce((s,t)=>s+parseFloat(t.amount||0),0);const pct=total>0?Math.round(val/total*100):0;return`<div class="fin-row"><div class="fin-lbl">${TX_L[tp]||tp}</div><div class="fin-bar"><div class="fin-fill" style="width:${pct}%;background:${color}"></div></div><div class="fin-amt" style="color:${color}">฿${fmtN(val)}</div></div>`;};
+  const spacer=`<div class="fin-row" style="visibility:hidden"><div class="fin-lbl">-</div><div class="fin-bar"></div><div class="fin-amt">-</div></div>`;
+  const incRows=INC_T.map(tp=>mkRow(tp,tIn,"var(--green)")).join("");
+  const expRows=EXP_T.map(tp=>mkRow(tp,tOut,"var(--red)")).join("");
+  const diff=EXP_T.length-INC_T.length;
+  const pad=diff>0?Array(diff).fill(spacer).join(""):'';
+  document.getElementById("fin-income").innerHTML=incRows+pad+`<div style="display:flex;justify-content:space-between;padding:6px 0 0;border-top:0.5px solid #eee;font-size:12px;font-weight:600;margin-top:4px"><span>รวม</span><span style="color:var(--green)">฿${fmtN(tIn)}</span></div>`;
+  document.getElementById("fin-expense").innerHTML=EXP_T.map(tp=>mkRow(tp,tOut,"var(--red)")).join("")+`<div style="display:flex;justify-content:space-between;padding:6px 0 0;border-top:0.5px solid #eee;font-size:12px;font-weight:600;margin-top:4px"><span>รวม</span><span style="color:var(--red)">฿${fmtN(tOut)}</span></div>`;
 }
 
 // METER

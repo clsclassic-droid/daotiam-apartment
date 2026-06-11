@@ -807,10 +807,11 @@ function renderMeterGrid(){
   if(!tenants.length){document.getElementById('meter-grid').innerHTML='<div style="color:var(--t3);font-size:12px;grid-column:span 3;padding:16px">ยังไม่มีผู้เช่า</div>';return;}
   document.getElementById('meter-grid').innerHTML=tenants.map(t=>{
     const m=meters.find(x=>String(x.room)===String(t.room))||{};
-    return`<div class="mrc" id="mrc-${t.room}">
-      <div class="mrc-hd">
-        <div><div class="mrc-num">ห้อง ${t.room}</div><div class="mrc-name">${t.name||'—'}</div></div>
-        <button class="btn btn-sm" id="mrc-edit-${t.room}" onclick="toggleMeterEdit(${t.room})" style="font-size:11px;color:var(--t2)"><i class="ti ti-edit" style="font-size:12px"></i> แก้ไข</button>
+    return`<div class="mrc" id="mrc-${t.room}" style="position:relative">
+      <button class="btn btn-sm" id="mrc-edit-${t.room}" onclick="toggleMeterEdit(${t.room})" style="position:absolute;top:8px;right:8px;font-size:10px;padding:3px 7px;color:var(--t2);z-index:1"><i class="ti ti-edit" style="font-size:10px"></i> แก้ไข</button>
+      <div class="mrc-hd" style="padding-right:68px;margin-bottom:9px">
+        <div class="mrc-num">ห้อง ${t.room}</div>
+        <div class="mrc-name" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.name||'—'}</div>
       </div>
       <div class="mrc-dates">
         <div><div class="mrc-dl prev">ก่อนหน้า</div><input type="date" id="pd-${t.room}" value="${m.prevDate||''}" class="mrc-di" oninput="calcMC(${t.room})" disabled></div>
@@ -837,16 +838,16 @@ function toggleMeterEdit(room){
     card.classList.remove('editing');
     card.style.borderColor='';
     card.style.boxShadow='';
-    btn.innerHTML='<i class="ti ti-edit" style="font-size:12px"></i> แก้ไข';
-    btn.style.cssText='font-size:11px;color:var(--t2)';
+    btn.innerHTML='<i class="ti ti-edit" style="font-size:10px"></i> แก้ไข';
+    btn.style.cssText='position:absolute;top:8px;right:8px;font-size:10px;padding:3px 7px;color:var(--t2);z-index:1';
     inputs.forEach(i=>i.disabled=true);
   } else {
     // เปิด editing mode
     card.classList.add('editing');
     card.style.borderColor='var(--green)';
     card.style.boxShadow='0 0 0 2px rgba(29,158,117,.15)';
-    btn.innerHTML='<i class="ti ti-check" style="font-size:12px"></i> เสร็จ';
-    btn.style.cssText='font-size:11px;background:var(--green);border-color:var(--green);color:#fff';
+    btn.innerHTML='<i class="ti ti-check" style="font-size:10px"></i> เสร็จ';
+    btn.style.cssText='position:absolute;top:8px;right:8px;font-size:10px;padding:3px 7px;background:var(--green);border-color:var(--green);color:#fff;z-index:1';
     inputs.forEach(i=>i.disabled=false);
     // focus ที่ input ไฟใหม่
     document.getElementById('ec-'+room)?.focus();

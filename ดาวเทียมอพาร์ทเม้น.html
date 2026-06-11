@@ -241,7 +241,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
           <div class="card-title" style="margin-bottom:0"><i class="ti ti-chart-bar" style="color:var(--green)"></i> สรุปการเงิน</div>
           <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
             <div id="fin-tabs" style="display:flex;gap:5px;flex-wrap:wrap"></div>
-            <select id="fin-sel" onchange="renderFinance()" style="font-size:11px;padding:4px 8px;border:1px solid var(--border);border-radius:20px;background:#fff;color:var(--text)"></select>
+            <select id="fin-sel" onchange="renderFinance()" style="font-size:11px;padding:0 8px;height:28px;border:1px solid var(--border);border-radius:20px;background:#fff;color:var(--text)"></select>
           </div>
         </div>
         <hr class="div">
@@ -604,7 +604,7 @@ function buildFinTabs(){
   tabs.innerHTML=years.map(y=>{
     const lbl=y==='all'?'ทั้งหมด':'ปี '+(parseInt(y)+543);
     const active=finYear===y;
-    return`<button onclick="selectFinYear('${y}')" style="font-size:11px;padding:4px 12px;border:0.5px solid ${active?'var(--green)':'var(--border)'};border-radius:999px;cursor:pointer;background:${active?'var(--green)':'#fff'};color:${active?'#fff':'var(--t2)'};white-space:nowrap;">${lbl}</button>`;
+    return`<button onclick="selectFinYear('${y}')" style="font-size:11px;padding:0 12px;height:28px;border:0.5px solid ${active?'var(--green)':'var(--border)'};border-radius:999px;cursor:pointer;background:${active?'var(--green)':'#fff'};color:${active?'#fff':'var(--t2)'};white-space:nowrap;">${lbl}</button>`;
   }).join('');
   populateFinSel();
 }
@@ -617,8 +617,12 @@ function populateFinSel(){
   const now=new Date(),cy=now.getFullYear();
   const sel=document.getElementById('fin-sel');if(!sel)return;
   sel.innerHTML='';
-  // หาเดือนที่มีข้อมูลจริงจาก transactions
   const hasData=new Set((window._allTxMonths||[]));
+  if(finYear==='all'){
+    const ao=document.createElement('option');
+    ao.value='all';ao.textContent='ทั้งหมดทุกปี';ao.selected=true;
+    sel.appendChild(ao);
+  }
   const years=finYear==='all'?Array.from({length:cy-2021},(_,i)=>String(cy-i)):[finYear];
   years.forEach(yr=>{
     const maxM=parseInt(yr)===cy?now.getMonth()+1:12;
@@ -627,11 +631,10 @@ function populateFinSel(){
     sel.appendChild(allOpt);
     for(let m=maxM;m>=1;m--){
       const key=yr+'_'+String(m).padStart(2,'0');
-      if(hasData.size>0&&!hasData.has(key))continue; // ข้ามเดือนที่ไม่มีข้อมูล
+      if(hasData.size>0&&!hasData.has(key))continue;
       const o=document.createElement('option');
-      o.value=key;
-      o.textContent=MTH[m-1]+' '+(parseInt(yr)+543);
-      if(parseInt(yr)===cy&&m===now.getMonth()+1)o.selected=true;
+      o.value=key;o.textContent=MTH[m-1]+' '+(parseInt(yr)+543);
+      if(finYear!=='all'&&parseInt(yr)===cy&&m===now.getMonth()+1)o.selected=true;
       sel.appendChild(o);
     }
   });
@@ -682,8 +685,8 @@ async function renderFinance(){
   } else if(v.match(/^\d{4}_\d{2}$/)){
     txns=await api({action:'getTransactions',month:v},'กำลังโหลดการเงิน...')||[];
   } else {
-    const startY=2022;
-    const allP=[];
+    // v==='all' หรือ fallback → โหลดทุกปีทุกเดือน
+    const startY=2022;const allP=[];
     for(let y=startY;y<=cy;y++){const mxM=y===cy?now.getMonth()+1:12;for(let m=1;m<=mxM;m++)allP.push(api({action:'getTransactions',month:y+'_'+String(m).padStart(2,'0')}));}
     const res=await Promise.all(allP);txns=res.flat().filter(Boolean);
   }
@@ -1004,45 +1007,60 @@ async function loadMaint(){
 function renderAircon(){
   const el=document.getElementById('aircon-grid');if(!el)return;
   const AIRCON=[
-    {date:'01/10/2022',rooms:[7,8,9,13,15,16,18,20,21],cost:0,note:''},
-    {date:'12/10/2022',rooms:[2,3,9,10],cost:0,note:''},
-    {date:'15/10/2022',rooms:[4,6,11,13,16,18],cost:0,note:''},
-    {date:'08/05/2023',rooms:[1,13],cost:0,note:''},
-    {date:'14/09/2023',rooms:[4],cost:500,note:''},
-    {date:'14/03/2024',rooms:[13],cost:500,note:''},
-    {date:'19/03/2024',rooms:[17],cost:500,note:''},
-    {date:'28/03/2024',rooms:[1,4,5,7,11,13,15],cost:2800,note:''},
-    {date:'10/04/2024',rooms:[3,7,9,11,14,17,18,21],cost:2800,note:''},
-    {date:'22/06/2024',rooms:[6],cost:1300,note:''},
-    {date:'12/08/2024',rooms:[2,9,20],cost:1000,note:'R20 แก้ไฟตก'},
-    {date:'23/08/2024',rooms:[7],cost:300,note:'ซ่อมฉนวนห้มท่อแอร์'},
-    {date:'09/10/2024',rooms:[17],cost:300,note:'ฝากครอบคอมเพรสเซอร์หลวม'},
-    {date:'12/11/2024',rooms:[3],cost:500,note:'ล้างแอร์'},
-    {date:'20/11/2024',rooms:[15,17],cost:1000,note:'ล้างแอร์'},
-    {date:'03/03/2025',rooms:[18],cost:500,note:'ล้างแอร์'},
-    {date:'14/06/2025',rooms:[1,2,4,6,8,9,10,11,12,13,15,17,19,21],cost:5600,note:'ล้างแอร์'},
-    {date:'08/07/2025',rooms:[13,19],cost:300,note:'แอร์น้ำหยด มีรังมด'},
-    {date:'23/09/2025',rooms:[17],cost:500,note:'ล้างแอร์'},
-    {date:'25/09/2025',rooms:[5],cost:0,note:'เปาท่อแอร์(น้ำแอร์หยด)'},
-    {date:'30/09/2025',rooms:[15],cost:500,note:'ล้างแอร์'},
-    {date:'08/10/2025',rooms:[17],cost:0,note:'ฟิลเตอร์แอร์ตัน'},
-    {date:'29/10/2025',rooms:[17],cost:500,note:'ล้างแอร์'},
-    {date:'19/01/2026',rooms:[2],cost:500,note:'ล้างแอร์'},
-    {date:'06/04/2026',rooms:[11,15],cost:300,note:'ล้างฟิวเตอร์ ปรับแอร์'},
-    {date:'19/04/2026',rooms:[13,14],cost:800,note:'ล้างแอร์'},
-    {date:'29/04/2026',rooms:[15],cost:400,note:'ล้างแอร์'},
-    {date:'18/05/2026',rooms:[3,6,19],cost:2000,note:'ล้างแอร์ 3 เครื่อง'},
+    {date:'01/10/2022',rooms:[7,8,9,13,15,16,18,20,21],cost:0,note:'',type:'ล้างแอร์'},
+    {date:'12/10/2022',rooms:[2,3,9,10],cost:0,note:'',type:'ล้างแอร์'},
+    {date:'15/10/2022',rooms:[4,6,11,13,16,18],cost:0,note:'',type:'ล้างแอร์'},
+    {date:'08/05/2023',rooms:[1,13],cost:0,note:'',type:'ล้างแอร์'},
+    {date:'14/09/2023',rooms:[4],cost:500,note:'',type:'ซ่อมแอร์'},
+    {date:'14/03/2024',rooms:[13],cost:500,note:'',type:'ซ่อมแอร์'},
+    {date:'19/03/2024',rooms:[17],cost:500,note:'',type:'ซ่อมแอร์'},
+    {date:'28/03/2024',rooms:[1,4,5,7,11,13,15],cost:2800,note:'',type:'ล้างแอร์'},
+    {date:'10/04/2024',rooms:[3,7,9,11,14,17,18,21],cost:2800,note:'',type:'ล้างแอร์'},
+    {date:'22/06/2024',rooms:[6],cost:1300,note:'',type:'ซ่อมแอร์'},
+    {date:'12/08/2024',rooms:[2,9,20],cost:1000,note:'R20 แก้ไฟตก',type:'ซ่อมแอร์'},
+    {date:'23/08/2024',rooms:[7],cost:300,note:'ซ่อมฉนวนห้มท่อแอร์',type:'ซ่อมแอร์'},
+    {date:'09/10/2024',rooms:[17],cost:300,note:'ฝากครอบคอมเพรสเซอร์หลวม',type:'ซ่อมแอร์'},
+    {date:'12/11/2024',rooms:[3],cost:500,note:'ล้างแอร์',type:'ล้างแอร์'},
+    {date:'20/11/2024',rooms:[15,17],cost:1000,note:'ล้างแอร์',type:'ล้างแอร์'},
+    {date:'03/03/2025',rooms:[18],cost:500,note:'ล้างแอร์',type:'ล้างแอร์'},
+    {date:'14/06/2025',rooms:[1,2,4,6,8,9,10,11,12,13,15,17,19,21],cost:5600,note:'ล้างแอร์',type:'ล้างแอร์'},
+    {date:'08/07/2025',rooms:[13,19],cost:300,note:'แอร์น้ำหยด มีรังมด',type:'ซ่อมแอร์'},
+    {date:'23/09/2025',rooms:[17],cost:500,note:'ล้างแอร์',type:'ล้างแอร์'},
+    {date:'25/09/2025',rooms:[5],cost:0,note:'เปาท่อแอร์(น้ำแอร์หยด)',type:'ซ่อมแอร์'},
+    {date:'30/09/2025',rooms:[15],cost:500,note:'ล้างแอร์',type:'ล้างแอร์'},
+    {date:'08/10/2025',rooms:[17],cost:0,note:'ฟิลเตอร์แอร์ตัน',type:'ซ่อมแอร์'},
+    {date:'29/10/2025',rooms:[17],cost:500,note:'ล้างแอร์',type:'ล้างแอร์'},
+    {date:'19/01/2026',rooms:[2],cost:500,note:'ล้างแอร์',type:'ล้างแอร์'},
+    {date:'06/04/2026',rooms:[11,15],cost:300,note:'ล้างฟิวเตอร์ ปรับแอร์',type:'ล้างแอร์'},
+    {date:'19/04/2026',rooms:[13,14],cost:800,note:'ล้างแอร์',type:'ล้างแอร์'},
+    {date:'29/04/2026',rooms:[15],cost:400,note:'ล้างแอร์',type:'ล้างแอร์'},
+    {date:'18/05/2026',rooms:[3,6,19],cost:2000,note:'ล้างแอร์ 3 เครื่อง',type:'ล้างแอร์'},
   ];
+  // รวม maintData ที่ type เกี่ยวกับแอร์จาก API
+  const fromApi=(maintData||[]).filter(d=>d.type&&(d.type.includes('แอร์')||d.type.includes('aircon'))).map(d=>{
+    let roomArr=[];try{roomArr=typeof d.rooms==='string'?JSON.parse(d.rooms):d.rooms||[];}catch(e){}
+    roomArr=roomArr.map(r=>parseInt(r)).filter(r=>r>0);
+    return{date:d.date||'',rooms:roomArr,cost:parseFloat(d.cost||0),note:d.note||'',type:d.type||'ล้างแอร์'};
+  });
+  // รวมและ dedup โดยใช้ date+rooms เป็น key
+  const seen=new Set(AIRCON.map(r=>r.date+'|'+r.rooms.join(',')));
+  const combined=[...AIRCON,...fromApi.filter(r=>!seen.has(r.date+'|'+r.rooms.join(',')))];
   const groups={};
-  AIRCON.forEach(r=>{const y=r.date.split('/')[2];if(!groups[y])groups[y]=[];groups[y].push(r);});
-  let html=`<table class="mt" style="font-size:11px"><thead><tr><th style="text-align:left;padding:5px 7px;min-width:80px;white-space:nowrap">วันที่</th>${Array.from({length:21},(_,i)=>`<th style="min-width:22px;padding:5px 2px">${i+1}</th>`).join('')}<th style="text-align:right;padding:5px 7px;min-width:65px">ค่าใช้จ่าย</th><th style="text-align:left;padding:5px 7px;min-width:120px">หมายเหตุ</th></tr></thead><tbody>`;
+  combined.forEach(r=>{const y=r.date.split('/')[2];if(!groups[y])groups[y]=[];groups[y].push(r);});
+  let html=`<table class="mt" style="font-size:11px"><thead><tr><th style="text-align:left;padding:5px 7px;min-width:80px;white-space:nowrap">วันที่</th><th style="text-align:left;padding:5px 7px;min-width:70px;white-space:nowrap">ประเภท</th>${Array.from({length:21},(_,i)=>`<th style="min-width:22px;padding:5px 2px">${i+1}</th>`).join('')}<th style="text-align:right;padding:5px 7px;min-width:65px">ค่าใช้จ่าย</th><th style="text-align:left;padding:5px 7px;min-width:120px">หมายเหตุ</th></tr></thead><tbody>`;
   Object.keys(groups).sort((a,b)=>b-a).forEach(yr=>{
     const thaiYr=parseInt(yr)+543;
     const cnt={};for(let i=1;i<=21;i++)cnt[i]=0;
     groups[yr].forEach(r=>r.rooms.forEach(rm=>cnt[rm]++));
-    html+=`<tr onclick="toggleAcYear('${yr}')" style="cursor:pointer;user-select:none"><td style="background:var(--green);color:#fff;font-weight:600;padding:6px 7px;text-align:left"><span id="ac-arrow-${yr}" style="margin-right:5px;display:inline-block;transition:transform .2s">▼</span>ปี ${thaiYr}</td>${Array.from({length:21},(_,i)=>`<td style="background:var(--green);color:#fff;font-weight:500;padding:5px 2px;text-align:center">${cnt[i+1]}</td>`).join('')}<td style="background:var(--green)"></td><td style="background:var(--green)"></td></tr>`;
-    groups[yr].forEach((r,ri)=>{
-      html+=`<tr class="ac-row-${yr}" style="${ri%2===0?'background:#fafafa':''}"><td style="padding:4px 7px;color:var(--t2);white-space:nowrap">${r.date}</td>${Array.from({length:21},(_,i)=>{const checked=r.rooms.includes(i+1);return`<td style="padding:3px 2px;text-align:center"><div style="width:14px;height:14px;border-radius:3px;margin:auto;${checked?'background:var(--green);display:flex;align-items:center;justify-content:center':'border:1.5px solid #ddd'}">${checked?'<i class="ti ti-check" style="font-size:9px;color:#fff"></i>':''}</div></td>`;}).join('')}<td style="padding:4px 7px;text-align:right;font-weight:500">${r.cost>0?'฿'+fmtN(r.cost):'—'}</td><td style="padding:4px 7px;color:var(--t3);font-size:10px">${r.note||'—'}</td></tr>`;
+    // เรียงวันที่ล่าสุดขึ้นก่อน
+    const sorted=[...groups[yr]].sort((a,b)=>{
+      const [ad,am,ay]=a.date.split('/').map(Number);
+      const [bd,bm,by]=b.date.split('/').map(Number);
+      return (by*10000+bm*100+bd)-(ay*10000+am*100+ad);
+    });
+    html+=`<tr onclick="toggleAcYear('${yr}')" style="cursor:pointer;user-select:none"><td style="background:var(--green);color:#fff;font-weight:600;padding:6px 7px;text-align:left"><span id="ac-arrow-${yr}" style="margin-right:5px;display:inline-block;transition:transform .2s">▼</span>ปี ${thaiYr}</td><td style="background:var(--green)"></td>${Array.from({length:21},(_,i)=>`<td style="background:var(--green);color:#fff;font-weight:500;padding:5px 2px;text-align:center">${cnt[i+1]}</td>`).join('')}<td style="background:var(--green)"></td><td style="background:var(--green)"></td></tr>`;
+    sorted.forEach((r,ri)=>{
+      html+=`<tr class="ac-row-${yr}" style="${ri%2===0?'background:#fafafa':''}"><td style="padding:4px 7px;color:var(--t2);white-space:nowrap">${r.date}</td><td style="padding:4px 7px;font-size:10px;color:var(--t2);white-space:nowrap">${r.type||'ล้างแอร์'}</td>${Array.from({length:21},(_,i)=>{const checked=r.rooms.includes(i+1);return`<td style="padding:3px 2px;text-align:center"><div style="width:14px;height:14px;border-radius:3px;margin:auto;${checked?'background:var(--green);display:flex;align-items:center;justify-content:center':'border:1.5px solid #ddd'}">${checked?'<i class="ti ti-check" style="font-size:9px;color:#fff"></i>':''}</div></td>`;}).join('')}<td style="padding:4px 7px;text-align:right;font-weight:500">${r.cost>0?'฿'+fmtN(r.cost):'—'}</td><td style="padding:4px 7px;color:var(--t3);font-size:10px">${r.note||'—'}</td></tr>`;
     });
   });
   html+='</tbody></table>';

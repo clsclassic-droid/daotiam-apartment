@@ -165,7 +165,11 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
   .sidebar.collapsed{display:none !important;width:0 !important}
   .bottom-nav{display:none !important}
   .topbar{height:46px;padding:0 10px}
-  .stats{grid-template-columns:repeat(2,1fr)}
+  .stats{grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:10px}
+  .stat{padding:6px 5px;border-radius:6px;min-height:52px;display:flex;flex-direction:column;justify-content:center}
+  .stat-l{font-size:6.5px;letter-spacing:.2px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .stat-v{font-size:14px}
+  .stat-s{font-size:6px;margin-top:2px}
   .g2,.g3{grid-template-columns:1fr}
   .content{padding:10px}
   .toast{bottom:16px}
@@ -719,7 +723,7 @@ function renderDash(){
     <div class="stat"><div class="stat-l">ค้างชำระ</div><div class="stat-v" style="color:var(--red)">${ov}</div></div>
     <div class="stat"><div class="stat-l">รายรับ/เดือน (เฉลี่ย)</div><div class="stat-v" style="font-size:16px;color:var(--green)">฿${fmtN(window._dashIncome||0)}</div><div class="stat-s">จาก ${window._dashIncomeMonths||0} เดือน</div></div>
     <div class="stat"><div class="stat-l">รายจ่าย/เดือน (เฉลี่ย)</div><div class="stat-v" style="font-size:16px;color:var(--red)">฿${fmtN(window._dashExpense||0)}</div><div class="stat-s">จาก ${window._dashExpenseMonths||0} เดือน</div></div>
-    <div class="stat"><div class="stat-l">เงินประกันรวม</div><div class="stat-v" style="font-size:16px;color:var(--blue)">฿${fmtN(occ*3500)}</div></div>`;
+    <div class="stat"><div class="stat-l">เงินประกันรวม</div><div class="stat-v" style="font-size:14px;color:var(--blue)">฿${fmtN(occ*3500)}</div></div>`;
   ['bdg-inv','bdg-ov'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=ov;});
   const bb=document.getElementById('bn-bdg-ov');if(bb){bb.textContent=ov;bb.style.display=ov>0?'flex':'none';}
   let rm='';for(let i=1;i<=21;i++){const t=tenants.find(x=>String(x.room)===String(i));const cls=!t?'vac':t.status==='overdue'?'ov':'occ';rm+=`<div class="rc ${cls}" title="${t?.name||'ว่าง'}"><div class="rn">${i}</div><div class="rs">${!t?'ว่าง':t.status==='overdue'?'ค้างชำระ':'มีผู้เช่า'}</div></div>`;}

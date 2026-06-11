@@ -123,6 +123,8 @@ input,select,textarea{font-family:'Sarabun',sans-serif}
 .mib label{font-size:9px;font-weight:600;display:block;margin-bottom:2px}
 .mib.e label{color:#854F0B}.mib.w label{color:#0C447C}
 .mib input{width:100%;font-size:12px;padding:4px 5px;border-radius:4px;font-weight:500;background:#fff}
+.mib input:disabled{background:#f5f5f5;color:#aaa;cursor:not-allowed}
+.mrc-di:disabled{background:#f5f5f5;color:#aaa;cursor:not-allowed}
 .mib.e input{border:1px solid #FAC775}.mib.w input{border:1px solid #B5D4F4}
 .mrc-cost{font-size:10px;font-weight:600;min-height:15px}
 .fin-tab-row{display:none}
@@ -805,22 +807,50 @@ function renderMeterGrid(){
   if(!tenants.length){document.getElementById('meter-grid').innerHTML='<div style="color:var(--t3);font-size:12px;grid-column:span 3;padding:16px">ยังไม่มีผู้เช่า</div>';return;}
   document.getElementById('meter-grid').innerHTML=tenants.map(t=>{
     const m=meters.find(x=>String(x.room)===String(t.room))||{};
-    return`<div class="mrc">
-      <div class="mrc-hd"><div><div class="mrc-num">ห้อง ${t.room}</div><div class="mrc-name">${t.name||'—'}</div></div></div>
+    return`<div class="mrc" id="mrc-${t.room}">
+      <div class="mrc-hd">
+        <div><div class="mrc-num">ห้อง ${t.room}</div><div class="mrc-name">${t.name||'—'}</div></div>
+        <button class="btn btn-sm" id="mrc-edit-${t.room}" onclick="toggleMeterEdit(${t.room})" style="font-size:11px;color:var(--t2)"><i class="ti ti-edit" style="font-size:12px"></i> แก้ไข</button>
+      </div>
       <div class="mrc-dates">
-        <div><div class="mrc-dl prev">ก่อนหน้า</div><input type="date" id="pd-${t.room}" value="${m.prevDate||''}" class="mrc-di" oninput="calcMC(${t.room})"></div>
-        <div><div class="mrc-dl curr">ล่าสุด</div><input type="date" id="cd-${t.room}" value="${m.currDate||today}" class="mrc-di" oninput="calcMC(${t.room})"></div>
+        <div><div class="mrc-dl prev">ก่อนหน้า</div><input type="date" id="pd-${t.room}" value="${m.prevDate||''}" class="mrc-di" oninput="calcMC(${t.room})" disabled></div>
+        <div><div class="mrc-dl curr">ล่าสุด</div><input type="date" id="cd-${t.room}" value="${m.currDate||today}" class="mrc-di" oninput="calcMC(${t.room})" disabled></div>
       </div>
       <div class="mrc-in">
-        <div class="mib e"><label>⚡ ไฟ เก่า</label><input type="number" id="ep-${t.room}" value="${m.elecPrev||''}" placeholder="0" oninput="calcMC(${t.room})"></div>
-        <div class="mib e"><label>⚡ ไฟ ใหม่</label><input type="number" id="ec-${t.room}" value="${m.elecCurr||''}" placeholder="0" oninput="calcMC(${t.room})"></div>
-        <div class="mib w"><label>💧 น้ำ เก่า</label><input type="number" id="wp-${t.room}" value="${m.waterPrev||''}" placeholder="0" oninput="calcMC(${t.room})"></div>
-        <div class="mib w"><label>💧 น้ำ ใหม่</label><input type="number" id="wc-${t.room}" value="${m.waterCurr||''}" placeholder="0" oninput="calcMC(${t.room})"></div>
+        <div class="mib e"><label>⚡ ไฟ เก่า</label><input type="number" id="ep-${t.room}" value="${m.elecPrev||''}" placeholder="0" oninput="calcMC(${t.room})" disabled></div>
+        <div class="mib e"><label>⚡ ไฟ ใหม่</label><input type="number" id="ec-${t.room}" value="${m.elecCurr||''}" placeholder="0" oninput="calcMC(${t.room})" disabled></div>
+        <div class="mib w"><label>💧 น้ำ เก่า</label><input type="number" id="wp-${t.room}" value="${m.waterPrev||''}" placeholder="0" oninput="calcMC(${t.room})" disabled></div>
+        <div class="mib w"><label>💧 น้ำ ใหม่</label><input type="number" id="wc-${t.room}" value="${m.waterCurr||''}" placeholder="0" oninput="calcMC(${t.room})" disabled></div>
       </div>
       <div class="mrc-cost" id="mc-${t.room}" style="color:var(--t3)">—</div>
     </div>`;
   }).join('');
   tenants.forEach(t=>calcMC(t.room));
+}
+function toggleMeterEdit(room){
+  const card=document.getElementById('mrc-'+room);
+  const btn=document.getElementById('mrc-edit-'+room);
+  const inputs=card.querySelectorAll('input');
+  const isEditing=card.classList.contains('editing');
+  if(isEditing){
+    // ปิด editing mode
+    card.classList.remove('editing');
+    card.style.borderColor='';
+    card.style.boxShadow='';
+    btn.innerHTML='<i class="ti ti-edit" style="font-size:12px"></i> แก้ไข';
+    btn.style.cssText='font-size:11px;color:var(--t2)';
+    inputs.forEach(i=>i.disabled=true);
+  } else {
+    // เปิด editing mode
+    card.classList.add('editing');
+    card.style.borderColor='var(--green)';
+    card.style.boxShadow='0 0 0 2px rgba(29,158,117,.15)';
+    btn.innerHTML='<i class="ti ti-check" style="font-size:12px"></i> เสร็จ';
+    btn.style.cssText='font-size:11px;background:var(--green);border-color:var(--green);color:#fff';
+    inputs.forEach(i=>i.disabled=false);
+    // focus ที่ input ไฟใหม่
+    document.getElementById('ec-'+room)?.focus();
+  }
 }
 function calcMC(room){
   const ep=parseFloat(document.getElementById('ep-'+room)?.value||0),ec=parseFloat(document.getElementById('ec-'+room)?.value||0);

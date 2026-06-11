@@ -178,6 +178,10 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
   .fin-tab-row{display:flex;gap:6px;margin-bottom:10px}
   .fin-2col{display:block}
   .fin-panel-exp{display:none}
+  .g4{grid-template-columns:repeat(4,1fr);gap:4px}
+  #fin-cards>div{padding:4px 4px;border-radius:6px;height:58px;display:grid;grid-template-rows:1fr 1fr 1fr;align-items:center;text-align:center}
+  #fin-cards>div>div:first-child{font-size:8px;font-weight:600;align-self:center;justify-self:center;width:100%;text-align:center}
+  #fin-cards>div>div:last-child{font-size:13px;font-weight:700;align-self:center;justify-self:center;width:100%;text-align:center;display:flex;align-items:center;justify-content:center}
 }
 @media(min-width:769px){
   .bottom-nav{display:none !important}
@@ -764,10 +768,10 @@ async function renderFinance(){
   const tOut=txns.filter(t=>t.type?.endsWith('-out')).reduce((s,t)=>s+parseFloat(t.amount||0),0);
   const net=tIn-tOut;
   document.getElementById('fin-cards').innerHTML=`
-    <div style="background:var(--gl);border-radius:8px;padding:11px 13px"><div style="font-size:9px;color:var(--gd);font-weight:600;margin-bottom:3px">รายรับรวม</div><div style="font-size:20px;font-weight:700;color:var(--green)">฿${fmtN(tIn)}</div></div>
-    <div style="background:var(--rl);border-radius:8px;padding:11px 13px"><div style="font-size:9px;color:#791F1F;font-weight:600;margin-bottom:3px">รายจ่ายรวม</div><div style="font-size:20px;font-weight:700;color:var(--red)">฿${fmtN(tOut)}</div></div>
-    <div style="background:${net>=0?'var(--gl)':'var(--rl)'};border-radius:8px;padding:11px 13px"><div style="font-size:9px;font-weight:600;margin-bottom:3px;color:${net>=0?'var(--gd)':'#791F1F'}">กำไรสุทธิ</div><div style="font-size:20px;font-weight:700;color:${net>=0?'var(--green)':'var(--red)'}">฿${fmtN(Math.abs(net))}</div></div>
-    <div style="background:#F3F4F6;border-radius:8px;padding:11px 13px"><div style="font-size:9px;color:var(--t3);font-weight:600;margin-bottom:3px">รายการทั้งหมด</div><div style="font-size:20px;font-weight:700">${txns.length}</div></div>`;
+    <div class="stat" style="background:var(--gl)"><div class="stat-l" style="color:var(--gd)">รายรับรวม</div><div class="stat-v" style="color:var(--green)">฿${fmtN(tIn)}</div></div>
+    <div class="stat" style="background:var(--rl)"><div class="stat-l" style="color:#791F1F">รายจ่ายรวม</div><div class="stat-v" style="color:var(--red)">฿${fmtN(tOut)}</div></div>
+    <div class="stat" style="background:${net>=0?'var(--gl)':'var(--rl)'}"><div class="stat-l" style="color:${net>=0?'var(--gd)':'#791F1F'}">กำไรสุทธิ</div><div class="stat-v" style="color:${net>=0?'var(--green)':'var(--red)'}">฿${fmtN(Math.abs(net))}</div></div>
+    <div class="stat" style="background:#F3F4F6"><div class="stat-l">รายการทั้งหมด</div><div class="stat-v">${txns.length}</div></div>`;
   const mkRow=(tp,total,color)=>{const val=txns.filter(t=>t.type===tp).reduce((s,t)=>s+parseFloat(t.amount||0),0);const pct=total>0?Math.round(val/total*100):0;return`<div class="fin-row"><div class="fin-lbl">${TX_L[tp]||tp}</div><div class="fin-bar"><div class="fin-fill" style="width:${pct}%;background:${color}"></div></div><div class="fin-amt" style="color:${color}">฿${fmtN(val)}</div></div>`;};
   const spacer=`<div class="fin-row" style="visibility:hidden"><div class="fin-lbl">-</div><div class="fin-bar"></div><div class="fin-amt">-</div></div>`;
   const incRows=INC_T.map(tp=>mkRow(tp,tIn,"var(--green)")).join("");

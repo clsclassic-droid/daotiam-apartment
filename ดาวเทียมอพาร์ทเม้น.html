@@ -65,7 +65,7 @@ input,select,textarea{font-family:'Sarabun',sans-serif}
 .card{background:var(--card);border-radius:var(--r);border:1px solid var(--border);padding:16px 18px;box-shadow:var(--sh)}
 .card-title{font-size:12px;font-weight:600;color:var(--t2);margin-bottom:12px;display:flex;align-items:center;gap:6px}
 .section-hd{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px}
-.stats{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:16px}
+.stats{display:grid;grid-template-columns:repeat(7,1fr);gap:10px;margin-bottom:16px}
 .stat{background:var(--card);border-radius:var(--r);border:1px solid var(--border);padding:13px 15px;box-shadow:var(--sh)}
 .stat-l{font-size:9px;font-weight:600;color:var(--t3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px}
 .stat-v{font-size:22px;font-weight:700;line-height:1}
@@ -422,7 +422,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
     <div class="fg"><label>ประเภท</label><select id="tx-type" class="fc">
       <optgroup label="รายรับ">
         <option value="rent-in">ค่าเช่าห้อง</option><option value="elec-in">ค่าไฟ (เก็บ)</option>
-        <option value="water-in">ค่าน้ำ (เก็บ)</option><option value="other-in">รายรับอื่นๆ</option>
+        <option value="water-in">ค่าน้ำ (เก็บ)</option><option value="washer-in">ตู้ซักผ้าหยอดเหรียญ</option><option value="other-in">รายรับอื่นๆ</option>
       </optgroup>
       <optgroup label="รายจ่าย">
         <option value="elec-out">ค่าไฟ (จ่าย)</option><option value="water-out">ค่าน้ำ (จ่าย)</option>
@@ -522,9 +522,9 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
 const API = 'https://script.google.com/macros/s/AKfycbypTV3n7OyYfCjwjUX5-Vlto_Esr3TpwYunFNWN8QtPAio5w8t1WS7uXFY1bFmht6W1/exec';
 const RENT=3500, ELEC=6.5, WATER=22, DAY_RATE=116;
 const MTH=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
-const INC_T=['rent-in','elec-in','water-in','other-in'];
+const INC_T=['rent-in','elec-in','water-in','washer-in','other-in'];
 const EXP_T=['elec-out','water-out','internet-out','repair-out','tax-out','other-out'];
-const TX_L={'rent-in':'ค่าเช่าห้อง','elec-in':'ค่าไฟ(เก็บ)','water-in':'ค่าน้ำ(เก็บ)','other-in':'รายรับอื่นๆ','elec-out':'ค่าไฟ(จ่าย)','water-out':'ค่าน้ำ(จ่าย)','internet-out':'อินเตอร์เน็ต','repair-out':'ซ่อมบำรุง','tax-out':'ภาษี','other-out':'รายจ่ายอื่นๆ'};
+const TX_L={'rent-in':'ค่าเช่าห้อง','elec-in':'ค่าไฟ(เก็บ)','water-in':'ค่าน้ำ(เก็บ)','washer-in':'ตู้ซักผ้าหยอดเหรียญ','other-in':'รายรับอื่นๆ','elec-out':'ค่าไฟ(จ่าย)','water-out':'ค่าน้ำ(จ่าย)','internet-out':'อินเตอร์เน็ต','repair-out':'ซ่อมบำรุง','tax-out':'ภาษี','other-out':'รายจ่ายอื่นๆ'};
 
 // STATE
 let tenants=[],meters=[],transactions=[],maintData=[];
@@ -644,16 +644,19 @@ function setFinView(v){finView=v;buildFinTabs();renderFinance();}
 // DASHBOARD
 async function loadDashboard(){
   if(!tenants.length)tenants=await api({action:'getTenants'},'กำลังโหลด...')||[];
-  // โหลดเดือนที่มีข้อมูลจริง (จาก meter-sel ซึ่งมี month keys ครบแล้ว)
   if(!window._allTxMonths){
     const now=new Date(),cy=now.getFullYear(),sy=2022;
     const keys=[];
     for(let y=sy;y<=cy;y++){const mx=y===cy?now.getMonth()+1:12;for(let m=1;m<=mx;m++)keys.push(y+'_'+String(m).padStart(2,'0'));}
-    // ลอง fetch แต่ละเดือนอย่างเร็วๆ โดยดูจาก meter-sel ที่มีอยู่แล้ว
     const msel=document.getElementById('meter-sel');
     if(msel){window._allTxMonths=Array.from(msel.options).map(o=>o.value).filter(v=>v.match(/^\d{4}_\d{2}$/));}
     else{window._allTxMonths=keys;}
   }
+  const now=new Date();
+  const curMonth=now.getFullYear()+'_'+String(now.getMonth()+1).padStart(2,'0');
+  const curTxns=await api({action:'getTransactions',month:curMonth})||[];
+  window._dashExpense=curTxns.filter(t=>t.type?.endsWith('-out')).reduce((s,t)=>s+parseFloat(t.amount||0),0);
+  window._dashExpenseMonth=MTH[now.getMonth()]+' '+(now.getFullYear()+543);
   renderDash();renderFinance();
 }
 function renderDash(){
@@ -664,6 +667,7 @@ function renderDash(){
     <div class="stat"><div class="stat-l">ห้องว่าง</div><div class="stat-v">${vac}</div></div>
     <div class="stat"><div class="stat-l">ค้างชำระ</div><div class="stat-v" style="color:var(--red)">${ov}</div></div>
     <div class="stat"><div class="stat-l">รายรับ/เดือน (ประมาณ)</div><div class="stat-v" style="font-size:16px;color:var(--green)">฿${fmtN(occ*RENT)}</div></div>
+    <div class="stat"><div class="stat-l">รายจ่าย/เดือน (${window._dashExpenseMonth||'—'})</div><div class="stat-v" style="font-size:16px;color:var(--red)">฿${fmtN(window._dashExpense||0)}</div></div>
     <div class="stat"><div class="stat-l">เงินประกันรวม</div><div class="stat-v" style="font-size:16px;color:var(--blue)">฿${fmtN(occ*3500)}</div></div>`;
   ['bdg-inv','bdg-ov'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=ov;});
   const bb=document.getElementById('bn-bdg-ov');if(bb){bb.textContent=ov;bb.style.display=ov>0?'flex':'none';}

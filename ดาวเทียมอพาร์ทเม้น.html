@@ -124,7 +124,14 @@ input,select,textarea{font-family:'Sarabun',sans-serif}
 .mib input{width:100%;font-size:12px;padding:4px 5px;border-radius:4px;font-weight:500;background:#fff}
 .mib.e input{border:1px solid #FAC775}.mib.w input{border:1px solid #B5D4F4}
 .mrc-cost{font-size:10px;font-weight:600;min-height:15px}
+.fin-tab-row{display:none}
+.fin-tab-btn{flex:1;padding:7px 0;border-radius:20px;border:1px solid var(--border);font-size:12px;font-weight:600;font-family:'Sarabun',sans-serif;cursor:pointer;background:#fff;color:var(--t2);display:flex;align-items:center;justify-content:center;gap:5px}
+.fin-tab-btn.active-inc{background:var(--green);border-color:var(--green);color:#fff}
+.fin-tab-btn.active-exp{background:var(--red);border-color:var(--red);color:#fff}
 .fin-row{display:flex;align-items:center;gap:7px;padding:4px 0;border-bottom:1px solid #f9f9f9}
+.view-toggle-mh{display:flex;background:#f0f2f5;border-radius:20px;padding:3px;gap:2px}
+.vt-mh{padding:4px 12px;border-radius:16px;border:none;font-size:11px;font-weight:600;font-family:'Sarabun',sans-serif;cursor:pointer;color:var(--t2);background:transparent}
+.vt-mh.active{background:#fff;color:var(--green);box-shadow:0 1px 3px rgba(0,0,0,.1)}
 .fin-lbl{font-size:11px;color:var(--t2);width:115px;flex-shrink:0}
 .fin-bar{flex:1;height:4px;background:#f0f0f0;border-radius:2px;overflow:hidden}
 .fin-fill{height:100%;border-radius:2px}
@@ -162,10 +169,18 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
   .g2,.g3{grid-template-columns:1fr}
   .content{padding:12px;padding-bottom:calc(var(--bot-h) + 12px)}
   .toast{bottom:calc(var(--bot-h) + 12px)}
+  /* fin breakdown: tab mode */
+  .fin-tab-row{display:flex;gap:6px;margin-bottom:10px}
+  .fin-2col{display:block}
+  .fin-panel-exp{display:none}
 }
 @media(min-width:769px){
   .bottom-nav{display:none !important}
   .more-overlay{display:none !important}
+  /* fin breakdown: 2 col mode */
+  .fin-tab-row{display:none}
+  .fin-2col{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+  .fin-panel-inc,.fin-panel-exp{display:block !important}
 }
 </style>
 </head>
@@ -185,6 +200,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
   <div class="sb-sec">หลัก</div>
   <button class="ni act" onclick="goPage('dashboard')"><i class="ti ti-layout-dashboard ni-i"></i> หน้าหลัก</button>
   <button class="ni" onclick="goPage('meter')"><i class="ti ti-gauge ni-i"></i> มิเตอร์น้ำ-ไฟ</button>
+  <button class="ni" onclick="goPage('meter-history')"><i class="ti ti-chart-line ni-i"></i> ประวัติมิเตอร์</button>
   <button class="ni" onclick="goPage('invoice')"><i class="ti ti-file-invoice ni-i"></i> ใบแจ้งหนี้<span class="ni-badge" id="bdg-inv">0</span></button>
   <div class="sb-sec">การเงิน</div>
   <button class="ni" onclick="goPage('cashflow')"><i class="ti ti-cash ni-i"></i> กระแสเงินสด</button>
@@ -248,9 +264,18 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
         <hr class="div">
         <div class="g4" id="fin-cards" style="margin-bottom:14px"></div>
         <div class="g2">
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start" id="fin-breakdown">
-            <div><div style="font-size:11px;font-weight:600;color:var(--green);margin-bottom:7px"><i class="ti ti-trending-up" style="font-size:13px"></i> รายรับแยกประเภท</div><div id="fin-income"></div></div>
-            <div><div style="font-size:11px;font-weight:600;color:var(--red);margin-bottom:7px"><i class="ti ti-trending-down" style="font-size:13px"></i> รายจ่ายแยกประเภท</div><div id="fin-expense"></div></div>
+          <!-- desktop: 2 col | mobile: tab -->
+          <div id="fin-breakdown">
+            <!-- mobile tab buttons -->
+            <div class="fin-tab-row">
+              <button class="fin-tab-btn fin-tab-inc active-inc" onclick="switchFinTab('inc')"><i class="ti ti-trending-up" style="font-size:12px"></i> รายรับ</button>
+              <button class="fin-tab-btn fin-tab-exp" onclick="switchFinTab('exp')"><i class="ti ti-trending-down" style="font-size:12px"></i> รายจ่าย</button>
+            </div>
+            <!-- panels -->
+            <div class="fin-2col">
+              <div class="fin-panel-inc"><div style="font-size:11px;font-weight:600;color:var(--green);margin-bottom:7px"><i class="ti ti-trending-up" style="font-size:13px"></i> รายรับแยกประเภท</div><div id="fin-income"></div></div>
+              <div class="fin-panel-exp"><div style="font-size:11px;font-weight:600;color:var(--red);margin-bottom:7px"><i class="ti ti-trending-down" style="font-size:13px"></i> รายจ่ายแยกประเภท</div><div id="fin-expense"></div></div>
+            </div>
           </div>
         </div>
       </div>
@@ -374,6 +399,41 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
       </table></div></div>
     </div>
 
+    <!-- METER HISTORY -->
+    <div class="page" id="page-meter-history">
+      <div class="card">
+        <div class="section-hd">
+          <div class="card-title" style="margin-bottom:0"><i class="ti ti-chart-line" style="color:var(--green)"></i> ประวัติมิเตอร์</div>
+          <div class="view-toggle-mh">
+            <button class="vt-mh active" onclick="switchMhView('month',this)">รายเดือน</button>
+            <button class="vt-mh" onclick="switchMhView('room',this)">รายห้อง</button>
+          </div>
+        </div>
+
+        <!-- รายเดือน -->
+        <div id="mh-view-month">
+          <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px" id="mh-year-tabs"></div>
+          <div style="margin-bottom:12px">
+            <select id="mh-month-sel" onchange="renderMhMonth()" style="font-size:11px;padding:0 8px;height:28px;border:1px solid var(--border);border-radius:20px;background:#fff;color:var(--text)"></select>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px" id="mh-summary"></div>
+          <div class="tbl-wrap"><table class="tbl">
+            <thead><tr><th>ห้อง</th><th>ชื่อ</th><th class="r">ไฟ (หน่วย)</th><th class="r">น้ำ (หน่วย)</th></tr></thead>
+            <tbody id="mh-month-body"></tbody>
+          </table></div>
+        </div>
+
+        <!-- รายห้อง -->
+        <div id="mh-view-room" style="display:none">
+          <div style="margin-bottom:12px">
+            <select id="mh-room-sel" onchange="renderMhRoom()" style="font-size:11px;padding:0 12px;height:28px;border:1px solid var(--border);border-radius:20px;background:#fff;color:var(--text);width:100%"></select>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px" id="mh-room-summary"></div>
+          <div id="mh-room-body"></div>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <nav class="bottom-nav">
@@ -392,6 +452,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
   <div class="more-drawer" onclick="event.stopPropagation()">
     <div class="more-title">เมนูเพิ่มเติม</div>
     <div class="more-grid">
+      <div class="more-item" onclick="goPage('meter-history');closeMore()"><i class="ti ti-chart-line" style="color:var(--blue)"></i>ประวัติมิเตอร์</div>
       <div class="more-item" onclick="goPage('invoice');closeMore()"><i class="ti ti-file-invoice" style="color:var(--blue)"></i>ใบแจ้งหนี้</div>
       <div class="more-item" onclick="goPage('tenant');closeMore()"><i class="ti ti-users" style="color:var(--green)"></i>ผู้เช่า</div>
       <div class="more-item" onclick="goPage('maintenance');closeMore()"><i class="ti ti-tool" style="color:var(--amber)"></i>ซ่อมบำรุง</div>
@@ -560,7 +621,7 @@ async function apiPost(d,msg='กำลังบันทึก...'){
 }
 
 // NAV
-const PAGES={dashboard:['หน้าหลัก','ภาพรวมดาวเทียมอพาร์ทเม้น'],meter:['มิเตอร์น้ำ-ไฟ','บันทึกมิเตอร์ประจำเดือน'],invoice:['ใบแจ้งหนี้','ออกใบแจ้งยอดค่าเช่า'],cashflow:['กระแสเงินสด','รายรับ-รายจ่าย'],overdue:['ค้างชำระ','รายการที่ยังไม่ชำระ'],tenant:['ผู้เช่า','ข้อมูลผู้เช่าปัจจุบัน'],maintenance:['ซ่อมบำรุง','ตารางซ่อมบำรุงและล้างแอร์'],history:['ประวัติ','ประวัติผู้เช่าเก่า']};
+const PAGES={dashboard:['หน้าหลัก','ภาพรวมดาวเทียมอพาร์ทเม้น'],meter:['มิเตอร์น้ำ-ไฟ','บันทึกมิเตอร์ประจำเดือน'],'meter-history':['ประวัติมิเตอร์','ตรวจสอบการใช้น้ำ-ไฟย้อนหลัง'],invoice:['ใบแจ้งหนี้','ออกใบแจ้งยอดค่าเช่า'],cashflow:['กระแสเงินสด','รายรับ-รายจ่าย'],overdue:['ค้างชำระ','รายการที่ยังไม่ชำระ'],tenant:['ผู้เช่า','ข้อมูลผู้เช่าปัจจุบัน'],maintenance:['ซ่อมบำรุง','ตารางซ่อมบำรุงและล้างแอร์'],history:['ประวัติ','ประวัติผู้เช่าเก่า']};
 function goPage(p){
   document.querySelectorAll('.page').forEach(e=>e.classList.remove('act'));
   document.querySelectorAll('.ni,.bn-item').forEach(e=>e.classList.remove('act'));
@@ -574,6 +635,7 @@ function goPage(p){
   else if(p==='meter')loadMeters();
   else if(p==='invoice'){populateInvRoom();renderInv();}
   else if(p==='cashflow'){buildTxTabs();loadTx();}
+  else if(p==='meter-history'){loadMeterHistory();}
   else if(p==='overdue')renderOverdue();
   else if(p==='tenant')loadTenants();
   else if(p==='maintenance')loadMaint();
@@ -642,6 +704,21 @@ function populateFinSel(){
   });
 }
 function setFinView(v){finView=v;buildFinTabs();renderFinance();}
+function switchFinTab(tab){
+  const inc=document.querySelector('.fin-panel-inc');
+  const exp=document.querySelector('.fin-panel-exp');
+  const btnInc=document.querySelector('.fin-tab-inc');
+  const btnExp=document.querySelector('.fin-tab-exp');
+  if(tab==='inc'){
+    inc.style.display='block';exp.style.display='none';
+    btnInc.className='fin-tab-btn fin-tab-inc active-inc';
+    btnExp.className='fin-tab-btn fin-tab-exp';
+  } else {
+    inc.style.display='none';exp.style.display='block';
+    btnExp.className='fin-tab-btn fin-tab-exp active-exp';
+    btnInc.className='fin-tab-btn fin-tab-inc';
+  }
+}
 
 function buildTxTabs(){
   const tabs=document.getElementById('tx-tabs');if(!tabs)return;
@@ -1169,6 +1246,100 @@ function init(){
   populateSels();
   loadDashboard();
   loadTenants();
+}
+// METER HISTORY
+let mhYear=String(new Date().getFullYear()),mhView='month';
+function switchMhView(v,btn){
+  mhView=v;
+  document.getElementById('mh-view-month').style.display=v==='month'?'block':'none';
+  document.getElementById('mh-view-room').style.display=v==='room'?'block':'none';
+  document.querySelectorAll('.vt-mh').forEach(b=>{b.classList.remove('active');});
+  btn.classList.add('active');
+  if(v==='month')renderMhMonth();else renderMhRoom();
+}
+async function loadMeterHistory(){
+  if(!tenants.length)tenants=await api({action:'getTenants'},'กำลังโหลด...')||[];
+  buildMhYearTabs();
+  populateMhRoomSel();
+  renderMhMonth();
+}
+function buildMhYearTabs(){
+  const tabs=document.getElementById('mh-year-tabs');if(!tabs)return;
+  const cy=new Date().getFullYear();
+  const years=[];for(let y=cy;y>=2022;y--)years.push(String(y));
+  tabs.innerHTML=years.map(y=>{
+    const lbl='ปี '+(parseInt(y)+543);
+    const active=mhYear===y;
+    return`<button onclick="selectMhYear('${y}')" style="font-size:11px;padding:0 12px;height:28px;border:0.5px solid ${active?'var(--green)':'var(--border)'};border-radius:999px;cursor:pointer;background:${active?'var(--green)':'#fff'};color:${active?'#fff':'var(--t2)'};white-space:nowrap;">${lbl}</button>`;
+  }).join('');
+  populateMhMonthSel();
+}
+function selectMhYear(y){mhYear=y;buildMhYearTabs();renderMhMonth();}
+function populateMhMonthSel(){
+  const sel=document.getElementById('mh-month-sel');if(!sel)return;
+  const now=new Date(),cy=now.getFullYear();
+  sel.innerHTML='';
+  const maxM=parseInt(mhYear)===cy?now.getMonth()+1:12;
+  for(let m=maxM;m>=1;m--){
+    const key=mhYear+'_'+String(m).padStart(2,'0');
+    const o=document.createElement('option');
+    o.value=key;o.textContent=MTH[m-1]+' '+(parseInt(mhYear)+543);
+    if(parseInt(mhYear)===cy&&m===now.getMonth()+1)o.selected=true;
+    sel.appendChild(o);
+  }
+}
+async function renderMhMonth(){
+  const month=document.getElementById('mh-month-sel')?.value;if(!month)return;
+  const data=await api({action:'getMeters',month},'กำลังโหลด...')||[];
+  let totalE=0,totalW=0;
+  const rows=tenants.map(t=>{
+    const m=data.find(x=>String(x.room)===String(t.room))||{};
+    const eu=Math.max(0,parseFloat(m.elecCurr||0)-parseFloat(m.elecPrev||0));
+    const wu=Math.max(0,parseFloat(m.waterCurr||0)-parseFloat(m.waterPrev||0));
+    totalE+=eu;totalW+=wu;
+    const eBadge=eu>0?`<span style="background:#fff8e6;color:#d97706;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px">${eu}</span>`:`<span style="background:#f5f5f5;color:#bbb;font-size:10px;padding:2px 8px;border-radius:10px">—</span>`;
+    const wBadge=wu>0?`<span style="background:#e8f4ff;color:#3b6fd4;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px">${wu}</span>`:`<span style="background:#f5f5f5;color:#bbb;font-size:10px;padding:2px 8px;border-radius:10px">—</span>`;
+    return`<tr><td style="font-weight:600">${String(t.room).padStart(2,'0')}</td><td style="font-size:12px;color:var(--t2)">${t.name}</td><td style="text-align:right">${eBadge}</td><td style="text-align:right">${wBadge}</td></tr>`;
+  }).join('');
+  document.getElementById('mh-month-body').innerHTML=rows||'<tr><td colspan="4" style="text-align:center;color:var(--t3);padding:16px">ยังไม่มีข้อมูล</td></tr>';
+  document.getElementById('mh-summary').innerHTML=`
+    <div style="background:#fff8e6;border-radius:10px;padding:10px 12px"><div style="font-size:9px;font-weight:600;color:#888;margin-bottom:3px">⚡ ไฟรวมทั้งอาคาร</div><div style="font-size:18px;font-weight:700;color:#d97706">${totalE}<span style="font-size:10px;color:var(--t3);margin-left:3px">หน่วย</span></div></div>
+    <div style="background:#e8f4ff;border-radius:10px;padding:10px 12px"><div style="font-size:9px;font-weight:600;color:#888;margin-bottom:3px">💧 น้ำรวมทั้งอาคาร</div><div style="font-size:18px;font-weight:700;color:#3b6fd4">${totalW}<span style="font-size:10px;color:var(--t3);margin-left:3px">หน่วย</span></div></div>`;
+}
+function populateMhRoomSel(){
+  const sel=document.getElementById('mh-room-sel');if(!sel)return;
+  sel.innerHTML=tenants.map(t=>`<option value="${t.room}">ห้อง ${String(t.room).padStart(2,'0')} — ${t.name}</option>`).join('');
+}
+async function renderMhRoom(){
+  const room=document.getElementById('mh-room-sel')?.value;if(!room)return;
+  const now=new Date(),cy=now.getFullYear();
+  const keys=[];
+  for(let y=2022;y<=cy;y++){const mx=y===cy?now.getMonth()+1:12;for(let m=mx;m>=1;m--)keys.push(y+'_'+String(m).padStart(2,'0'));}
+  const results=await Promise.all(keys.map(k=>api({action:'getMeters',month:k})));
+  let totalE=0,totalW=0,cnt=0;
+  const rows=results.map((data,i)=>{
+    const m=(data||[]).find(x=>String(x.room)===String(room));if(!m)return'';
+    const eu=Math.max(0,parseFloat(m.elecCurr||0)-parseFloat(m.elecPrev||0));
+    const wu=Math.max(0,parseFloat(m.waterCurr||0)-parseFloat(m.waterPrev||0));
+    if(eu>0||wu>0){totalE+=eu;totalW+=wu;cnt++;}
+    const [yr,mo]=keys[i].split('_');
+    const lbl=MTH[parseInt(mo)-1]+' '+(parseInt(yr)+543);
+    return`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #f5f5f5">
+      <div>
+        <div style="font-size:12px;font-weight:500">${lbl}</div>
+        <div style="font-size:10px;color:var(--t3);margin-top:2px">⚡ ${m.elecPrev||0} → ${m.elecCurr||0} &nbsp;|&nbsp; 💧 ${m.waterPrev||0} → ${m.waterCurr||0}</div>
+      </div>
+      <div style="display:flex;gap:6px">
+        <span style="background:#fff8e6;color:#d97706;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px">${eu} หน่วย</span>
+        <span style="background:#e8f4ff;color:#3b6fd4;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px">${wu} หน่วย</span>
+      </div>
+    </div>`;
+  }).filter(Boolean).join('');
+  document.getElementById('mh-room-body').innerHTML=rows||'<div style="text-align:center;color:var(--t3);padding:20px;font-size:12px">ยังไม่มีข้อมูล</div>';
+  const avgE=cnt>0?Math.round(totalE/cnt):0,avgW=cnt>0?Math.round(totalW/cnt):0;
+  document.getElementById('mh-room-summary').innerHTML=`
+    <div style="background:#fff8e6;border-radius:10px;padding:10px 12px"><div style="font-size:9px;font-weight:600;color:#888;margin-bottom:3px">⚡ ไฟเฉลี่ย/เดือน</div><div style="font-size:18px;font-weight:700;color:#d97706">${avgE}<span style="font-size:10px;color:var(--t3);margin-left:3px">หน่วย</span></div></div>
+    <div style="background:#e8f4ff;border-radius:10px;padding:10px 12px"><div style="font-size:9px;font-weight:600;color:#888;margin-bottom:3px">💧 น้ำเฉลี่ย/เดือน</div><div style="font-size:18px;font-weight:700;color:#3b6fd4">${avgW}<span style="font-size:10px;color:var(--t3);margin-left:3px">หน่วย</span></div></div>`;
 }
 init();
 </script>

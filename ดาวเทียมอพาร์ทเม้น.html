@@ -528,7 +528,7 @@ const TX_L={'rent-in':'ค่าเช่าห้อง','elec-in':'ค่า�
 
 // STATE
 let tenants=[],meters=[],transactions=[],maintData=[];
-let finView='year',finYear='all',payMethod=null,payCurrentRoom=null,payCurrentTotal=0,payData={};
+let finView='year',finYear=String(new Date().getFullYear()),payMethod=null,payCurrentRoom=null,payCurrentTotal=0,payData={};
 let coRoom=null,mntSelRooms=new Set(),receiptStore={};
 let apiCount=0;
 
@@ -652,7 +652,7 @@ async function loadDashboard(){
       window._cachedSummary=true;
     }
   }
-  renderDash();renderFinance();
+  renderDash();
 }
 function renderDash(){
   const occ=tenants.length,vac=21-occ,ov=tenants.filter(t=>t.status==='overdue').length;
@@ -671,6 +671,14 @@ function renderDash(){
   const odList=tenants.filter(t=>t.status==='overdue');
   document.getElementById('dash-overdue').innerHTML=odList.length?odList.map(t=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f5f5f5;font-size:12px"><div style="font-weight:500">ห้อง ${t.room} — ${t.name}</div><span class="bdg br">ค้างชำระ</span></div>`).join(''):'<div style="color:var(--t3);font-size:12px;padding:8px 0;text-align:center">ไม่มีห้องค้างชำระ 🎉</div>';
   document.getElementById('dash-repair').innerHTML='<div style="color:var(--t3);font-size:12px;padding:8px 0;text-align:center">ดูที่หน้าซ่อมบำรุง</div>';
+  // lazy load สรุปการเงินเมื่อ scroll มาถึง
+  const finEl=document.getElementById('fin-cards');
+  if(finEl&&!window._finObserver){
+    window._finObserver=new IntersectionObserver(entries=>{
+      if(entries[0].isIntersecting){renderFinance();window._finObserver.disconnect();window._finObserver=null;}
+    },{threshold:0.1});
+    window._finObserver.observe(finEl);
+  }
 }
 async function renderFinance(){
   const sel=document.getElementById('fin-sel');if(!sel)return;

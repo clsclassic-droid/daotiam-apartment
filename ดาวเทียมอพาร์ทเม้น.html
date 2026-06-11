@@ -301,10 +301,11 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
       <div class="card">
         <div class="section-hd">
           <div class="card-title" style="margin-bottom:0"><i class="ti ti-cash"></i> กระแสเงินสด</div>
-          <div style="display:flex;gap:6px">
-            <select id="tx-sel" class="fc" onchange="loadTx()" style="width:auto;font-size:12px"></select>
-            <button class="btn btn-green btn-sm" onclick="openTxModal()"><i class="ti ti-plus"></i> เพิ่ม</button>
-          </div>
+          <button class="btn btn-green btn-sm" onclick="openTxModal()"><i class="ti ti-plus"></i> เพิ่ม</button>
+        </div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px" id="tx-tabs"></div>
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">
+          <select id="tx-sel" onchange="loadTx()" style="font-size:11px;padding:0 8px;height:28px;border:1px solid var(--border);border-radius:20px;background:#fff;color:var(--text)"></select>
         </div>
         <div style="font-size:12px;color:var(--t2);margin-bottom:10px" id="tx-summary"></div>
         <div class="tbl-wrap"><table class="tbl">
@@ -529,7 +530,7 @@ const TX_L={'rent-in':'ค่าเช่าห้อง','elec-in':'ค่า�
 
 // STATE
 let tenants=[],meters=[],transactions=[],maintData=[];
-let finView='year',finYear='all',payMethod=null,payCurrentRoom=null,payCurrentTotal=0,payData={};
+let finView='year',finYear='all',txYear=String(new Date().getFullYear()),payMethod=null,payCurrentRoom=null,payCurrentTotal=0,payData={};
 let coRoom=null,mntSelRooms=new Set(),receiptStore={};
 let apiCount=0;
 
@@ -572,7 +573,7 @@ function goPage(p){
   if(p==='dashboard')loadDashboard();
   else if(p==='meter')loadMeters();
   else if(p==='invoice'){populateInvRoom();renderInv();}
-  else if(p==='cashflow')loadTx();
+  else if(p==='cashflow'){buildTxTabs();loadTx();}
   else if(p==='overdue')renderOverdue();
   else if(p==='tenant')loadTenants();
   else if(p==='maintenance')loadMaint();
@@ -595,7 +596,7 @@ function populateSels(){
       opts+=`<option value="${k}" ${sel}>${lbl}</option>`;
     }
   }
-  ['meter-sel','tx-sel','ov-sel'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=opts;});
+  ['meter-sel','ov-sel'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=opts;});
   buildFinTabs();
 }
 function buildFinTabs(){
@@ -642,6 +643,43 @@ function populateFinSel(){
 }
 function setFinView(v){finView=v;buildFinTabs();renderFinance();}
 
+function buildTxTabs(){
+  const tabs=document.getElementById('tx-tabs');if(!tabs)return;
+  const now=new Date(),cy=now.getFullYear();
+  const years=['all'];for(let y=cy;y>=2022;y--)years.push(String(y));
+  tabs.innerHTML=years.map(y=>{
+    const lbl=y==='all'?'ทั้งหมด':'ปี '+(parseInt(y)+543);
+    const active=txYear===y;
+    return`<button onclick="selectTxYear('${y}')" style="font-size:11px;padding:0 12px;height:28px;border:0.5px solid ${active?'var(--green)':'var(--border)'};border-radius:999px;cursor:pointer;background:${active?'var(--green)':'#fff'};color:${active?'#fff':'var(--t2)'};white-space:nowrap;">${lbl}</button>`;
+  }).join('');
+  populateTxSel();
+}
+function populateTxSel(){
+  const now=new Date(),cy=now.getFullYear();
+  const sel=document.getElementById('tx-sel');if(!sel)return;
+  sel.innerHTML='';
+  if(txYear==='all'){
+    const ao=document.createElement('option');
+    ao.value='all';ao.textContent='ทั้งหมดทุกปี';ao.selected=true;
+    sel.appendChild(ao);
+  }
+  const years=txYear==='all'?Array.from({length:cy-2021},(_,i)=>String(cy-i)):[txYear];
+  years.forEach(yr=>{
+    const maxM=parseInt(yr)===cy?now.getMonth()+1:12;
+    const yo=document.createElement('option');
+    yo.value='year_'+yr;yo.textContent='ทั้งปี '+(parseInt(yr)+543);
+    sel.appendChild(yo);
+    for(let m=maxM;m>=1;m--){
+      const key=yr+'_'+String(m).padStart(2,'0');
+      const o=document.createElement('option');
+      o.value=key;o.textContent=MTH[m-1]+' '+(parseInt(yr)+543);
+      if(txYear!=='all'&&parseInt(yr)===cy&&m===now.getMonth()+1)o.selected=true;
+      sel.appendChild(o);
+    }
+  });
+}
+function selectTxYear(y){txYear=y;buildTxTabs();loadTx();}
+
 // DASHBOARD
 async function loadDashboard(){
   if(!tenants.length)tenants=await api({action:'getTenants'},'กำลังโหลด...')||[];
@@ -653,11 +691,19 @@ async function loadDashboard(){
     if(msel){window._allTxMonths=Array.from(msel.options).map(o=>o.value).filter(v=>v.match(/^\d{4}_\d{2}$/));}
     else{window._allTxMonths=keys;}
   }
-  const now=new Date();
-  const curMonth=now.getFullYear()+'_'+String(now.getMonth()+1).padStart(2,'0');
-  const curTxns=await api({action:'getTransactions',month:curMonth})||[];
-  window._dashExpense=curTxns.filter(t=>t.type?.endsWith('-out')).reduce((s,t)=>s+parseFloat(t.amount||0),0);
-  window._dashExpenseMonth=MTH[now.getMonth()]+' '+(now.getFullYear()+543);
+  // คำนวณรายจ่ายเฉลี่ย/เดือน จากทุกเดือนที่มีข้อมูล
+  const now=new Date(),cy=now.getFullYear();
+  const allMonthKeys=[];
+  for(let y=2022;y<=cy;y++){const mx=y===cy?now.getMonth()+1:12;for(let m=1;m<=mx;m++)allMonthKeys.push(y+'_'+String(m).padStart(2,'0'));}
+  const allTxRes=await Promise.all(allMonthKeys.map(k=>api({action:'getTransactions',month:k})));
+  const allTxns=allTxRes.flat().filter(Boolean);
+  const monthsWithExp=new Set(allTxns.filter(t=>t.type?.endsWith('-out')).map(t=>t.month));
+  const totalExp=allTxns.filter(t=>t.type?.endsWith('-out')).reduce((s,t)=>s+parseFloat(t.amount||0),0);
+  window._dashExpense=monthsWithExp.size>0?Math.round(totalExp/monthsWithExp.size):0;
+  const monthsWithInc=new Set(allTxns.filter(t=>t.type&&!t.type.endsWith('-out')).map(t=>t.month));
+  const totalInc=allTxns.filter(t=>t.type&&!t.type.endsWith('-out')).reduce((s,t)=>s+parseFloat(t.amount||0),0);
+  window._dashIncome=monthsWithInc.size>0?Math.round(totalInc/monthsWithInc.size):0;
+  window._dashIncomeMonths=monthsWithInc.size;
   renderDash();renderFinance();
 }
 function renderDash(){
@@ -667,8 +713,8 @@ function renderDash(){
     <div class="stat"><div class="stat-l">มีผู้เช่า</div><div class="stat-v" style="color:var(--green)">${occ}</div><div class="stat-s">${Math.round(occ/21*100)}%</div></div>
     <div class="stat"><div class="stat-l">ห้องว่าง</div><div class="stat-v">${vac}</div></div>
     <div class="stat"><div class="stat-l">ค้างชำระ</div><div class="stat-v" style="color:var(--red)">${ov}</div></div>
-    <div class="stat"><div class="stat-l">รายรับ/เดือน (ประมาณ)</div><div class="stat-v" style="font-size:16px;color:var(--green)">฿${fmtN(occ*RENT)}</div></div>
-    <div class="stat"><div class="stat-l">รายจ่าย/เดือน (${window._dashExpenseMonth||'—'})</div><div class="stat-v" style="font-size:16px;color:var(--red)">฿${fmtN(window._dashExpense||0)}</div></div>
+    <div class="stat"><div class="stat-l">รายรับ/เดือน (เฉลี่ย)</div><div class="stat-v" style="font-size:16px;color:var(--green)">฿${fmtN(window._dashIncome||0)}</div><div class="stat-s">จาก ${window._dashIncomeMonths||0} เดือน</div></div>
+    <div class="stat"><div class="stat-l">รายจ่าย/เดือน (เฉลี่ย)</div><div class="stat-v" style="font-size:16px;color:var(--red)">฿${fmtN(window._dashExpense||0)}</div><div class="stat-s">จาก ${window._dashExpenseMonths||0} เดือน</div></div>
     <div class="stat"><div class="stat-l">เงินประกันรวม</div><div class="stat-v" style="font-size:16px;color:var(--blue)">฿${fmtN(occ*3500)}</div></div>`;
   ['bdg-inv','bdg-ov'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=ov;});
   const bb=document.getElementById('bn-bdg-ov');if(bb){bb.textContent=ov;bb.style.display=ov>0?'flex':'none';}
@@ -858,7 +904,18 @@ function printAllInv(){const month=document.getElementById('inv-month').value;co
 // CASHFLOW
 async function loadTx(){
   const month=document.getElementById('tx-sel').value;
-  transactions=await api({action:'getTransactions',month},'กำลังโหลดรายการ...')||[];
+  if(!month)return;
+  let txns=[];
+  if(month.startsWith('year_')){
+    const yr=month.replace('year_','');
+    const now=new Date(),cy=now.getFullYear();
+    const mxM=parseInt(yr)===cy?now.getMonth()+1:12;
+    const all=await Promise.all(Array.from({length:mxM},(_,i)=>api({action:'getTransactions',month:yr+'_'+String(i+1).padStart(2,'0')})));
+    txns=all.flat().filter(Boolean);
+  } else {
+    txns=await api({action:'getTransactions',month},'กำลังโหลดรายการ...')||[];
+  }
+  transactions=txns;
   renderTxTbl();
 }
 function renderTxTbl(){
@@ -870,7 +927,11 @@ function renderTxTbl(){
 }
 function openTxModal(){document.getElementById('tx-date').value=new Date().toISOString().split('T')[0];openMo('mo-tx');}
 async function saveTx(){
-  const month=document.getElementById('tx-sel').value;
+  let month=document.getElementById('tx-sel').value;
+  // ถ้าเลือกทั้งปีหรือทั้งหมด ให้ใช้เดือนปัจจุบัน
+  if(!month||month==='all'||month.startsWith('year_')){
+    const now=new Date();month=now.getFullYear()+'_'+String(now.getMonth()+1).padStart(2,'0');
+  }
   const d={date:document.getElementById('tx-date').value,type:document.getElementById('tx-type').value,desc:document.getElementById('tx-desc').value,room:document.getElementById('tx-room').value,amount:document.getElementById('tx-amount').value,channel:document.getElementById('tx-channel').value,note:document.getElementById('tx-note').value,month};
   if(!d.desc||!d.amount){showToast('กรุณากรอกรายการและจำนวน','err');return;}
   const res=await apiPost({action:'saveTransaction',...d},'กำลังบันทึก...');

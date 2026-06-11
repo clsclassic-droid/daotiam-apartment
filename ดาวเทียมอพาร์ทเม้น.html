@@ -111,7 +111,7 @@ input,select,textarea{font-family:'Sarabun',sans-serif}
 .fr2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .mrc{background:#fff;border-radius:var(--r);border:1px solid var(--border);padding:12px 14px}
 .mrc-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px}
-.mrc-num{font-size:13px;font-weight:700}.mrc-name{font-size:10px;color:var(--t3)}
+.mrc-num{font-size:13px;font-weight:700}.mrc-name{font-size:11px;color:var(--t2);font-weight:500;margin-top:1px}
 .mrc-dates{display:grid;grid-template-columns:1fr 1fr;gap:5px;background:#f8f9fa;border-radius:6px;padding:7px;margin-bottom:8px}
 .mrc-dl{font-size:9px;font-weight:600;margin-bottom:2px}
 .mrc-dl.prev{color:#854F0B}.mrc-dl.curr{color:var(--gd)}
@@ -782,7 +782,7 @@ function renderMeterGrid(){
   document.getElementById('meter-grid').innerHTML=tenants.map(t=>{
     const m=meters.find(x=>String(x.room)===String(t.room))||{};
     return`<div class="mrc">
-      <div class="mrc-hd"><div><div class="mrc-num">ห้อง ${t.room}</div><div class="mrc-name">${(t.name||'').split(' ')[0]}</div></div></div>
+      <div class="mrc-hd"><div><div class="mrc-num">ห้อง ${t.room}</div><div class="mrc-name">${t.name||'—'}</div></div></div>
       <div class="mrc-dates">
         <div><div class="mrc-dl prev">ก่อนหน้า</div><input type="date" id="pd-${t.room}" value="${m.prevDate||''}" class="mrc-di" oninput="calcMC(${t.room})"></div>
         <div><div class="mrc-dl curr">ล่าสุด</div><input type="date" id="cd-${t.room}" value="${m.currDate||today}" class="mrc-di" oninput="calcMC(${t.room})"></div>

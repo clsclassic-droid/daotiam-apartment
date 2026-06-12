@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>ดาวเทียมอพาร์ทเม้น</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap');
 :root{
@@ -587,7 +588,8 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
 
 <script>
 // ===== CONFIG =====
-const API = 'https://script.google.com/macros/s/AKfycbypTV3n7OyYfCjwjUX5-Vlto_Esr3TpwYunFNWN8QtPAio5w8t1WS7uXFY1bFmht6W1/exec';
+const SUPABASE_URL = 'https://uokxrijfhezojnasnzps.supabase.co';
+const SUPABASE_KEY = 'sb_publishable__zegOiikfSqkWUTPv_lsXQ_Q02YPz-K';
 const RENT=3500, ELEC=6.5, WATER=22, DAY_RATE=116;
 const MTH=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 const INC_T=['rent-in','elec-in','water-in','washer-in','other-in'];
@@ -611,18 +613,238 @@ function openMo(id){document.getElementById(id)?.classList.add('open');}
 function showLoad(msg='กำลังโหลด...'){apiCount++;document.getElementById('api-msg').textContent=msg;document.getElementById('api-overlay').classList.add('show');}
 function hideLoad(){apiCount=Math.max(0,apiCount-1);if(!apiCount)document.getElementById('api-overlay').classList.remove('show');}
 
-// API
-async function api(p,msg){
-  showLoad(msg);
-  try{const r=await fetch(API+'?'+new URLSearchParams(p));return await r.json();}
-  catch(e){showToast('เชื่อมต่อไม่สำเร็จ','err');return null;}
+// ===== SUPABASE =====
+const _sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// Helper: getTenants
+async function sbGetTenants(){
+  showLoad('กำลังโหลดผู้เช่า...');
+  try{
+    const {data,error}=await _sb.from('tenants').select('*').order('room');
+    if(error)throw error;
+    return data.map(t=>({
+      room:t.room, name:t.name, phone:t.phone||'', idcard:t.idcard||'',
+      checkin:t.checkin||'', contract:t.contract||'', deposit:t.deposit||3500,
+      status:t.status||'active', note:t.note||''
+    }));
+  }catch(e){showToast('โหลดผู้เช่าไม่สำเร็จ','err');return [];}
   finally{hideLoad();}
 }
-async function apiPost(d,msg='กำลังบันทึก...'){
-  showLoad(msg);
-  try{const r=await fetch(API,{method:'POST',body:JSON.stringify(d)});return await r.json();}
-  catch(e){showToast('บันทึกไม่สำเร็จ','err');return null;}
+
+// Helper: getMeters
+async function sbGetMeters(month){
+  showLoad('กำลังโหลดมิเตอร์...');
+  try{
+    const {data,error}=await _sb.from('meters').select('*').eq('month',month);
+    if(error)throw error;
+    return data.map(m=>({
+      room:m.room, month:m.month,
+      elecPrev:m.elec_prev||0, elecCurr:m.elec_curr||0,
+      waterPrev:m.water_prev||0, waterCurr:m.water_curr||0,
+      prevDate:m.prev_date||'', currDate:m.curr_date||''
+    }));
+  }catch(e){showToast('โหลดมิเตอร์ไม่สำเร็จ','err');return [];}
   finally{hideLoad();}
+}
+
+// Helper: saveMeters
+async function sbSaveMeters(month, metersData){
+  showLoad('กำลังบันทึกมิเตอร์...');
+  try{
+    const rows = metersData.map(m=>({
+      room:m.room, month:month,
+      elec_prev:m.elecPrev||0, elec_curr:m.elecCurr||0,
+      water_prev:m.waterPrev||0, water_curr:m.waterCurr||0,
+      prev_date:m.prevDate||'', curr_date:m.currDate||''
+    }));
+    const {error}=await _sb.from('meters').upsert(rows,{onConflict:'room,month'});
+    if(error)throw error;
+    return {success:true, count:rows.length};
+  }catch(e){showToast('บันทึกมิเตอร์ไม่สำเร็จ','err');return null;}
+  finally{hideLoad();}
+}
+
+// Helper: getTransactions
+async function sbGetTransactions(month){
+  showLoad('กำลังโหลดรายการ...');
+  try{
+    let q=_sb.from('transactions').select('*').order('date',{ascending:true});
+    if(month && month!=='all' && !month.startsWith('year_')) q=q.eq('month',month);
+    else if(month && month.startsWith('year_')){
+      const yr=month.replace('year_','');
+      q=q.like('month',yr+'_%');
+    }
+    const {data,error}=await q;
+    if(error)throw error;
+    return data.map(t=>({
+      id:t.id, date:t.date||'', month:t.month||'', type:t.type||'',
+      desc:t.description||'', room:t.room||'', amount:t.amount||0,
+      channel:t.channel||'cash', note:t.note||''
+    }));
+  }catch(e){showToast('โหลดรายการไม่สำเร็จ','err');return [];}
+  finally{hideLoad();}
+}
+
+// Helper: saveTransaction
+async function sbSaveTransaction(d){
+  showLoad('กำลังบันทึก...');
+  try{
+    const {error}=await _sb.from('transactions').insert({
+      date:d.date, month:d.month, type:d.type,
+      description:d.desc||d.description||'', room:d.room||'',
+      amount:parseFloat(d.amount)||0, channel:d.channel||'cash', note:d.note||''
+    });
+    if(error)throw error;
+    return {success:true};
+  }catch(e){showToast('บันทึกไม่สำเร็จ','err');return null;}
+  finally{hideLoad();}
+}
+
+// Helper: deleteTransaction
+async function sbDeleteTransaction(id){
+  showLoad('กำลังลบ...');
+  try{
+    const {error}=await _sb.from('transactions').delete().eq('id',id);
+    if(error)throw error;
+    return {success:true};
+  }catch(e){showToast('ลบไม่สำเร็จ','err');return null;}
+  finally{hideLoad();}
+}
+
+// Helper: saveTenant
+async function sbSaveTenant(d){
+  showLoad('กำลังบันทึก...');
+  try{
+    const {error}=await _sb.from('tenants').upsert({
+      room:parseInt(d.room), name:d.name, phone:d.phone||'',
+      idcard:d.idcard||'', checkin:d.checkin||'', contract:d.contract||'',
+      deposit:parseFloat(d.deposit)||3500, status:d.status||'active', note:d.note||''
+    },{onConflict:'room'});
+    if(error)throw error;
+    return {success:true};
+  }catch(e){showToast('บันทึกไม่สำเร็จ','err');return null;}
+  finally{hideLoad();}
+}
+
+// Helper: deleteTenant
+async function sbDeleteTenant(room){
+  showLoad('กำลังย้ายออก...');
+  try{
+    const {error}=await _sb.from('tenants').delete().eq('room',parseInt(room));
+    if(error)throw error;
+    return {success:true};
+  }catch(e){showToast('ลบไม่สำเร็จ','err');return null;}
+  finally{hideLoad();}
+}
+
+// Helper: getRepairs
+async function sbGetRepairs(){
+  showLoad('กำลังโหลด...');
+  try{
+    const {data,error}=await _sb.from('repairs').select('*').order('date',{ascending:false});
+    if(error)throw error;
+    return data.map(r=>({
+      id:r.id, date:r.date||'', type:r.type||'',
+      rooms:r.rooms||[], cost:r.cost||0, note:r.note||''
+    }));
+  }catch(e){showToast('โหลดไม่สำเร็จ','err');return [];}
+  finally{hideLoad();}
+}
+
+// Helper: saveRepair
+async function sbSaveRepair(d){
+  showLoad('กำลังบันทึก...');
+  try{
+    const {error}=await _sb.from('repairs').insert({
+      date:d.date, type:d.type, cost:parseFloat(d.cost)||0,
+      rooms:d.rooms||[], note:d.note||''
+    });
+    if(error)throw error;
+    return {success:true};
+  }catch(e){showToast('บันทึกไม่สำเร็จ','err');return null;}
+  finally{hideLoad();}
+}
+
+// Helper: getHistory
+async function sbGetHistory(){
+  showLoad('กำลังโหลด...');
+  try{
+    const {data,error}=await _sb.from('history').select('*').order('checkout',{ascending:false});
+    if(error)throw error;
+    return data.map(h=>({
+      id:h.id, room:h.room, name:h.name, phone:h.phone||'',
+      checkin:h.checkin||'', checkout:h.checkout||'', months:h.months||0,
+      reason:h.reason||'', deposit:h.deposit||3500,
+      depositReturn:h.deposit_return||0, status:h.status||'good', note:h.note||''
+    }));
+  }catch(e){showToast('โหลดไม่สำเร็จ','err');return [];}
+  finally{hideLoad();}
+}
+
+// Helper: saveHistory
+async function sbSaveHistory(d){
+  showLoad('กำลังบันทึก...');
+  try{
+    const {error}=await _sb.from('history').insert({
+      room:parseInt(d.room), name:d.name, phone:d.phone||'',
+      checkin:d.checkin||'', checkout:d.checkout||'',
+      months:parseInt(d.months)||0, reason:d.reason||'',
+      deposit:parseFloat(d.deposit)||3500,
+      deposit_return:parseFloat(d.depositReturn)||0,
+      status:d.status||'good', note:d.note||''
+    });
+    if(error)throw error;
+    return {success:true};
+  }catch(e){showToast('บันทึกไม่สำเร็จ','err');return null;}
+  finally{hideLoad();}
+}
+
+// Helper: getSummary (คำนวณจาก transactions ที่โหลดแล้ว)
+async function sbGetSummary(){
+  showLoad('กำลังคำนวณสรุป...');
+  try{
+    const {data,error}=await _sb.from('transactions').select('month,type,amount');
+    if(error)throw error;
+    const incMonths=new Set(data.filter(t=>t.type?.endsWith('-in')).map(t=>t.month));
+    const expMonths=new Set(data.filter(t=>t.type?.endsWith('-out')).map(t=>t.month));
+    const totalInc=data.filter(t=>t.type?.endsWith('-in')).reduce((s,t)=>s+parseFloat(t.amount||0),0);
+    const totalExp=data.filter(t=>t.type?.endsWith('-out')).reduce((s,t)=>s+parseFloat(t.amount||0),0);
+    return {
+      success:true,
+      avgInc:incMonths.size>0?Math.round(totalInc/incMonths.size):0,
+      incMonths:incMonths.size,
+      avgExp:expMonths.size>0?Math.round(totalExp/expMonths.size):0,
+      expMonths:expMonths.size
+    };
+  }catch(e){return null;}
+  finally{hideLoad();}
+}
+
+// legacy api() wrapper — map เดิมไปยัง Supabase
+async function api(p, msg){
+  const action = p.action;
+  if(action==='getTenants') return sbGetTenants();
+  if(action==='getMeters') return sbGetMeters(p.month);
+  if(action==='getTransactions') return sbGetTransactions(p.month||'all');
+  if(action==='getRepairs') return sbGetRepairs();
+  if(action==='getHistory') return sbGetHistory();
+  if(action==='getSummary') return sbGetSummary();
+  console.warn('api() unknown action:', action);
+  return null;
+}
+
+// legacy apiPost() wrapper
+async function apiPost(d, msg){
+  const action = d.action;
+  if(action==='saveTenant') return sbSaveTenant(d);
+  if(action==='deleteTenant') return sbDeleteTenant(d.room);
+  if(action==='saveMeters') return sbSaveMeters(d.month, d.meters);
+  if(action==='saveTransaction') return sbSaveTransaction(d);
+  if(action==='deleteTransaction') return sbDeleteTransaction(d.id);
+  if(action==='saveRepair') return sbSaveRepair(d);
+  if(action==='saveHistory') return sbSaveHistory(d);
+  console.warn('apiPost() unknown action:', action);
+  return null;
 }
 
 // NAV

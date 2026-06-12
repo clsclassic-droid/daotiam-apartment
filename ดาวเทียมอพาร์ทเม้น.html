@@ -343,7 +343,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
         </div>
         <div style="font-size:12px;color:var(--t2);margin-bottom:10px" id="tx-summary"></div>
         <div class="tbl-wrap"><table class="tbl">
-          <thead><tr><th>วันที่</th><th>รายการ</th><th>ประเภท</th><th class="r">จำนวน</th><th>ช่องทาง</th><th class="r">คงเหลือ</th><th></th></tr></thead>
+          <thead><tr><th>วันที่</th><th>รายการ</th><th class="c">ห้อง</th><th>ประเภท</th><th class="r">จำนวน</th><th>ช่องทาง</th><th class="r">คงเหลือ</th><th></th></tr></thead>
           <tbody id="tx-body"></tbody>
         </table></div>
       </div>
@@ -605,10 +605,10 @@ let apiCount=0;
 // UTILS
 const fmt2=n=>parseFloat(n||0).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});
 const fmtN=n=>Math.round(n||0).toLocaleString('th-TH');
-function fmtDate(v){if(!v)return'';if(typeof v==='string'&&v.includes('T')){const d=new Date(v);return`${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getFullYear()).slice(-2)}`;}return v;}
+function fmtDate(v){if(!v)return'';if(typeof v==='string'){if(v.includes('T')||v.match(/^\d{4}-\d{2}-\d{2}/)){const d=new Date(v.replace(' ','T'));return`${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getFullYear()).slice(-2)}`;}}return v;}
 function calcStay(checkin){if(!checkin)return'—';const parts=checkin.split('/');if(parts.length<3)return'—';const y=parseInt(parts[2])<100?2000+parseInt(parts[2]):parseInt(parts[2]);const start=new Date(y,parseInt(parts[1])-1,parseInt(parts[0]));const now=new Date();let yrs=now.getFullYear()-start.getFullYear();let mos=now.getMonth()-start.getMonth();let days=now.getDate()-start.getDate();if(days<0){mos--;const prev=new Date(now.getFullYear(),now.getMonth(),0);days+=prev.getDate();}if(mos<0){yrs--;mos+=12;}let r='';if(yrs>0)r+=yrs+' ปี ';if(mos>0)r+=mos+' เดือน ';r+=days+' วัน';return r.trim();}
 function showToast(msg,t='ok'){const el=document.getElementById('toast');el.innerHTML=`<i class="ti ti-${t==='ok'?'check':'alert-circle'}" style="color:${t==='ok'?'#1D9E75':'#E24B4A'}"></i>${msg}`;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2800);}
-function closeMo(id){document.getElementById(id)?.classList.remove('open');}
+function closeMo(id){document.getElementById(id)?.classList.remove('open');if(id==='mo-tx'){delete document.getElementById('mo-tx').dataset.editId;const t=document.querySelector('#mo-tx .mo-title');if(t)t.textContent='เพิ่มรายการรับ-จ่าย';}}
 function openMo(id){document.getElementById(id)?.classList.add('open');}
 function showLoad(msg='กำลังโหลด...'){apiCount++;document.getElementById('api-msg').textContent=msg;document.getElementById('api-overlay').classList.add('show');}
 function hideLoad(){apiCount=Math.max(0,apiCount-1);if(!apiCount)document.getElementById('api-overlay').classList.remove('show');}
@@ -1192,7 +1192,13 @@ function renderTxTbl(){
   const tOut=transactions.filter(t=>t.type?.endsWith('-out')).reduce((s,t)=>s+parseFloat(t.amount||0),0);
   document.getElementById('tx-summary').innerHTML=`รายรับ <strong style="color:var(--green)">฿${fmtN(tIn)}</strong> · รายจ่าย <strong style="color:var(--red)">฿${fmtN(tOut)}</strong> · คงเหลือ <strong style="color:${tIn-tOut>=0?'var(--green)':'var(--red)'}">฿${fmtN(tIn-tOut)}</strong>`;
   let run=0;
-  document.getElementById('tx-body').innerHTML=transactions.map(t=>{const isIn=t.type?.endsWith('-in');run+=(isIn?1:-1)*parseFloat(t.amount||0);return`<tr><td style="font-size:11px;color:var(--t3)">${fmtDate(t.date)||'—'}</td><td>${t.desc||'—'}${t.room?` <span style="font-size:10px;color:var(--t3)">(ห้อง ${parseInt(t.room)||t.room})</span>`:''}</td><td><span class="bdg ${isIn?'bg':'br'}">${TX_L[t.type]||t.type}</span></td><td class="r" style="font-weight:500;color:${isIn?'var(--green)':'var(--red)'}">${isIn?'+':'-'}฿${fmtN(t.amount)}</td><td style="font-size:11px;color:var(--t3)">${t.channel==='bank'?'โอน':'เงินสด'}</td><td class="r" style="font-size:11px;color:${run>=0?'var(--green)':'var(--red)'}">฿${fmtN(run)}</td><td><button class="btn btn-sm btn-icon" style="color:var(--t3)" onclick="delTx('${t.id}')"><i class="ti ti-trash" style="font-size:11px"></i></button></td></tr>`;}).join('')||'<tr><td colspan="7" style="text-align:center;color:var(--t3);padding:20px">ยังไม่มีรายการ</td></tr>';
+  const bankIn=transactions.filter(t=>t.type?.endsWith('-in')&&t.channel==='bank').reduce((s,t)=>s+parseFloat(t.amount||0),0);
+  const bankOut=transactions.filter(t=>t.type?.endsWith('-out')&&t.channel==='bank').reduce((s,t)=>s+parseFloat(t.amount||0),0);
+  const cashIn=transactions.filter(t=>t.type?.endsWith('-in')&&t.channel==='cash').reduce((s,t)=>s+parseFloat(t.amount||0),0);
+  const cashOut=transactions.filter(t=>t.type?.endsWith('-out')&&t.channel==='cash').reduce((s,t)=>s+parseFloat(t.amount||0),0);
+  const bankBal=bankIn-bankOut, cashBal=cashIn-cashOut;
+  document.getElementById('tx-summary').innerHTML=`รายรับ <strong style="color:var(--green)">฿${fmtN(tIn)}</strong> · รายจ่าย <strong style="color:var(--red)">฿${fmtN(tOut)}</strong> · คงเหลือ <strong style="color:${tIn-tOut>=0?'var(--green)':'var(--red)'}">฿${fmtN(tIn-tOut)}</strong> &nbsp;|&nbsp; 💳 ธนาคาร <strong style="color:var(--blue)">฿${fmtN(bankBal)}</strong> · 💵 เงินสด <strong style="color:var(--amber)">฿${fmtN(cashBal)}</strong>`;
+  document.getElementById('tx-body').innerHTML=transactions.map(t=>{const isIn=t.type?.endsWith('-in');run+=(isIn?1:-1)*parseFloat(t.amount||0);const roomTxt=t.room?String(parseInt(t.room)||t.room):'—';return`<tr><td style="font-size:11px;color:var(--t3)">${fmtDate(t.date)||'—'}</td><td>${t.desc||'—'}</td><td class="c" style="font-size:12px;font-weight:600">${roomTxt}</td><td><span class="bdg ${isIn?'bg':'br'}">${TX_L[t.type]||t.type}</span></td><td class="r" style="font-weight:500;color:${isIn?'var(--green)':'var(--red)'}">${isIn?'+':'-'}฿${fmtN(t.amount)}</td><td style="font-size:11px;color:var(--t3)">${t.channel==='bank'?'โอน':'เงินสด'}</td><td class="r" style="font-size:11px;color:${run>=0?'var(--green)':'var(--red)'}">฿${fmtN(run)}</td><td style="display:flex;gap:4px"><button class="btn btn-sm btn-icon" style="color:var(--blue)" onclick="editTx('${t.id}')"><i class="ti ti-edit" style="font-size:11px"></i></button><button class="btn btn-sm btn-icon" style="color:var(--t3)" onclick="delTx('${t.id}')"><i class="ti ti-trash" style="font-size:11px"></i></button></td></tr>`;}).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--t3);padding:20px">ยังไม่มีรายการ</td></tr>';
 }
 function openTxModal(){document.getElementById('tx-date').value=new Date().toISOString().split('T')[0];openMo('mo-tx');}
 async function saveTx(){
@@ -1200,10 +1206,31 @@ async function saveTx(){
   if(!month||month==='all'||month.startsWith('year_')){const now=new Date();month=now.getFullYear()+'_'+String(now.getMonth()+1).padStart(2,'0');}
   const d={date:document.getElementById('tx-date').value,type:document.getElementById('tx-type').value,desc:document.getElementById('tx-desc').value,room:document.getElementById('tx-room').value,amount:document.getElementById('tx-amount').value,channel:document.getElementById('tx-channel').value,note:document.getElementById('tx-note').value,month};
   if(!d.desc||!d.amount){showToast('กรุณากรอกรายการและจำนวน','err');return;}
-  const res=await apiPost({action:'saveTransaction',...d},'กำลังบันทึก...');
-  if(res?.success){closeMo('mo-tx');await loadTx();showToast('✓ บันทึกรายการแล้ว');}
+  const editId=document.getElementById('mo-tx').dataset.editId;
+  if(editId){
+    // แก้ไข: ลบเก่าแล้วบันทึกใหม่
+    await apiPost({action:'deleteTransaction',id:editId});
+    const res=await apiPost({action:'saveTransaction',...d},'กำลังบันทึก...');
+    if(res?.success){delete document.getElementById('mo-tx').dataset.editId;document.querySelector('#mo-tx .mo-title').textContent='เพิ่มรายการรับ-จ่าย';closeMo('mo-tx');await loadTx();showToast('✓ แก้ไขรายการแล้ว');}
+  } else {
+    const res=await apiPost({action:'saveTransaction',...d},'กำลังบันทึก...');
+    if(res?.success){closeMo('mo-tx');await loadTx();showToast('✓ บันทึกรายการแล้ว');}
+  }
 }
 async function delTx(id){if(!confirm('ยืนยันลบรายการนี้?'))return;const res=await apiPost({action:'deleteTransaction',id},'กำลังลบ...');if(res?.success){await loadTx();showToast('ลบแล้ว');}}
+function editTx(id){
+  const t=transactions.find(x=>String(x.id)===String(id));if(!t)return;
+  document.getElementById('tx-date').value=t.date?t.date.split(' ')[0]:'';
+  document.getElementById('tx-type').value=t.type||'rent-in';
+  document.getElementById('tx-desc').value=t.desc||'';
+  document.getElementById('tx-room').value=t.room?parseInt(t.room)||t.room:'';
+  document.getElementById('tx-amount').value=t.amount||'';
+  document.getElementById('tx-channel').value=t.channel||'bank';
+  document.getElementById('tx-note').value=t.note||'';
+  document.getElementById('mo-tx').dataset.editId=id;
+  document.querySelector('#mo-tx .mo-title').textContent='แก้ไขรายการ';
+  openMo('mo-tx');
+}
 
 // OVERDUE
 async function renderOverdue(){

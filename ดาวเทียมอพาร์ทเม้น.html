@@ -45,7 +45,7 @@ input,select,textarea{font-family:'Sarabun',sans-serif}
 .tb-left{display:flex;align-items:center;gap:8px}
 .tb-title{font-size:15px;font-weight:600}
 .tb-sub{font-size:11px;color:var(--t3);margin-top:1px}
-.content{flex:1;overflow-y:auto;padding:20px}
+.content{flex:1;overflow-y:auto;padding:20px;min-height:0}
 .bottom-nav{display:none;background:#0F1923;border-top:none;height:calc(var(--bot-h) + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);flex-shrink:0;position:relative;z-index:50}
 .bn-items{display:flex;height:100%}
 .bn-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;border:none;background:transparent;font-family:'Sarabun',sans-serif;position:relative;transition:all .15s}
@@ -64,7 +64,7 @@ input,select,textarea{font-family:'Sarabun',sans-serif}
 .more-item{display:flex;flex-direction:column;align-items:center;gap:5px;padding:10px 6px;border-radius:8px;border:1px solid var(--border);cursor:pointer;font-size:11px;color:var(--t2);font-weight:500;background:#fff}
 .more-item:hover{background:var(--gl);color:var(--gd);border-color:#9FE1CB}
 .more-item i{font-size:20px}
-.page{display:none}.page.act{display:block}
+.page{display:none}.page.act{display:block;min-height:0}
 .card{background:var(--card);border-radius:var(--r);border:1px solid var(--border);padding:16px 18px;box-shadow:var(--sh)}
 .card-title{font-size:12px;font-weight:600;color:var(--t2);margin-bottom:12px;display:flex;align-items:center;gap:6px}
 .section-hd{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px}
@@ -608,7 +608,7 @@ const fmtN=n=>Math.round(n||0).toLocaleString('th-TH');
 function fmtDate(v){if(!v)return'';if(typeof v==='string'){if(v.includes('T')||v.match(/^\d{4}-\d{2}-\d{2}/)){const d=new Date(v.replace(' ','T'));return`${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getFullYear()).slice(-2)}`;}}return v;}
 function calcStay(checkin){if(!checkin)return'—';const parts=checkin.split('/');if(parts.length<3)return'—';const y=parseInt(parts[2])<100?2000+parseInt(parts[2]):parseInt(parts[2]);const start=new Date(y,parseInt(parts[1])-1,parseInt(parts[0]));const now=new Date();let yrs=now.getFullYear()-start.getFullYear();let mos=now.getMonth()-start.getMonth();let days=now.getDate()-start.getDate();if(days<0){mos--;const prev=new Date(now.getFullYear(),now.getMonth(),0);days+=prev.getDate();}if(mos<0){yrs--;mos+=12;}let r='';if(yrs>0)r+=yrs+' ปี ';if(mos>0)r+=mos+' เดือน ';r+=days+' วัน';return r.trim();}
 function showToast(msg,t='ok'){const el=document.getElementById('toast');el.innerHTML=`<i class="ti ti-${t==='ok'?'check':'alert-circle'}" style="color:${t==='ok'?'#1D9E75':'#E24B4A'}"></i>${msg}`;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2800);}
-function closeMo(id){document.getElementById(id)?.classList.remove('open');if(id==='mo-tx'){delete document.getElementById('mo-tx').dataset.editId;const t=document.querySelector('#mo-tx .mo-title');if(t)t.textContent='เพิ่มรายการรับ-จ่าย';}}
+function closeMo(id){document.getElementById(id)?.classList.remove('open');if(id==='mo-tx'){delete document.getElementById('mo-tx').dataset.editId;const t=document.querySelector('#mo-tx .mo-title');if(t)t.textContent='เพิ่มรายการรับ-จ่าย';}if(id==='mo-maint'){delete document.getElementById('mo-maint').dataset.editId;const t=document.querySelector('#mo-maint .mo-title');if(t)t.textContent='เพิ่มรายการซ่อมบำรุง';mntSelRooms=new Set();renderMntRooms();}}
 function openMo(id){document.getElementById(id)?.classList.add('open');}
 function showLoad(msg='กำลังโหลด...'){apiCount++;document.getElementById('api-msg').textContent=msg;document.getElementById('api-overlay').classList.add('show');}
 function hideLoad(){apiCount=Math.max(0,apiCount-1);if(!apiCount)document.getElementById('api-overlay').classList.remove('show');}
@@ -1197,7 +1197,10 @@ function renderTxTbl(){
   const cashIn=transactions.filter(t=>t.type?.endsWith('-in')&&t.channel==='cash').reduce((s,t)=>s+parseFloat(t.amount||0),0);
   const cashOut=transactions.filter(t=>t.type?.endsWith('-out')&&t.channel==='cash').reduce((s,t)=>s+parseFloat(t.amount||0),0);
   const bankBal=bankIn-bankOut, cashBal=cashIn-cashOut;
-  document.getElementById('tx-summary').innerHTML=`รายรับ <strong style="color:var(--green)">฿${fmtN(tIn)}</strong> · รายจ่าย <strong style="color:var(--red)">฿${fmtN(tOut)}</strong> · คงเหลือ <strong style="color:${tIn-tOut>=0?'var(--green)':'var(--red)'}">฿${fmtN(tIn-tOut)}</strong> &nbsp;|&nbsp; 💳 ธนาคาร <strong style="color:var(--blue)">฿${fmtN(bankBal)}</strong> · 💵 เงินสด <strong style="color:var(--amber)">฿${fmtN(cashBal)}</strong>`;
+  const txSel=document.getElementById('tx-sel')?.value||'';
+  const isAll=txSel==='all'||txSel.startsWith('year_')||txSel==='';
+  const balExtra=isAll?` &nbsp;|&nbsp; 💳 ธนาคาร <strong style="color:var(--blue)">฿${fmtN(bankBal)}</strong> · 💵 เงินสด <strong style="color:var(--amber)">฿${fmtN(cashBal)}</strong>`:'';
+  document.getElementById('tx-summary').innerHTML=`รายรับ <strong style="color:var(--green)">฿${fmtN(tIn)}</strong> · รายจ่าย <strong style="color:var(--red)">฿${fmtN(tOut)}</strong> · คงเหลือ <strong style="color:${tIn-tOut>=0?'var(--green)':'var(--red)'}">฿${fmtN(tIn-tOut)}</strong>${balExtra}`;
   document.getElementById('tx-body').innerHTML=transactions.map(t=>{const isIn=t.type?.endsWith('-in');run+=(isIn?1:-1)*parseFloat(t.amount||0);const roomTxt=t.room?String(parseInt(t.room)||t.room):'—';return`<tr><td style="font-size:11px;color:var(--t3)">${fmtDate(t.date)||'—'}</td><td>${t.desc||'—'}</td><td class="c" style="font-size:12px;font-weight:600">${roomTxt}</td><td><span class="bdg ${isIn?'bg':'br'}">${TX_L[t.type]||t.type}</span></td><td class="r" style="font-weight:500;color:${isIn?'var(--green)':'var(--red)'}">${isIn?'+':'-'}฿${fmtN(t.amount)}</td><td style="font-size:11px;color:var(--t3)">${t.channel==='bank'?'โอน':'เงินสด'}</td><td class="r" style="font-size:11px;color:${run>=0?'var(--green)':'var(--red)'}">฿${fmtN(run)}</td><td style="display:flex;gap:4px"><button class="btn btn-sm btn-icon" style="color:var(--blue)" onclick="editTx('${t.id}')"><i class="ti ti-edit" style="font-size:11px"></i></button><button class="btn btn-sm btn-icon" style="color:var(--t3)" onclick="delTx('${t.id}')"><i class="ti ti-trash" style="font-size:11px"></i></button></td></tr>`;}).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--t3);padding:20px">ยังไม่มีรายการ</td></tr>';
 }
 function openTxModal(){document.getElementById('tx-date').value=new Date().toISOString().split('T')[0];openMo('mo-tx');}
@@ -1355,7 +1358,7 @@ async function loadMaint(){
   renderAircon();
   if(!maintData.length){document.getElementById('maint-grid').innerHTML='<div style="text-align:center;padding:32px;color:var(--t3);font-size:12px">ยังไม่มีรายการ</div>';return;}
   const rooms=Array.from({length:21},(_,i)=>i+1);
-  const hd='<tr><th style="text-align:left;padding:5px 7px;min-width:80px">วันที่</th><th style="text-align:left;padding:5px 7px;min-width:80px">ประเภท</th>'+rooms.map(r=>`<th style="min-width:28px">${r}</th>`).join('')+'<th style="text-align:right;padding:5px 7px;min-width:60px">ราคา</th><th style="text-align:left;padding:5px 7px">หมายเหตุ</th></tr>';
+  const hd='<tr><th style="text-align:left;padding:5px 7px;min-width:80px">วันที่</th><th style="text-align:left;padding:5px 7px;min-width:80px">ประเภท</th>'+rooms.map(r=>`<th style="min-width:28px">${r}</th>`).join('')+'<th style="text-align:right;padding:5px 7px;min-width:60px">ราคา</th><th style="text-align:left;padding:5px 7px">หมายเหตุ</th><th style="padding:5px 7px"></th></tr>';
   const rows2=maintData.map(d=>{
     let roomArr=[];
     try{roomArr=typeof d.rooms==='string'?JSON.parse(d.rooms):d.rooms||[];}catch(e){}
@@ -1404,7 +1407,7 @@ function renderAircon(){
     groups[yr].forEach(r=>r.rooms.forEach(rm=>cnt[rm]++));
     html+=`<tr onclick="toggleAcYear('${yr}')" style="cursor:pointer;user-select:none"><td style="background:var(--green);color:#fff;font-weight:600;padding:6px 7px;text-align:left"><span id="ac-arrow-${yr}" style="margin-right:5px;display:inline-block;transition:transform .2s">▼</span>ปี ${thaiYr}</td>${Array.from({length:21},(_,i)=>`<td style="background:var(--green);color:#fff;font-weight:500;padding:5px 2px;text-align:center">${cnt[i+1]}</td>`).join('')}<td style="background:var(--green)"></td><td style="background:var(--green)"></td></tr>`;
     groups[yr].forEach((r,ri)=>{
-      html+=`<tr class="ac-row-${yr}" style="${ri%2===0?'background:#fafafa':''}"><td style="padding:4px 7px;color:var(--t2);white-space:nowrap">${r.date}</td>${Array.from({length:21},(_,i)=>{const checked=r.rooms.includes(i+1);return`<td style="padding:3px 2px;text-align:center"><div style="width:14px;height:14px;border-radius:3px;margin:auto;${checked?'background:var(--green);display:flex;align-items:center;justify-content:center':'border:1.5px solid #ddd'}">${checked?'<i class="ti ti-check" style="font-size:9px;color:#fff"></i>':''}</div></td>`;}).join('')}<td style="padding:4px 7px;text-align:right;font-weight:500">${r.cost>0?'฿'+fmtN(r.cost):'—'}</td><td style="padding:4px 7px;color:var(--t3);font-size:10px">${r.note||'—'}</td></tr>`;
+      html+=`<tr class="ac-row-${yr}" style="${ri%2===0?'background:#fafafa':''}"><td style="padding:4px 7px;color:var(--t2);white-space:nowrap">${r.date}</td>${Array.from({length:21},(_,i)=>{const checked=r.rooms.includes(i+1);return`<td style="padding:3px 2px;text-align:center"><div style="width:14px;height:14px;border-radius:3px;margin:auto;${checked?'background:var(--green);display:flex;align-items:center;justify-content:center':'border:1.5px solid #ddd'}">${checked?'<i class="ti ti-check" style="font-size:9px;color:#fff"></i>':''}</div></td>`;}).join('')}<td style="padding:4px 7px;text-align:right;font-weight:500">${r.cost>0?'฿'+fmtN(r.cost):'—'}</td><td style="padding:4px 7px;color:var(--t3);font-size:10px">${r.note||'—'}</td><td style="padding:4px 7px;white-space:nowrap"><button class="btn btn-sm btn-icon" style="color:var(--blue)" onclick="editRepair('${r.id}')"><i class="ti ti-edit" style="font-size:11px"></i></button><button class="btn btn-sm btn-icon" style="color:var(--t3)" onclick="delRepair('${r.id}')"><i class="ti ti-trash" style="font-size:11px"></i></button></td></tr>`;
     });
   });
   html+='</tbody></table>';
@@ -1417,13 +1420,50 @@ function toggleAcYear(yr){
   rows.forEach(r=>r.style.display=hidden?'':'none');
   if(arrow)arrow.style.transform=hidden?'':'rotate(-90deg)';
 }
-function openMaintModal(){document.getElementById('mnt-date').value=new Date().toISOString().split('T')[0];document.getElementById('mnt-cost').value='';document.getElementById('mnt-note').value='';mntSelRooms=new Set();document.getElementById('mnt-rooms').innerHTML=Array.from({length:21},(_,i)=>{const n=i+1;return`<div onclick="togMntRoom(${n},this)" style="padding:5px;border:1px solid var(--border);border-radius:5px;text-align:center;cursor:pointer;font-size:12px;font-weight:500;background:#fff;transition:all .15s">${n}</div>`;}).join('');openMo('mo-maint');}
+function renderMntRooms(){document.getElementById('mnt-rooms').innerHTML=Array.from({length:21},(_,i)=>{const n=i+1;const sel=mntSelRooms.has(n)||mntSelRooms.has(String(n));return`<div onclick="togMntRoom(${n},this)" style="padding:5px;border:1px solid ${sel?'var(--green)':'var(--border)'};border-radius:5px;text-align:center;cursor:pointer;font-size:12px;font-weight:500;background:${sel?'var(--green)':'#fff'};color:${sel?'#fff':'var(--text)'};transition:all .15s">${n}</div>`;}).join('');}
+function openMaintModal(){document.getElementById('mnt-date').value=new Date().toISOString().split('T')[0];document.getElementById('mnt-cost').value='';document.getElementById('mnt-note').value='';mntSelRooms=new Set();renderMntRooms();openMo('mo-maint');}
 function togMntRoom(n,el){if(mntSelRooms.has(n)){mntSelRooms.delete(n);el.style.background='#fff';el.style.color='var(--text)';el.style.borderColor='var(--border)';}else{mntSelRooms.add(n);el.style.background='var(--green)';el.style.color='#fff';el.style.borderColor='var(--green)';}}
+async function delRepair(id){
+  if(!confirm('ยืนยันลบรายการนี้?'))return;
+  showLoad('กำลังลบ...');
+  try{
+    const {error}=await _sb.from('repairs').delete().eq('id',id);
+    if(error)throw error;
+    await loadMaint();showToast('ลบแล้ว');
+  }catch(e){showToast('ลบไม่สำเร็จ','err');}
+  finally{hideLoad();}
+}
+function editRepair(id){
+  const r=maintData.find(x=>String(x.id)===String(id));if(!r)return;
+  let roomArr=[];try{roomArr=typeof r.rooms==='string'?JSON.parse(r.rooms):r.rooms||[];}catch(e){}
+  document.getElementById('mnt-date').value=r.date||'';
+  document.getElementById('mnt-type').value=r.type||'ล้างแอร์';
+  document.getElementById('mnt-cost').value=r.cost||0;
+  document.getElementById('mnt-note').value=r.note||'';
+  mntSelRooms=new Set(roomArr.map(x=>parseInt(x)||x));
+  renderMntRooms();
+  document.getElementById('mo-maint').dataset.editId=id;
+  document.querySelector('#mo-maint .mo-title').textContent='แก้ไขรายการซ่อมบำรุง';
+  openMo('mo-maint');
+}
 async function saveMaint(){
   const d={date:document.getElementById('mnt-date').value,type:document.getElementById('mnt-type').value,cost:parseFloat(document.getElementById('mnt-cost').value)||0,note:document.getElementById('mnt-note').value,rooms:[...mntSelRooms]};
   if(!d.date){showToast('กรุณาระบุวันที่','err');return;}
-  const res=await apiPost({action:'saveRepair',...d},'กำลังบันทึก...');
-  if(res?.success){closeMo('mo-maint');await loadMaint();showToast('✓ บันทึกรายการซ่อมบำรุงแล้ว');}
+  const editId=document.getElementById('mo-maint').dataset.editId;
+  if(editId){
+    showLoad('กำลังบันทึก...');
+    try{
+      const {error}=await _sb.from('repairs').update({date:d.date,type:d.type,cost:d.cost,note:d.note,rooms:d.rooms}).eq('id',editId);
+      if(error)throw error;
+      delete document.getElementById('mo-maint').dataset.editId;
+      document.querySelector('#mo-maint .mo-title').textContent='เพิ่มรายการซ่อมบำรุง';
+      closeMo('mo-maint');await loadMaint();showToast('✓ แก้ไขรายการแล้ว');
+    }catch(e){showToast('บันทึกไม่สำเร็จ','err');}
+    finally{hideLoad();}
+  } else {
+    const res=await apiPost({action:'saveRepair',...d},'กำลังบันทึก...');
+    if(res?.success){closeMo('mo-maint');await loadMaint();showToast('✓ บันทึกรายการซ่อมบำรุงแล้ว');}
+  }
 }
 
 // HISTORY

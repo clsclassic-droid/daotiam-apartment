@@ -1010,24 +1010,27 @@ async function renderFinance(){
 function getPrevMonth(m){const[y,mo]=m.split('_').map(Number);return mo===1?(y-1)+'_12':`${y}_${String(mo-1).padStart(2,'0')}`;}
 async function loadMeters(){
   if(!tenants.length)tenants=await api({action:'getTenants'},'กำลังโหลด...')||[];
+  const allRooms=[...tenants,{room:22,name:'ออฟฟิส'}];
   const month=document.getElementById('meter-sel').value;
   const[curr,prev]=await Promise.all([api({action:'getMeters',month},'กำลังโหลดมิเตอร์...'),api({action:'getMeters',month:getPrevMonth(month)})]);
   meters=(curr||[]);
   const prevM=prev||[];
   // merge prev readings as default for elecPrev/waterPrev
   if(prevM.length){
-    meters=tenants.map(t=>{
+    meters=allRooms.map(t=>{
       const c=meters.find(x=>String(x.room)===String(t.room))||{};
       const p=prevM.find(x=>String(x.room)===String(t.room))||{};
       return{room:t.room,elecPrev:c.elecPrev||(p.elecCurr||0),elecCurr:c.elecCurr||0,waterPrev:c.waterPrev||(p.waterCurr||0),waterCurr:c.waterCurr||0,prevDate:c.prevDate||p.currDate||'',currDate:c.currDate||''};
     });
   }
+  window._meterAllRooms=allRooms;
   renderMeterGrid();
 }
 function renderMeterGrid(){
   const today=new Date().toISOString().split('T')[0];
-  if(!tenants.length){document.getElementById('meter-grid').innerHTML='<div style="color:var(--t3);font-size:12px;grid-column:span 3;padding:16px">ยังไม่มีผู้เช่า</div>';return;}
-  document.getElementById('meter-grid').innerHTML=tenants.map(t=>{
+  const allRooms=window._meterAllRooms||[...tenants,{room:22,name:'ออฟฟิส'}];
+  if(!allRooms.length){document.getElementById('meter-grid').innerHTML='<div style="color:var(--t3);font-size:12px;grid-column:span 3;padding:16px">ยังไม่มีผู้เช่า</div>';return;}
+  document.getElementById('meter-grid').innerHTML=allRooms.map(t=>{
     const m=meters.find(x=>String(x.room)===String(t.room))||{};
     return`<div class="mrc" id="mrc-${t.room}">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">

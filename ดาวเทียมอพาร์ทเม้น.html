@@ -220,6 +220,8 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
   <button class="ni" onclick="goPage('tenant')"><i class="ti ti-users ni-i"></i> ผู้เช่า</button>
   <button class="ni" onclick="goPage('maintenance')"><i class="ti ti-tool ni-i"></i> ซ่อมบำรุง</button>
   <button class="ni" onclick="goPage('history')"><i class="ti ti-history ni-i"></i> ประวัติ</button>
+  <div class="sb-sec">ระบบ</div>
+  <button class="ni" onclick="goPage('settings')"><i class="ti ti-settings ni-i"></i> ตั้งค่า</button>
   <div class="sb-foot">
     <div style="display:flex;align-items:center;gap:8px;padding:7px 9px">
       <div class="sb-av">บ1</div>
@@ -419,6 +421,23 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
       </table></div></div>
     </div>
 
+    <!-- SETTINGS -->
+    <div class="page" id="page-settings">
+      <div class="card" style="max-width:480px">
+        <div class="card-title"><i class="ti ti-settings"></i> ตั้งค่าอัตราค่าบริการ</div>
+        <table class="tbl" style="margin-bottom:16px">
+          <tbody>
+            <tr><td>ค่าเช่า (บาท/เดือน)</td><td class="r"><input type="number" id="cfg-rent" class="fc" style="width:120px;text-align:right" value="3500"></td></tr>
+            <tr><td>ค่าไฟ (บาท/หน่วย)</td><td class="r"><input type="number" id="cfg-elec" class="fc" style="width:120px;text-align:right" value="6.5" step="0.1"></td></tr>
+            <tr><td>ค่าน้ำ (บาท/หน่วย)</td><td class="r"><input type="number" id="cfg-water" class="fc" style="width:120px;text-align:right" value="22"></td></tr>
+            <tr><td>ค่าเช่ารายวัน (บาท/วัน)</td><td class="r"><input type="number" id="cfg-day" class="fc" style="width:120px;text-align:right" value="116"></td></tr>
+          </tbody>
+        </table>
+        <button class="btn btn-green btn-sm" onclick="saveSettings()"><i class="ti ti-device-floppy"></i> บันทึกตั้งค่า</button>
+        <div id="cfg-msg" style="font-size:12px;color:var(--green);margin-top:8px;display:none">✓ บันทึกแล้ว</div>
+      </div>
+    </div>
+
     <!-- METER HISTORY -->
     <div class="page" id="page-meter-history">
       <div class="card">
@@ -526,8 +545,8 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
     <thead><tr><th>รายการ</th><th class="c">หน่วยเก่า–ใหม่</th><th class="c">จำนวน</th><th class="c">ราคา/หน่วย</th><th class="r">เงิน</th></tr></thead>
     <tbody>
       <tr><td>ค่าเช่าห้อง</td><td class="c" style="color:var(--t3)">—</td><td></td><td></td><td class="r" id="pay-rent"></td></tr>
-      <tr><td>ค่าไฟฟ้า</td><td class="c" id="pay-er" style="color:var(--t3)"></td><td class="c" id="pay-eu"></td><td class="c" style="color:var(--t3)">6.50</td><td class="r" id="pay-ec"></td></tr>
-      <tr><td>ค่าน้ำประปา</td><td class="c" id="pay-wr" style="color:var(--t3)"></td><td class="c" id="pay-wu"></td><td class="c" style="color:var(--t3)">22</td><td class="r" id="pay-wc"></td></tr>
+      <tr><td>ค่าไฟฟ้า</td><td class="c" id="pay-er" style="color:var(--t3)"></td><td class="c" id="pay-eu"></td><td class="c" style="color:var(--t3)" id="pay-elec-rate"></td><td class="r" id="pay-ec"></td></tr>
+      <tr><td>ค่าน้ำประปา</td><td class="c" id="pay-wr" style="color:var(--t3)"></td><td class="c" id="pay-wu"></td><td class="c" style="color:var(--t3)" id="pay-water-rate">22</td><td class="r" id="pay-wc"></td></tr>
       <tr><td><input type="text" id="pay-od" class="fc" style="font-size:11px;padding:3px 6px" placeholder="อื่นๆ" oninput="calcPayTotal()"></td><td colspan="3" class="r" style="font-size:10px;color:var(--t3)">จำนวนเงิน</td><td class="r"><input type="number" id="pay-oa" class="fc" style="font-size:11px;padding:3px 6px;text-align:right" value="0" oninput="calcPayTotal()"></td></tr>
       <tr style="background:#f9f9f9;font-weight:600"><td colspan="4" class="r" style="padding-right:11px">รวมทั้งสิ้น</td><td class="r" id="pay-total" style="color:var(--green);font-size:14px"></td></tr>
     </tbody>
@@ -601,7 +620,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
 // ===== CONFIG =====
 const SUPABASE_URL = 'https://uokxrijfhezojnasnzps.supabase.co';
 const SUPABASE_KEY = 'sb_publishable__zegOiikfSqkWUTPv_lsXQ_Q02YPz-K';
-const RENT=3500, ELEC=6.5, WATER=22, DAY_RATE=116;
+let RENT=3500, ELEC=6.5, WATER=22, DAY_RATE=116;
 const MTH=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 const INC_T=['rent-in','elec-in','water-in','washer-in','other-in'];
 const EXP_T=['elec-out','water-out','internet-out','repair-out','tax-out','other-out'];
@@ -1257,15 +1276,76 @@ async function renderOverdue(){
 }
 
 // PAY
+async function loadSettings(){
+  try{
+    const {data}=await _sb.from('settings').select('*').eq('id','main').single();
+    if(data){
+      RENT=parseFloat(data.rent)||3500;
+      ELEC=parseFloat(data.elec)||6.5;
+      WATER=parseFloat(data.water)||22;
+      DAY_RATE=parseFloat(data.day_rate)||116;
+      document.getElementById('cfg-rent')?.setAttribute('value',RENT);
+      document.getElementById('cfg-elec')?.setAttribute('value',ELEC);
+      document.getElementById('cfg-water')?.setAttribute('value',WATER);
+      document.getElementById('cfg-day')?.setAttribute('value',DAY_RATE);
+    }
+  }catch(e){console.log('settings not found, using defaults');}
+}
+async function saveSettings(){
+  const rent=parseFloat(document.getElementById('cfg-rent').value)||3500;
+  const elec=parseFloat(document.getElementById('cfg-elec').value)||6.5;
+  const water=parseFloat(document.getElementById('cfg-water').value)||22;
+  const day_rate=parseFloat(document.getElementById('cfg-day').value)||116;
+  try{
+    await _sb.from('settings').upsert({id:'main',rent,elec,water,day_rate},{onConflict:'id'});
+    RENT=rent;ELEC=elec;WATER=water;DAY_RATE=day_rate;
+    const msg=document.getElementById('cfg-msg');
+    msg.style.display='block';setTimeout(()=>msg.style.display='none',2000);
+  }catch(e){showToast('บันทึกไม่สำเร็จ','err');}
+}
+function calcDayRent(checkin, checkout, month){
+  // checkin/checkout = date string YYYY-MM-DD, month = 'YYYY_MM'
+  if(!checkin) return RENT;
+  const [yr,mo]=month.split('_').map(Number);
+  const ci=new Date(checkin);
+  const lastDay=new Date(yr,mo,0).getDate();
+  const isFirstMonth=ci.getFullYear()===yr&&ci.getMonth()+1===mo;
+  const isLastMonth=checkout&&(()=>{const co=new Date(checkout);return co.getFullYear()===yr&&co.getMonth()+1===mo&&co.getDate()<lastDay;})();
+  if(isFirstMonth){
+    const days=lastDay-ci.getDate()+1;
+    return Math.round(days*DAY_RATE);
+  }
+  if(isLastMonth){
+    const co=new Date(checkout);
+    const days=co.getDate();
+    return Math.round(days*DAY_RATE);
+  }
+  return RENT;
+}
 function openPayModal(room){
   const t=tenants.find(x=>String(x.room)===String(room));if(!t)return;
   const m=meters.find(x=>String(x.room)===String(room))||{};
   const eu=Math.max(0,parseFloat(m.elecCurr||0)-parseFloat(m.elecPrev||0));
   const wu=Math.max(0,parseFloat(m.waterCurr||0)-parseFloat(m.waterPrev||0));
   const ec=Math.round(eu*ELEC*100)/100,wc=Math.round(wu*WATER*100)/100;
-  payCurrentRoom=room;payMethod=null;payData={t,m,eu,wu,ec,wc};
+  const ovSel=document.getElementById('ov-sel')?.value||'';
+  const rentAmt=calcDayRent(t.checkin,t.checkout,ovSel);
+  const isDayRate=rentAmt!==RENT;
+  payCurrentRoom=room;payMethod=null;payData={t,m,eu,wu,ec,wc,rentAmt};
   document.getElementById('pay-sub').textContent='ห้อง '+room+' · '+t.name;
-  document.getElementById('pay-rent').textContent='฿'+fmt2(RENT);
+  const er=document.getElementById('pay-elec-rate');if(er)er.textContent=ELEC;
+  const wr=document.getElementById('pay-water-rate');if(wr)wr.textContent=WATER;
+  // แสดง banner รายวัน
+  let banner=document.getElementById('pay-day-banner');
+  if(!banner){banner=document.createElement('div');banner.id='pay-day-banner';document.getElementById('pay-sub').after(banner);}
+  if(isDayRate){
+    const[yr,mo]=ovSel.split('_').map(Number);
+    const ci=new Date(t.checkin);const lastDay=new Date(yr,mo,0).getDate();
+    const isFirst=ci.getFullYear()===yr&&ci.getMonth()+1===mo;
+    const days=isFirst?lastDay-ci.getDate()+1:new Date(t.checkout).getDate();
+    banner.innerHTML=`<div style="background:#E1F5EE;border:0.5px solid #9FE1CB;border-radius:7px;padding:7px 10px;margin-bottom:10px;font-size:12px;color:#085041">คิดรายวัน ${days} วัน × ฿${DAY_RATE} = ฿${fmtN(rentAmt)}</div>`;
+  }else{banner.innerHTML='';}
+  document.getElementById('pay-rent').textContent='฿'+fmt2(rentAmt);
   document.getElementById('pay-er').textContent=(m.elecPrev||0)+' – '+(m.elecCurr||0);
   document.getElementById('pay-eu').textContent=eu.toFixed(1);
   document.getElementById('pay-ec').textContent='฿'+fmt2(ec);
@@ -1277,7 +1357,7 @@ function openPayModal(room){
   document.getElementById('pay-confirm').style.opacity='0.35';
   calcPayTotal();openMo('mo-pay');
 }
-function calcPayTotal(){if(!payData.t)return;const other=parseFloat(document.getElementById('pay-oa').value)||0;payCurrentTotal=RENT+(payData.ec||0)+(payData.wc||0)+other;document.getElementById('pay-total').textContent='฿'+fmt2(payCurrentTotal);document.getElementById('pay-amount').value=payCurrentTotal.toFixed(2);checkPayDiff();}
+function calcPayTotal(){if(!payData.t)return;const other=parseFloat(document.getElementById('pay-oa').value)||0;const rentAmt=payData.rentAmt||RENT;payCurrentTotal=rentAmt+(payData.ec||0)+(payData.wc||0)+other;document.getElementById('pay-total').textContent='฿'+fmt2(payCurrentTotal);document.getElementById('pay-amount').value=payCurrentTotal.toFixed(2);checkPayDiff();}
 function checkPayDiff(){const paid=parseFloat(document.getElementById('pay-amount').value)||0;const diff=paid-payCurrentTotal;const el=document.getElementById('pay-diff');if(Math.abs(diff)<0.01){el.textContent='✓ ครบจำนวน';el.style.color='var(--green)';}else if(diff<0){el.textContent='ขาด ฿'+Math.abs(diff).toFixed(2);el.style.color='var(--red)';}else if(paid>0){el.textContent='เกิน ฿'+diff.toFixed(2);el.style.color='var(--amber)';}else{el.textContent='';}if(payMethod&&paid>0)document.getElementById('pay-confirm').style.opacity='1';}
 function selPayMethod(m){payMethod=m;const sel='background:var(--gl);border:1.5px solid var(--green);color:var(--gd);font-weight:500';const def='background:#f8f9fa';document.getElementById('pb-cash').style.cssText=`flex:1;padding:9px;border-radius:7px;border:1px solid var(--border);font-size:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;${m==='cash'?sel:def}`;document.getElementById('pb-bank').style.cssText=`flex:1;padding:9px;border-radius:7px;border:1px solid var(--border);font-size:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;${m==='bank'?sel:def}`;checkPayDiff();}
 async function confirmPay(){
@@ -1285,12 +1365,24 @@ async function confirmPay(){
   if(!payMethod||!payCurrentRoom||paid<=0)return;
   const t=payData.t,otherDesc=document.getElementById('pay-od').value,otherAmt=parseFloat(document.getElementById('pay-oa').value)||0;
   const month=document.getElementById('ov-sel')?.value||'';
-  await apiPost({action:'saveTransaction',date:new Date().toISOString().split('T')[0],type:'rent-in',desc:'ค่าเช่า+ไฟ+น้ำ ห้อง '+payCurrentRoom+(otherDesc?' + '+otherDesc:''),room:payCurrentRoom,amount:paid,channel:payMethod==='cash'?'cash':'bank',note:'',month},'กำลังบันทึกการชำระ...');
-  await apiPost({action:'saveTenant',...t,status:'active'},'กำลังอัปเดตสถานะ...');
-  const d={room:payCurrentRoom,name:t.name,paid,method:payMethod,eu:payData.eu,wu:payData.wu,ec:payData.ec,wc:payData.wc,otherDesc,otherAmt,date:new Date().toLocaleDateString('th-TH')};
-  receiptStore[payCurrentRoom]=d;
-  closeMo('mo-pay');showReceiptModal(d);
-  await loadTenants();renderOverdue();
+  const ch=payMethod==='cash'?'cash':'bank';
+  const today=new Date().toISOString().split('T')[0];
+  const rentAmt=payData.rentAmt||RENT;
+  showLoad('กำลังบันทึกการชำระ...');
+  try{
+    await _sb.from('transactions').insert([
+      {date:today,type:'rent-in',desc:'ค่าเช่าห้อง '+payCurrentRoom,room:payCurrentRoom,amount:rentAmt,channel:ch,note:'',month},
+      {date:today,type:'elec-in',desc:'ค่าไฟห้อง '+payCurrentRoom,room:payCurrentRoom,amount:payData.ec,channel:ch,note:'',month},
+      {date:today,type:'water-in',desc:'ค่าน้ำห้อง '+payCurrentRoom,room:payCurrentRoom,amount:payData.wc,channel:ch,note:'',month},
+      ...(otherAmt>0?[{date:today,type:'other-in',desc:otherDesc||'อื่นๆ ห้อง '+payCurrentRoom,room:payCurrentRoom,amount:otherAmt,channel:ch,note:'',month}]:[])
+    ]);
+    await apiPost({action:'saveTenant',...t,status:'active'});
+    const d={room:payCurrentRoom,name:t.name,paid,method:payMethod,eu:payData.eu,wu:payData.wu,ec:payData.ec,wc:payData.wc,rentAmt,otherDesc,otherAmt,date:new Date().toLocaleDateString('th-TH')};
+    receiptStore[payCurrentRoom]=d;
+    closeMo('mo-pay');showReceiptModal(d);
+    await loadTenants();renderOverdue();
+  }catch(e){showToast('บันทึกไม่สำเร็จ','err');}
+  finally{hideLoad();}
 }
 function showReceiptModal(d){
   const mL=d.method==='cash'?'เงินสด':'โอนเงิน';
@@ -1480,7 +1572,7 @@ async function saveMaint(){
 // HISTORY
 async function loadHist(){
   const raw=await api({action:'getHistory'},'กำลังโหลด...')||[];
-  histData=raw.sort((a,b)=>(parseInt(a.room)||0)-(parseInt(b.room)||0)||(a.checkin||'').localeCompare(b.checkin||''));
+  histData=raw.filter(h=>h.status!=='active').sort((a,b)=>(parseInt(a.room)||0)-(parseInt(b.room)||0)||(a.checkin||'').localeCompare(b.checkin||''));
   renderHistTable(histData);
 }
 let histData=[];
@@ -1679,6 +1771,7 @@ function init(){
   document.getElementById('inv-date').value=String(d).padStart(2,'0')+'/'+String(mo).padStart(2,'0')+'/'+yr;
   document.getElementById('inv-mdate').value='31/'+String(mo-1||12).padStart(2,'0')+'/'+yr;
   populateSels();
+  await loadSettings();
   loadDashboard();
   loadTenants();
 }

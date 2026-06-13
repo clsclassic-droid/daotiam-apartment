@@ -1534,10 +1534,14 @@ async function delRepair(id){
   }catch(e){showToast('ลบไม่สำเร็จ','err');}
   finally{hideLoad();}
 }
+// แปลง dd/mm/yyyy → yyyy-mm-dd สำหรับ input[type=date]
+function toInputDate(s){if(!s)return'';const p=s.split('/');if(p.length<3)return s;const y=parseInt(p[2])<100?2000+parseInt(p[2]):parseInt(p[2]);return`${y}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`;}
+// แปลง yyyy-mm-dd → dd/mm/yyyy สำหรับเก็บใน Supabase
+function fromInputDate(s){if(!s)return'';const p=s.split('-');if(p.length<3)return s;return`${p[2]}/${p[1]}/${p[0]}`;}
 function editRepair(id){
   const r=maintData.find(x=>String(x.id)===String(id));if(!r)return;
   let roomArr=[];try{roomArr=typeof r.rooms==='string'?JSON.parse(r.rooms):r.rooms||[];}catch(e){}
-  document.getElementById('mnt-date').value=r.date||'';
+  document.getElementById('mnt-date').value=toInputDate(r.date);
   document.getElementById('mnt-type').value=r.type||'ล้างแอร์';
   document.getElementById('mnt-cost').value=r.cost||0;
   document.getElementById('mnt-note').value=r.note||'';
@@ -1548,7 +1552,8 @@ function editRepair(id){
   openMo('mo-maint');
 }
 async function saveMaint(){
-  const d={date:document.getElementById('mnt-date').value,type:document.getElementById('mnt-type').value,cost:parseFloat(document.getElementById('mnt-cost').value)||0,note:document.getElementById('mnt-note').value,rooms:[...mntSelRooms]};
+  const rawDate=document.getElementById('mnt-date').value;
+  const d={date:fromInputDate(rawDate),type:document.getElementById('mnt-type').value,cost:parseFloat(document.getElementById('mnt-cost').value)||0,note:document.getElementById('mnt-note').value,rooms:[...mntSelRooms]};
   if(!d.date){showToast('กรุณาระบุวันที่','err');return;}
   const editId=document.getElementById('mo-maint').dataset.editId;
   if(editId){

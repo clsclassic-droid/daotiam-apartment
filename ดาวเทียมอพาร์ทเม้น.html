@@ -1279,18 +1279,18 @@ async function renderOverdue(){
 // PAY
 async function loadSettings(){
   try{
-    const {data}=await _sb.from('settings').select('*').eq('id','main').single();
+    const {data,error}=await _sb.from('settings').select('*').eq('id','main').maybeSingle();
     if(data){
       RENT=parseFloat(data.rent)||3500;
       ELEC=parseFloat(data.elec)||6.5;
       WATER=parseFloat(data.water)||22;
       DAY_RATE=parseFloat(data.day_rate)||116;
-      document.getElementById('cfg-rent')?.setAttribute('value',RENT);
-      document.getElementById('cfg-elec')?.setAttribute('value',ELEC);
-      document.getElementById('cfg-water')?.setAttribute('value',WATER);
-      document.getElementById('cfg-day')?.setAttribute('value',DAY_RATE);
     }
   }catch(e){console.log('settings not found, using defaults');}
+  const r=document.getElementById('cfg-rent');if(r)r.value=RENT;
+  const el=document.getElementById('cfg-elec');if(el)el.value=ELEC;
+  const w=document.getElementById('cfg-water');if(w)w.value=WATER;
+  const d=document.getElementById('cfg-day');if(d)d.value=DAY_RATE;
 }
 async function saveSettings(){
   const rent=parseFloat(document.getElementById('cfg-rent').value)||3500;
@@ -1765,7 +1765,7 @@ async function renderMhRoom(){
 }
 
 // INIT
-function init(){
+async function init(){
   const now=new Date();
   document.getElementById('tb-date').textContent=now.getDate()+' '+MTH[now.getMonth()]+' '+(now.getFullYear()+543);
   const d=now.getDate(),mo=now.getMonth()+1,yr=String(now.getFullYear()).slice(-2);

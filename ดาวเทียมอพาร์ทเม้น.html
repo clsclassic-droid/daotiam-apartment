@@ -399,7 +399,14 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
 
     <!-- HISTORY -->
     <div class="page" id="page-history">
-      <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input type="number" id="hist-filter-room" placeholder="ค้นหาห้อง..." min="1" max="21" style="width:110px;padding:6px 10px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit" oninput="filterHistory()">
+          <input type="date" id="hist-filter-from" style="padding:6px 10px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit" onchange="filterHistory()">
+          <span style="font-size:12px;color:var(--t3)">ถึง</span>
+          <input type="date" id="hist-filter-to" style="padding:6px 10px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit" onchange="filterHistory()">
+          <button class="btn btn-sm" style="color:var(--t3)" onclick="clearHistFilter()">ล้าง</button>
+        </div>
         <button class="btn btn-green btn-sm" onclick="openHistModal()"><i class="ti ti-plus"></i> เพิ่มประวัติ</button>
       </div>
       <div class="card"><div class="tbl-wrap"><table class="tbl">
@@ -1242,7 +1249,7 @@ async function renderOverdue(){
   const m2=await api({action:'getMeters',month},'กำลังโหลด...')||[];
   meters=m2;
   const rows=tenants.map(t=>{const m=meters.find(x=>String(x.room)===String(t.room))||{};const eu=Math.max(0,parseFloat(m.elecCurr||0)-parseFloat(m.elecPrev||0));const wu=Math.max(0,parseFloat(m.waterCurr||0)-parseFloat(m.waterPrev||0));const total=RENT+Math.round(eu*ELEC)+Math.round(wu*WATER);return{...t,total,eu,wu,m};});
-  document.getElementById('ov-content').innerHTML=`<table class="tbl"><thead><tr><th>ห้อง</th><th>ชื่อ</th><th>เบอร์</th><th class="r">ยอด</th><th></th></tr></thead><tbody>${rows.map(t=>`<tr><td style="font-weight:600">ห้อง ${t.room}</td><td style="font-weight:500">${t.name}</td><td style="color:var(--t2)">${t.phone||'—'}</td><td class="r" style="font-weight:600;color:${t.status==='overdue'?'var(--red)':'var(--text)'}">฿${fmtN(t.total)}</td><td>${t.status==='overdue'?`<button class="od-pay-btn pb-ov" onclick="openPayModal('${t.room}')"><i class="ti ti-receipt" style="font-size:11px"></i> ค้างชำระ</button>`:`<button class="od-pay-btn pb-pd" onclick="viewReceipt('${t.room}')"><i class="ti ti-check" style="font-size:11px"></i> ชำระแล้ว</button>`}</td></tr>`).join('')}</tbody></table>`;
+  document.getElementById('ov-content').innerHTML=`<table class="tbl"><thead><tr><th style="width:40px">ห้อง</th><th>ชื่อ</th><th></th></tr></thead><tbody>${rows.map(t=>`<tr><td style="font-weight:600">${t.room}</td><td style="font-weight:500">${t.name}</td><td>${t.status==='overdue'?`<button class="od-pay-btn pb-ov" onclick="openPayModal('${t.room}')"><i class="ti ti-receipt" style="font-size:11px"></i> ค้างชำระ</button>`:`<button class="od-pay-btn pb-pd" onclick="viewReceipt('${t.room}')"><i class="ti ti-check" style="font-size:11px"></i> ชำระแล้ว</button>`}</td></tr>`).join('')}</tbody></table>`;
 }
 
 // PAY
@@ -1468,8 +1475,29 @@ async function saveMaint(){
 
 // HISTORY
 async function loadHist(){
-  const data=await api({action:'getHistory'},'กำลังโหลด...')||[];
-  document.getElementById('hist-body').innerHTML=data.map(h=>`<tr><td style="font-weight:600">ห้อง ${h.room}</td><td style="font-weight:500">${h.name}<div style="font-size:10px;color:var(--t3)">${h.phone||''}</div></td><td style="font-size:11px;color:var(--t3)">${fmtDate(h.checkin)}</td><td style="font-size:11px;color:var(--t3)">${fmtDate(h.checkout)}</td><td>${h.months||'—'} เดือน</td><td style="font-size:11px;color:var(--t3)">${h.reason||'—'}</td><td>฿${fmtN(h.depositReturn||0)}</td><td><span class="bdg ${h.status==='blacklist'?'br':'bg'}">${h.status==='blacklist'?'แบล็คลิสต์':'ออกปกติ'}</span></td></tr>`).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--t3);padding:20px">ยังไม่มีประวัติ</td></tr>';
+  const raw=await api({action:'getHistory'},'กำลังโหลด...')||[];
+  histData=raw.sort((a,b)=>(parseInt(a.room)||0)-(parseInt(b.room)||0)||(a.checkin||'').localeCompare(b.checkin||''));
+  renderHistTable(histData);
+}
+let histData=[];
+function renderHistTable(data){
+  document.getElementById('hist-body').innerHTML=data.map(h=>`<tr><td style="font-weight:600">${parseInt(h.room)||h.room}</td><td style="font-weight:500">${h.name}<div style="font-size:10px;color:var(--t3)">${h.phone||''}</div></td><td style="font-size:11px;color:var(--t3)">${fmtDate(h.checkin)}</td><td style="font-size:11px;color:var(--t3)">${fmtDate(h.checkout)}</td><td>${h.months||'—'} เดือน</td><td style="font-size:11px;color:var(--t3)">${h.reason||'—'}</td><td>฿${fmtN(h.depositReturn||0)}</td><td><span class="bdg ${h.status==='blacklist'?'br':'bg'}">${h.status==='blacklist'?'แบล็คลิสต์':'ออกปกติ'}</span></td></tr>`).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--t3);padding:20px">ไม่พบข้อมูล</td></tr>';
+}
+function filterHistory(){
+  const room=document.getElementById('hist-filter-room')?.value?.trim();
+  const from=document.getElementById('hist-filter-from')?.value;
+  const to=document.getElementById('hist-filter-to')?.value;
+  let filtered=histData;
+  if(room) filtered=filtered.filter(h=>String(parseInt(h.room)||h.room)===String(parseInt(room)));
+  if(from) filtered=filtered.filter(h=>!h.checkin||(h.checkin||'')>=(from));
+  if(to) filtered=filtered.filter(h=>!h.checkin||(h.checkin||'')<=(to));
+  renderHistTable(filtered);
+}
+function clearHistFilter(){
+  document.getElementById('hist-filter-room').value='';
+  document.getElementById('hist-filter-from').value='';
+  document.getElementById('hist-filter-to').value='';
+  renderHistTable(histData);
 }
 function openHistModal(){openMo('mo-hist');}
 async function saveHist(){

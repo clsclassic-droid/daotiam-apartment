@@ -1459,6 +1459,11 @@ async function confirmCo(){
 // MAINTENANCE
 async function loadMaint(){
   maintData=await api({action:'getRepairs'},'กำลังโหลด...')||[];
+  // sort by date ascending (dd/mm/yyyy)
+  maintData.sort((a,b)=>{
+    const pd=s=>{const p=s.split('/');return new Date(parseInt(p[2])<100?2000+parseInt(p[2]):parseInt(p[2]),parseInt(p[1])-1,parseInt(p[0]));};
+    return pd(a.date)-pd(b.date);
+  });
   renderAircon();
   if(!maintData.length){document.getElementById('maint-grid').innerHTML='<div style="text-align:center;padding:32px;color:var(--t3);font-size:12px">ยังไม่มีรายการ</div>';return;}
   const rooms=Array.from({length:21},(_,i)=>i+1);
@@ -1466,52 +1471,44 @@ async function loadMaint(){
   const rows2=maintData.map(d=>{
     let roomArr=[];
     try{roomArr=typeof d.rooms==='string'?JSON.parse(d.rooms):d.rooms||[];}catch(e){}
-    return`<tr><td style="font-size:11px;padding:4px 7px">${d.date}</td><td style="font-size:11px;padding:4px 7px">${d.type}</td>${rooms.map(r=>`<td><div class="mchk ${roomArr.includes(r)||roomArr.includes(String(r))?'y':''}">${roomArr.includes(r)||roomArr.includes(String(r))?'<i class="ti ti-check" style="font-size:9px"></i>':''}</div></td>`).join('')}<td style="font-size:11px;text-align:right;padding:4px 7px">${d.cost?'฿'+fmtN(d.cost):''}</td><td style="font-size:10px;padding:4px 7px;color:var(--t3)">${d.note||''}</td></tr>`;
+    return`<tr><td style="font-size:11px;padding:4px 7px">${d.date}</td><td style="font-size:11px;padding:4px 7px">${d.type}</td>${rooms.map(r=>`<td><div class="mchk ${roomArr.includes(r)||roomArr.includes(String(r))?'y':''}">${roomArr.includes(r)||roomArr.includes(String(r))?'<i class="ti ti-check" style="font-size:9px"></i>':''}</div></td>`).join('')}<td style="font-size:11px;text-align:right;padding:4px 7px">${d.cost?'฿'+fmtN(d.cost):''}</td><td style="font-size:10px;padding:4px 7px;color:var(--t3)">${d.note||''}</td><td style="padding:4px 7px;white-space:nowrap"><button class="btn btn-sm btn-icon" style="color:var(--blue)" onclick="editRepair('${d.id}')"><i class="ti ti-edit" style="font-size:11px"></i></button><button class="btn btn-sm btn-icon" style="color:var(--t3)" onclick="delRepair('${d.id}')"><i class="ti ti-trash" style="font-size:11px"></i></button></td></tr>`;
   }).join('');
   document.getElementById('maint-grid').innerHTML=`<table class="mt"><thead>${hd}</thead><tbody>${rows2}</tbody></table>`;
 }
 function renderAircon(){
   const el=document.getElementById('aircon-grid');if(!el)return;
-  const AIRCON=[
-    {date:'01/10/2022',rooms:[7,8,9,13,15,16,18,20,21],cost:0,note:''},
-    {date:'12/10/2022',rooms:[2,3,9,10],cost:0,note:''},
-    {date:'15/10/2022',rooms:[4,6,11,13,16,18],cost:0,note:''},
-    {date:'08/05/2023',rooms:[1,13],cost:0,note:''},
-    {date:'14/09/2023',rooms:[4],cost:500,note:''},
-    {date:'14/03/2024',rooms:[13],cost:500,note:''},
-    {date:'19/03/2024',rooms:[17],cost:500,note:''},
-    {date:'28/03/2024',rooms:[1,4,5,7,11,13,15],cost:2800,note:''},
-    {date:'10/04/2024',rooms:[3,7,9,11,14,17,18,21],cost:2800,note:''},
-    {date:'22/06/2024',rooms:[6],cost:1300,note:''},
-    {date:'12/08/2024',rooms:[2,9,20],cost:1000,note:'R20 แก้ไฟตก'},
-    {date:'23/08/2024',rooms:[7],cost:300,note:'ซ่อมฉนวนห้มท่อแอร์'},
-    {date:'09/10/2024',rooms:[17],cost:300,note:'ฝากครอบคอมเพรสเซอร์หลวม'},
-    {date:'12/11/2024',rooms:[3],cost:500,note:'ล้างแอร์'},
-    {date:'20/11/2024',rooms:[15,17],cost:1000,note:'ล้างแอร์'},
-    {date:'03/03/2025',rooms:[18],cost:500,note:'ล้างแอร์'},
-    {date:'14/06/2025',rooms:[1,2,4,6,8,9,10,11,12,13,15,17,19,21],cost:5600,note:'ล้างแอร์'},
-    {date:'08/07/2025',rooms:[13,19],cost:300,note:'แอร์น้ำหยด มีรังมด'},
-    {date:'23/09/2025',rooms:[17],cost:500,note:'ล้างแอร์'},
-    {date:'25/09/2025',rooms:[5],cost:0,note:'เปาท่อแอร์(น้ำแอร์หยด)'},
-    {date:'30/09/2025',rooms:[15],cost:500,note:'ล้างแอร์'},
-    {date:'08/10/2025',rooms:[17],cost:0,note:'ฟิลเตอร์แอร์ตัน'},
-    {date:'29/10/2025',rooms:[17],cost:500,note:'ล้างแอร์'},
-    {date:'19/01/2026',rooms:[2],cost:500,note:'ล้างแอร์'},
-    {date:'06/04/2026',rooms:[11,15],cost:300,note:'ล้างฟิวเตอร์ ปรับแอร์'},
-    {date:'19/04/2026',rooms:[13,14],cost:800,note:'ล้างแอร์'},
-    {date:'29/04/2026',rooms:[15],cost:400,note:'ล้างแอร์'},
-    {date:'18/05/2026',rooms:[3,6,19],cost:2000,note:'ล้างแอร์ 3 เครื่อง'},
-  ];
+  if(!maintData.length){el.innerHTML='<div style="text-align:center;padding:32px;color:var(--t3);font-size:12px">ยังไม่มีรายการ</div>';return;}
   const groups={};
-  AIRCON.forEach(r=>{const y=r.date.split('/')[2];if(!groups[y])groups[y]=[];groups[y].push(r);});
-  let html=`<table class="mt" style="font-size:11px"><thead><tr><th style="text-align:left;padding:5px 7px;min-width:80px;white-space:nowrap">วันที่</th>${Array.from({length:21},(_,i)=>`<th style="min-width:22px;padding:5px 2px">${i+1}</th>`).join('')}<th style="text-align:right;padding:5px 7px;min-width:65px">ค่าใช้จ่าย</th><th style="text-align:left;padding:5px 7px;min-width:120px">หมายเหตุ</th></tr></thead><tbody>`;
+  maintData.forEach(r=>{
+    const parts=r.date.split('/');
+    const y=parts.length>=3?parts[2]:'';
+    if(!y)return;
+    if(!groups[y])groups[y]=[];
+    groups[y].push(r);
+  });
+  let html=`<table class="mt" style="font-size:11px"><thead><tr><th style="text-align:left;padding:5px 7px;min-width:80px;white-space:nowrap">วันที่</th><th style="text-align:left;padding:5px 7px;min-width:70px">ประเภท</th>${Array.from({length:21},(_,i)=>`<th style="min-width:22px;padding:5px 2px">${i+1}</th>`).join('')}<th style="text-align:right;padding:5px 7px;min-width:65px">ค่าใช้จ่าย</th><th style="text-align:left;padding:5px 7px;min-width:120px">หมายเหตุ</th><th style="padding:5px 7px;min-width:60px"></th></tr></thead><tbody>`;
   Object.keys(groups).sort((a,b)=>b-a).forEach(yr=>{
     const thaiYr=parseInt(yr)+543;
     const cnt={};for(let i=1;i<=21;i++)cnt[i]=0;
-    groups[yr].forEach(r=>r.rooms.forEach(rm=>cnt[rm]++));
-    html+=`<tr onclick="toggleAcYear('${yr}')" style="cursor:pointer;user-select:none"><td style="background:var(--green);color:#fff;font-weight:600;padding:6px 7px;text-align:left"><span id="ac-arrow-${yr}" style="margin-right:5px;display:inline-block;transition:transform .2s">▼</span>ปี ${thaiYr}</td>${Array.from({length:21},(_,i)=>`<td style="background:var(--green);color:#fff;font-weight:500;padding:5px 2px;text-align:center">${cnt[i+1]}</td>`).join('')}<td style="background:var(--green)"></td><td style="background:var(--green)"></td></tr>`;
+    groups[yr].forEach(r=>{
+      let roomArr=[];try{roomArr=typeof r.rooms==='string'?JSON.parse(r.rooms):r.rooms||[];}catch(e){}
+      roomArr.forEach(rm=>cnt[parseInt(rm)]++);
+    });
+    html+=`<tr onclick="toggleAcYear('${yr}')" style="cursor:pointer;user-select:none"><td style="background:var(--green);color:#fff;font-weight:600;padding:6px 7px;text-align:left"><span id="ac-arrow-${yr}" style="margin-right:5px;display:inline-block;transition:transform .2s">▼</span>ปี ${thaiYr}</td><td style="background:var(--green)"></td>${Array.from({length:21},(_,i)=>`<td style="background:var(--green);color:#fff;font-weight:500;padding:5px 2px;text-align:center">${cnt[i+1]||''}</td>`).join('')}<td style="background:var(--green)"></td><td style="background:var(--green)"></td><td style="background:var(--green)"></td></tr>`;
     groups[yr].forEach((r,ri)=>{
-      html+=`<tr class="ac-row-${yr}" style="${ri%2===0?'background:#fafafa':''}"><td style="padding:4px 7px;color:var(--t2);white-space:nowrap">${r.date}</td>${Array.from({length:21},(_,i)=>{const checked=r.rooms.includes(i+1);return`<td style="padding:3px 2px;text-align:center"><div style="width:14px;height:14px;border-radius:3px;margin:auto;${checked?'background:var(--green);display:flex;align-items:center;justify-content:center':'border:1.5px solid #ddd'}">${checked?'<i class="ti ti-check" style="font-size:9px;color:#fff"></i>':''}</div></td>`;}).join('')}<td style="padding:4px 7px;text-align:right;font-weight:500">${r.cost>0?'฿'+fmtN(r.cost):'—'}</td><td style="padding:4px 7px;color:var(--t3);font-size:10px">${r.note||'—'}</td><td style="padding:4px 7px;white-space:nowrap"><button class="btn btn-sm btn-icon" style="color:var(--blue)" onclick="editRepair('${r.id}')"><i class="ti ti-edit" style="font-size:11px"></i></button><button class="btn btn-sm btn-icon" style="color:var(--t3)" onclick="delRepair('${r.id}')"><i class="ti ti-trash" style="font-size:11px"></i></button></td></tr>`;
+      let roomArr=[];try{roomArr=typeof r.rooms==='string'?JSON.parse(r.rooms):r.rooms||[];}catch(e){}
+      const roomNums=roomArr.map(x=>parseInt(x));
+      html+=`<tr class="ac-row-${yr}" style="${ri%2===0?'background:#fafafa':''}">
+        <td style="padding:4px 7px;color:var(--t2);white-space:nowrap">${r.date}</td>
+        <td style="padding:4px 7px;font-size:10px;color:var(--t3)">${r.type||'—'}</td>
+        ${Array.from({length:21},(_,i)=>{const checked=roomNums.includes(i+1);return`<td style="padding:3px 2px;text-align:center"><div style="width:14px;height:14px;border-radius:3px;margin:auto;${checked?'background:var(--green);display:flex;align-items:center;justify-content:center':'border:1.5px solid #ddd'}">${checked?'<i class="ti ti-check" style="font-size:9px;color:#fff"></i>':''}</div></td>`;}).join('')}
+        <td style="padding:4px 7px;text-align:right;font-weight:500">${r.cost>0?'฿'+fmtN(r.cost):'—'}</td>
+        <td style="padding:4px 7px;color:var(--t3);font-size:10px">${r.note||'—'}</td>
+        <td style="padding:4px 7px;white-space:nowrap">
+          <button class="btn btn-sm btn-icon" style="color:var(--blue)" onclick="editRepair('${r.id}')"><i class="ti ti-edit" style="font-size:11px"></i></button>
+          <button class="btn btn-sm btn-icon" style="color:var(--t3)" onclick="delRepair('${r.id}')"><i class="ti ti-trash" style="font-size:11px"></i></button>
+        </td>
+      </tr>`;
     });
   });
   html+='</tbody></table>';

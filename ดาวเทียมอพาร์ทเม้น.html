@@ -399,15 +399,19 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
 
     <!-- HISTORY -->
     <div class="page" id="page-history">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <select id="hist-filter-room" style="padding:6px 10px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;background:#fff;cursor:pointer" onchange="filterHistory()"><option value="">ทุกห้อง</option><option value="1">ห้อง 1</option><option value="2">ห้อง 2</option><option value="3">ห้อง 3</option><option value="4">ห้อง 4</option><option value="5">ห้อง 5</option><option value="6">ห้อง 6</option><option value="7">ห้อง 7</option><option value="8">ห้อง 8</option><option value="9">ห้อง 9</option><option value="10">ห้อง 10</option><option value="11">ห้อง 11</option><option value="12">ห้อง 12</option><option value="13">ห้อง 13</option><option value="14">ห้อง 14</option><option value="15">ห้อง 15</option><option value="16">ห้อง 16</option><option value="17">ห้อง 17</option><option value="18">ห้อง 18</option><option value="19">ห้อง 19</option><option value="20">ห้อง 20</option><option value="21">ห้อง 21</option></select>
-          <input type="date" id="hist-filter-from" style="padding:6px 10px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit" onchange="filterHistory()">
-          <span style="font-size:12px;color:var(--t3)">ถึง</span>
-          <input type="date" id="hist-filter-to" style="padding:6px 10px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit" onchange="filterHistory()">
-          <button class="btn btn-sm" style="color:var(--t3)" onclick="clearHistFilter()">ล้าง</button>
+      <div style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <input type="date" id="hist-filter-from" style="padding:6px 10px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit" onchange="filterHistory()">
+            <span style="font-size:12px;color:var(--t3)">ถึง</span>
+            <input type="date" id="hist-filter-to" style="padding:6px 10px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit" onchange="filterHistory()">
+            <button class="btn btn-sm" style="color:var(--t3)" onclick="clearHistFilter()">ล้าง</button>
+          </div>
+          <button class="btn btn-green btn-sm" onclick="openHistModal()"><i class="ti ti-plus"></i> เพิ่มประวัติ</button>
         </div>
-        <button class="btn btn-green btn-sm" onclick="openHistModal()"><i class="ti ti-plus"></i> เพิ่มประวัติ</button>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          <button id="hist-room-btn-0" onclick="setHistRoom(0)" style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;background:var(--green);color:#fff;transition:all .15s">ทั้งหมด</button><button id="hist-room-btn-1" onclick="setHistRoom(1)" style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:var(--text);transition:all .15s">1</button><button id="hist-room-btn-2" onclick="setHistRoom(2)" style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:var(--text);transition:all .15s">2</button><button id="hist-room-btn-3" onclick="setHistRoom(3)" style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:var(--text);transition:all .15s">3</button><button id="hist-room-btn-4" onclick="setHistRoom(4)" style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:var(--text);transition:all .15s">4</button><button id="hist-room-btn-5" onclick="setHistRoom(5)" style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:var(--text);transition:all .15s">5</button><button id="hist-room-btn-6" onclick="setHistRoom(6)" style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:var(--text);transition:all .15s">6</button><button id="hist-room-btn-7" onclick="setHistRoom(7)" style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:var(--text);transition:all .15s">7</button><button id="hist-room-btn-8" onclick="setHistRoom(8)" style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:var(--text);transition:all .15s">8</button><button id="hist-room-btn-9" onclick="setHistRoom(9)" style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:var(--text);transition:all .15s">9</button><button id="hist-room-btn-10" onclick="setHistRoom(10)" style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:var(--text);transition:all .15s">10</button><button id="hist-room-btn-11" onclick="setHistRoom(11)" style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:var(--text);transition:all .15s">11</button><button id="hist-room-btn-12" onclick="setHistRoom(12)" style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:var(--text);transition:all .15s">12</button><button id="hist-room-btn-13" onclick="setHistRoom(13)" style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:var(--text);transition:all .15s">13</button><button id="hist-room-btn-14" onclick="setHistRoom(14)" style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:var(--text);transition:all .15s">14</button><button id="hist-room-btn-15" onclick="setHistRoom(15)" style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:var(--text);transition:all .15s">15</button><button id="hist-room-btn-16" onclick="setHistRoom(16)" style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:var(--text);transition:all .15s">16</button><button id="hist-room-btn-17" onclick="setHistRoom(17)" style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:var(--text);transition:all .15s">17</button><button id="hist-room-btn-18" onclick="setHistRoom(18)" style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:var(--text);transition:all .15s">18</button><button id="hist-room-btn-19" onclick="setHistRoom(19)" style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:var(--text);transition:all .15s">19</button><button id="hist-room-btn-20" onclick="setHistRoom(20)" style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:var(--text);transition:all .15s">20</button><button id="hist-room-btn-21" onclick="setHistRoom(21)" style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:var(--text);transition:all .15s">21</button>
+        </div>
       </div>
       <div class="card"><div class="tbl-wrap"><table class="tbl">
         <thead><tr><th>ห้อง</th><th>ชื่อ</th><th>วันเข้า</th><th>วันออก</th><th>พักนาน</th><th>เหตุผล</th><th>คืนประกัน</th><th>สถานะ</th></tr></thead>
@@ -1480,21 +1484,33 @@ async function loadHist(){
   renderHistTable(histData);
 }
 let histData=[];
+let histSelRoom=0;
 function renderHistTable(data){
   document.getElementById('hist-body').innerHTML=data.map(h=>`<tr><td style="font-weight:600">${parseInt(h.room)||h.room}</td><td style="font-weight:500">${h.name}<div style="font-size:10px;color:var(--t3)">${h.phone||''}</div></td><td style="font-size:11px;color:var(--t3)">${fmtDate(h.checkin)}</td><td style="font-size:11px;color:var(--t3)">${fmtDate(h.checkout)}</td><td>${h.months||'—'} เดือน</td><td style="font-size:11px;color:var(--t3)">${h.reason||'—'}</td><td>฿${fmtN(h.depositReturn||0)}</td><td><span class="bdg ${h.status==='blacklist'?'br':'bg'}">${h.status==='blacklist'?'แบล็คลิสต์':'ออกปกติ'}</span></td></tr>`).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--t3);padding:20px">ไม่พบข้อมูล</td></tr>';
 }
+function setHistRoom(room){
+  histSelRoom=room;
+  // update button styles
+  for(let i=0;i<=21;i++){
+    const btn=document.getElementById('hist-room-btn-'+i);
+    if(!btn)continue;
+    if(i===room){btn.style.background='var(--green)';btn.style.color='#fff';btn.style.borderColor='var(--green)';}
+    else{btn.style.background='#fff';btn.style.color='var(--text)';btn.style.borderColor='var(--border)';}
+  }
+  filterHistory();
+}
 function filterHistory(){
-  const room=document.getElementById('hist-filter-room')?.value?.trim();
   const from=document.getElementById('hist-filter-from')?.value;
   const to=document.getElementById('hist-filter-to')?.value;
   let filtered=histData;
-  if(room) filtered=filtered.filter(h=>String(parseInt(h.room)||h.room)===String(room));
+  if(histSelRoom) filtered=filtered.filter(h=>parseInt(h.room)===histSelRoom);
   if(from) filtered=filtered.filter(h=>!h.checkin||(h.checkin||'')>=(from));
   if(to) filtered=filtered.filter(h=>!h.checkin||(h.checkin||'')<=(to));
   renderHistTable(filtered);
 }
 function clearHistFilter(){
-  document.getElementById('hist-filter-room').value='';
+  histSelRoom=0;
+  setHistRoom(0);
   document.getElementById('hist-filter-from').value='';
   document.getElementById('hist-filter-to').value='';
   renderHistTable(histData);

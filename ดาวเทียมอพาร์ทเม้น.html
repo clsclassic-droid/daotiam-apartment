@@ -1460,7 +1460,6 @@ async function loadMaint(){
   });
   renderAircon();
 }
-}
 function renderAircon(){
   const el=document.getElementById('aircon-grid');if(!el)return;
   if(!maintData.length){el.innerHTML='<div style="text-align:center;padding:32px;color:var(--t3);font-size:12px">ยังไม่มีรายการ</div>';return;}

@@ -386,14 +386,8 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
       </div>
       <div class="card">
         <div class="section-hd">
-          <div class="card-title" style="margin-bottom:0"><i class="ti ti-tool"></i> ตารางซ่อมบำรุง / ล้างแอร์</div>
+          <div class="card-title" style="margin-bottom:0"><i class="ti ti-wind"></i> ตารางซ่อมบำรุง / ล้างแอร์</div>
           <button class="btn btn-green btn-sm" onclick="openMaintModal()"><i class="ti ti-plus"></i> เพิ่มรายการ</button>
-        </div>
-        <div style="overflow-x:auto" id="maint-grid"></div>
-      </div>
-      <div class="card" style="margin-top:12px">
-        <div class="section-hd">
-          <div class="card-title" style="margin-bottom:0"><i class="ti ti-wind"></i> ประวัติล้างแอร์</div>
         </div>
         <div style="overflow-x:auto" id="aircon-grid"></div>
       </div>
@@ -1465,15 +1459,7 @@ async function loadMaint(){
     return pd(a.date)-pd(b.date);
   });
   renderAircon();
-  if(!maintData.length){document.getElementById('maint-grid').innerHTML='<div style="text-align:center;padding:32px;color:var(--t3);font-size:12px">ยังไม่มีรายการ</div>';return;}
-  const rooms=Array.from({length:21},(_,i)=>i+1);
-  const hd='<tr><th style="text-align:left;padding:5px 7px;min-width:80px">วันที่</th><th style="text-align:left;padding:5px 7px;min-width:80px">ประเภท</th>'+rooms.map(r=>`<th style="min-width:28px">${r}</th>`).join('')+'<th style="text-align:right;padding:5px 7px;min-width:60px">ราคา</th><th style="text-align:left;padding:5px 7px">หมายเหตุ</th><th style="padding:5px 7px"></th></tr>';
-  const rows2=maintData.map(d=>{
-    let roomArr=[];
-    try{roomArr=typeof d.rooms==='string'?JSON.parse(d.rooms):d.rooms||[];}catch(e){}
-    return`<tr><td style="font-size:11px;padding:4px 7px">${d.date}</td><td style="font-size:11px;padding:4px 7px">${d.type}</td>${rooms.map(r=>`<td><div class="mchk ${roomArr.includes(r)||roomArr.includes(String(r))?'y':''}">${roomArr.includes(r)||roomArr.includes(String(r))?'<i class="ti ti-check" style="font-size:9px"></i>':''}</div></td>`).join('')}<td style="font-size:11px;text-align:right;padding:4px 7px">${d.cost?'฿'+fmtN(d.cost):''}</td><td style="font-size:10px;padding:4px 7px;color:var(--t3)">${d.note||''}</td><td style="padding:4px 7px;white-space:nowrap"><button class="btn btn-sm btn-icon" style="color:var(--blue)" onclick="editRepair('${d.id}')"><i class="ti ti-edit" style="font-size:11px"></i></button><button class="btn btn-sm btn-icon" style="color:var(--t3)" onclick="delRepair('${d.id}')"><i class="ti ti-trash" style="font-size:11px"></i></button></td></tr>`;
-  }).join('');
-  document.getElementById('maint-grid').innerHTML=`<table class="mt"><thead>${hd}</thead><tbody>${rows2}</tbody></table>`;
+}
 }
 function renderAircon(){
   const el=document.getElementById('aircon-grid');if(!el)return;

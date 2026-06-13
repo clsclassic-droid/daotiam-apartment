@@ -401,7 +401,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
     <div class="page" id="page-history">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <input type="number" id="hist-filter-room" placeholder="ค้นหาห้อง..." min="1" max="21" style="width:110px;padding:6px 10px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit" oninput="filterHistory()">
+          <select id="hist-filter-room" style="padding:6px 10px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;background:#fff;cursor:pointer" onchange="filterHistory()"><option value="">ทุกห้อง</option><option value="1">ห้อง 1</option><option value="2">ห้อง 2</option><option value="3">ห้อง 3</option><option value="4">ห้อง 4</option><option value="5">ห้อง 5</option><option value="6">ห้อง 6</option><option value="7">ห้อง 7</option><option value="8">ห้อง 8</option><option value="9">ห้อง 9</option><option value="10">ห้อง 10</option><option value="11">ห้อง 11</option><option value="12">ห้อง 12</option><option value="13">ห้อง 13</option><option value="14">ห้อง 14</option><option value="15">ห้อง 15</option><option value="16">ห้อง 16</option><option value="17">ห้อง 17</option><option value="18">ห้อง 18</option><option value="19">ห้อง 19</option><option value="20">ห้อง 20</option><option value="21">ห้อง 21</option></select>
           <input type="date" id="hist-filter-from" style="padding:6px 10px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit" onchange="filterHistory()">
           <span style="font-size:12px;color:var(--t3)">ถึง</span>
           <input type="date" id="hist-filter-to" style="padding:6px 10px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit" onchange="filterHistory()">
@@ -1488,7 +1488,7 @@ function filterHistory(){
   const from=document.getElementById('hist-filter-from')?.value;
   const to=document.getElementById('hist-filter-to')?.value;
   let filtered=histData;
-  if(room) filtered=filtered.filter(h=>String(parseInt(h.room)||h.room)===String(parseInt(room)));
+  if(room) filtered=filtered.filter(h=>String(parseInt(h.room)||h.room)===String(room));
   if(from) filtered=filtered.filter(h=>!h.checkin||(h.checkin||'')>=(from));
   if(to) filtered=filtered.filter(h=>!h.checkin||(h.checkin||'')<=(to));
   renderHistTable(filtered);

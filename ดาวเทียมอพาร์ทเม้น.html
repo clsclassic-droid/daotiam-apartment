@@ -370,7 +370,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
         <button class="btn btn-green btn-sm" onclick="openTenantModal()"><i class="ti ti-plus"></i> เพิ่มผู้เช่า</button>
       </div>
       <div class="card"><div class="tbl-wrap"><table class="tbl">
-        <thead><tr><th>ห้อง</th><th>ชื่อ-นามสกุล</th><th>เบอร์โทร</th><th>วันเข้าพัก</th><th>พักมาแล้ว</th><th>ประกัน</th><th>สถานะ</th><th></th></tr></thead>
+        <thead><tr><th>ห้อง</th><th>ชื่อ-นามสกุล</th><th>วันเข้าพัก</th><th>พักมาแล้ว</th><th>ประกัน</th><th>สถานะ</th><th></th></tr></thead>
         <tbody id="tenant-body"></tbody>
       </table></div></div>
     </div>
@@ -468,7 +468,17 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
           <div style="margin-bottom:12px">
             <select id="mh-room-sel" onchange="renderMhRoom()" style="font-size:11px;padding:0 12px;height:28px;border:1px solid var(--border);border-radius:20px;background:#fff;color:var(--text);width:100%"></select>
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px" id="mh-room-summary"></div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px" id="mh-room-summary"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+            <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px">
+              <div style="font-size:11px;font-weight:600;color:var(--t2);margin-bottom:8px">การใช้ไฟย้อนหลัง (หน่วย)</div>
+              <div style="position:relative;height:160px"><canvas id="mh-room-elec-chart" role="img" aria-label="กราฟการใช้ไฟรายห้องย้อนหลัง"></canvas></div>
+            </div>
+            <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px">
+              <div style="font-size:11px;font-weight:600;color:var(--t2);margin-bottom:8px">การใช้น้ำย้อนหลัง (หน่วย)</div>
+              <div style="position:relative;height:160px"><canvas id="mh-room-water-chart" role="img" aria-label="กราฟการใช้น้ำรายห้องย้อนหลัง"></canvas></div>
+            </div>
+          </div>
           <div id="mh-room-body"></div>
         </div>
       </div>
@@ -1178,7 +1188,7 @@ function renderTenantTbl(list){
   const sm={active:{c:'bg',l:'มีผู้เช่า'},overdue:{c:'br',l:'ค้างชำระ'}};
   document.getElementById('tenant-body').innerHTML=list.map(t=>{
     const s=sm[t.status]||{c:'bgray',l:t.status};
-    return`<tr><td style="font-weight:600">ห้อง ${t.room}</td><td style="font-weight:500">${t.name}</td><td style="color:var(--t2)">${t.phone||'—'}</td><td style="font-size:11px;color:var(--t3)">${fmtDate(t.checkin)}</td><td style="font-size:11px;color:var(--t3)">${calcStay(t.checkin)}</td><td>฿${fmtN(t.deposit||3500)}</td><td><span class="bdg ${s.c}">${s.l}</span></td><td style="display:flex;gap:4px"><button class="btn btn-sm btn-icon" onclick="editTenant('${t.room}')"><i class="ti ti-edit" style="font-size:12px"></i></button><button class="btn btn-sm" style="font-size:11px;color:var(--red);border-color:var(--red);padding:3px 7px" onclick="openCoModal('${t.room}')"><i class="ti ti-door-exit" style="font-size:11px"></i> ย้ายออก</button></td></tr>`;
+    return`<tr><td style="font-weight:600">${parseInt(t.room)}</td><td style="font-weight:500">${t.name}</td><td style="font-size:11px;color:var(--t3)">${fmtDate(t.checkin)}</td><td style="font-size:11px;color:var(--t3)">${calcStay(t.checkin)}</td><td>฿${fmtN(t.deposit||3500)}</td><td><span class="bdg ${s.c}">${s.l}</span></td><td style="display:flex;gap:4px"><button class="btn btn-sm btn-icon" onclick="editTenant('${t.room}')"><i class="ti ti-edit" style="font-size:12px"></i></button><button class="btn btn-sm" style="font-size:11px;color:var(--red);border-color:var(--red);padding:3px 7px" onclick="openCoModal('${t.room}')"><i class="ti ti-door-exit" style="font-size:11px"></i> ย้ายออก</button></td></tr>`;
   }).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--t3);padding:20px">ยังไม่มีผู้เช่า</td></tr>';
 }
 function filterTenants(){const q=document.getElementById('tenant-q').value.toLowerCase();renderTenantTbl(tenants.filter(t=>t.name?.toLowerCase().includes(q)||String(t.room).includes(q)));}
@@ -1803,15 +1813,19 @@ function populateMhRoomSel(){
 async function renderMhRoom(){
   const room=document.getElementById('mh-room-sel')?.value;if(!room)return;
   const now=new Date(),cy=now.getFullYear();const keys=[];
-  for(let y=2022;y<=cy;y++){const mx=y===cy?now.getMonth()+1:12;for(let m=mx;m>=1;m--)keys.push(y+'_'+String(m).padStart(2,'0'));}
+  for(let y=2022;y<=cy;y++){const mx=y===cy?now.getMonth()+1:12;for(let m=1;m<=mx;m++)keys.push(y+'_'+String(m).padStart(2,'0'));}
   const results=await Promise.all(keys.map(k=>api({action:'getMeters',month:k})));
-  let totalE=0,totalW=0,cnt=0;
+  let totalE=0,totalW=0,cnt=0,maxE={lbl:'',val:0};
+  const chartLabels=[],chartE=[],chartW=[];
   const rows=results.map((data,i)=>{
     const m=(data||[]).find(x=>String(x.room)===String(room));if(!m)return'';
     const eu=Math.round(Math.max(0,parseFloat(m.elecCurr||0)-parseFloat(m.elecPrev||0))*10)/10;
     const wu=Math.round(Math.max(0,parseFloat(m.waterCurr||0)-parseFloat(m.waterPrev||0))*10)/10;
     if(eu>0||wu>0){totalE+=eu;totalW+=wu;cnt++;}
+    if(eu>maxE.val){const [yr2,mo2]=keys[i].split('_');maxE={lbl:MTH[parseInt(mo2)-1]+' '+(parseInt(yr2)+543),val:eu};}
     const [yr,mo]=keys[i].split('_');const lbl=MTH[parseInt(mo)-1]+' '+(parseInt(yr)+543);
+    chartLabels.push(MTH[parseInt(mo)-1].replace('.','')+' '+(parseInt(yr)+543).toString().slice(-2));
+    chartE.push(eu);chartW.push(wu);
     return`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #f5f5f5">
       <div><div style="font-size:12px;font-weight:500">${lbl}</div><div style="font-size:10px;color:var(--t3);margin-top:2px">⚡ ${m.elecPrev||0} → ${m.elecCurr||0} &nbsp;|&nbsp; 💧 ${m.waterPrev||0} → ${m.waterCurr||0}</div></div>
       <div style="display:flex;gap:6px">
@@ -1820,10 +1834,18 @@ async function renderMhRoom(){
       </div></div>`;
   }).filter(Boolean).join('');
   document.getElementById('mh-room-body').innerHTML=rows||'<div style="text-align:center;color:var(--t3);padding:20px;font-size:12px">ยังไม่มีข้อมูล</div>';
-  const avgE=cnt>0?Math.round(totalE/cnt):0,avgW=cnt>0?Math.round(totalW/cnt):0;
+  const avgE=cnt>0?Math.round(totalE/cnt*10)/10:0;
+  const avgW=cnt>0?Math.round(totalW/cnt*10)/10:0;
+  const avgCost=Math.round(avgE*ELEC+avgW*WATER);
   document.getElementById('mh-room-summary').innerHTML=`
-    <div style="background:#fff8e6;border-radius:10px;padding:10px 12px"><div style="font-size:9px;font-weight:600;color:#888;margin-bottom:3px">⚡ ไฟเฉลี่ย/เดือน</div><div style="font-size:18px;font-weight:700;color:#d97706">${avgE}<span style="font-size:10px;color:var(--t3);margin-left:3px">หน่วย</span></div></div>
-    <div style="background:#e8f4ff;border-radius:10px;padding:10px 12px"><div style="font-size:9px;font-weight:600;color:#888;margin-bottom:3px">💧 น้ำเฉลี่ย/เดือน</div><div style="font-size:18px;font-weight:700;color:#3b6fd4">${avgW}<span style="font-size:10px;color:var(--t3);margin-left:3px">หน่วย</span></div></div>`;
+    <div style="background:var(--bg);border-radius:8px;padding:10px 12px"><div style="font-size:9px;color:var(--t2);margin-bottom:3px">ไฟเฉลี่ย/เดือน</div><div style="font-size:16px;font-weight:600;color:#185FA5">${avgE} <span style="font-size:10px;font-weight:400;color:var(--t3)">หน่วย</span></div></div>
+    <div style="background:var(--bg);border-radius:8px;padding:10px 12px"><div style="font-size:9px;color:var(--t2);margin-bottom:3px">น้ำเฉลี่ย/เดือน</div><div style="font-size:16px;font-weight:600;color:#0F6E56">${avgW} <span style="font-size:10px;font-weight:400;color:var(--t3)">หน่วย</span></div></div>
+    <div style="background:var(--bg);border-radius:8px;padding:10px 12px"><div style="font-size:9px;color:var(--t2);margin-bottom:3px">เดือนที่ใช้ไฟสูงสุด</div><div style="font-size:14px;font-weight:600">${maxE.lbl||'—'}</div><div style="font-size:10px;color:#185FA5;margin-top:2px">${maxE.val} หน่วย</div></div>
+    <div style="background:var(--bg);border-radius:8px;padding:10px 12px"><div style="font-size:9px;color:var(--t2);margin-bottom:3px">ค่าเฉลี่ย/เดือน</div><div style="font-size:16px;font-weight:600">฿${fmtN(avgCost)}</div><div style="font-size:10px;color:var(--t3);margin-top:2px">ไฟ+น้ำ</div></div>`;
+  // render line charts
+  ['mh-room-elec-chart','mh-room-water-chart'].forEach(id=>{const old=Chart.getChart(id);if(old)old.destroy();});
+  new Chart(document.getElementById('mh-room-elec-chart'),{type:'line',data:{labels:chartLabels,datasets:[{label:'ไฟ',data:chartE,borderColor:'#378ADD',backgroundColor:'rgba(55,138,221,0.08)',fill:true,tension:0.3,pointRadius:2,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:12}},y:{ticks:{font:{size:9}},beginAtZero:true}}}});
+  new Chart(document.getElementById('mh-room-water-chart'),{type:'line',data:{labels:chartLabels,datasets:[{label:'น้ำ',data:chartW,borderColor:'#1D9E75',backgroundColor:'rgba(29,158,117,0.08)',fill:true,tension:0.3,pointRadius:2,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:12}},y:{ticks:{font:{size:9}},beginAtZero:true}}}});
 }
 
 // INIT

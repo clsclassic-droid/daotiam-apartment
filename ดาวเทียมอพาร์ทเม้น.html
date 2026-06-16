@@ -6,6 +6,7 @@
 <title>ดาวเทียมอพาร์ทเม้น</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap');
 :root{
@@ -448,6 +449,16 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
             <select id="mh-month-sel" onchange="renderMhMonth()" style="font-size:11px;padding:0 8px;height:28px;border:1px solid var(--border);border-radius:20px;background:#fff;color:var(--text)"></select>
           </div>
           <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px" id="mh-summary"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+            <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px">
+              <div style="font-size:11px;font-weight:600;color:var(--t2);margin-bottom:8px">การใช้ไฟ (หน่วย)</div>
+              <div style="position:relative;height:160px"><canvas id="mh-elec-chart" role="img" aria-label="กราฟการใช้ไฟแต่ละห้อง"></canvas></div>
+            </div>
+            <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px">
+              <div style="font-size:11px;font-weight:600;color:var(--t2);margin-bottom:8px">การใช้น้ำ (หน่วย)</div>
+              <div style="position:relative;height:160px"><canvas id="mh-water-chart" role="img" aria-label="กราฟการใช้น้ำแต่ละห้อง"></canvas></div>
+            </div>
+          </div>
           <div class="tbl-wrap"><table class="tbl">
             <thead><tr><th>ห้อง</th><th>ชื่อ</th><th class="r">ไฟ (หน่วย)</th><th class="r">เทียบเดือนก่อน</th><th class="r">น้ำ (หน่วย)</th><th class="r">เทียบเดือนก่อน</th><th class="r">ค่าไฟ+น้ำ</th><th class="r">เทียบเดือนก่อน</th></tr></thead>
             <tbody id="mh-month-body"></tbody>
@@ -1770,13 +1781,24 @@ async function renderMhMonth(){
     const dE=Math.round((eu-pEu)*10)/10;const dW=Math.round((wu-pWu)*10)/10;const dC=cost-prevCost;
     const eBadge=eu>0?`<span style="background:#fff8e6;color:#d97706;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px">${eu}</span>`:`<span style="background:#f5f5f5;color:#bbb;font-size:10px;padding:2px 8px;border-radius:10px">—</span>`;
     const wBadge=wu>0?`<span style="background:#e8f4ff;color:#3b6fd4;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px">${wu}</span>`:`<span style="background:#f5f5f5;color:#bbb;font-size:10px;padding:2px 8px;border-radius:10px">—</span>`;
-    return`<tr><td style="font-weight:600">${t.room}</td><td style="font-size:12px;color:var(--t2)">${t.name}</td><td style="text-align:right">${eBadge}</td><td style="text-align:right">${tbBadge(dE)}</td><td style="text-align:right">${wBadge}</td><td style="text-align:right">${tbBadge(dW)}</td><td style="text-align:right;font-size:11px;font-weight:500">${cost>0?'฿'+fmtN(cost):'—'}</td><td style="text-align:right">${tbBadge(dC,' ฿')}</td></tr>`;
+    return`<tr><td style="font-weight:600">${parseInt(t.room)}</td><td style="font-size:12px;color:var(--t2)">${t.name}</td><td style="text-align:right">${eBadge}</td><td style="text-align:right">${tbBadge(dE)}</td><td style="text-align:right">${wBadge}</td><td style="text-align:right">${tbBadge(dW)}</td><td style="text-align:right;font-size:11px;font-weight:500">${cost>0?'฿'+fmtN(cost):'—'}</td><td style="text-align:right">${tbBadge(dC,' ฿')}</td></tr>`;
   }).join('');
   document.getElementById('mh-month-body').innerHTML=rows||'<tr><td colspan="8" style="text-align:center;color:var(--t3);padding:16px">ยังไม่มีข้อมูล</td></tr>';
+  // render charts
+  ['mh-elec-chart','mh-water-chart'].forEach(id=>{
+    const old=Chart.getChart(id);if(old)old.destroy();
+  });
+  const labels=roomData.map(({t})=>String(t.room));
+  const eData=roomData.map(({eu})=>eu);
+  const wData=roomData.map(({wu})=>wu);
+  const ePrev=roomData.map(({pEu})=>pEu);
+  const wPrev=roomData.map(({pWu})=>pWu);
+  new Chart(document.getElementById('mh-elec-chart'),{type:'bar',data:{labels,datasets:[{label:'เดือนนี้',data:eData,backgroundColor:'#378ADD',borderRadius:2},{label:'เดือนก่อน',data:ePrev,backgroundColor:'#B5D4F4',borderRadius:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:9},autoSkip:false}},y:{ticks:{font:{size:9}}}}}});
+  new Chart(document.getElementById('mh-water-chart'),{type:'bar',data:{labels,datasets:[{label:'เดือนนี้',data:wData,backgroundColor:'#1D9E75',borderRadius:2},{label:'เดือนก่อน',data:wPrev,backgroundColor:'#9FE1CB',borderRadius:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:9},autoSkip:false}},y:{ticks:{font:{size:9}}}}}});
 }
 function populateMhRoomSel(){
   const sel=document.getElementById('mh-room-sel');if(!sel)return;
-  sel.innerHTML=tenants.map(t=>`<option value="${t.room}">ห้อง ${String(t.room).padStart(2,'0')} — ${t.name}</option>`).join('');
+  sel.innerHTML=tenants.map(t=>`<option value="${t.room}">ห้อง ${parseInt(t.room)} — ${t.name}</option>`).join('');
 }
 async function renderMhRoom(){
   const room=document.getElementById('mh-room-sel')?.value;if(!room)return;
@@ -1786,8 +1808,8 @@ async function renderMhRoom(){
   let totalE=0,totalW=0,cnt=0;
   const rows=results.map((data,i)=>{
     const m=(data||[]).find(x=>String(x.room)===String(room));if(!m)return'';
-    const eu=Math.max(0,parseFloat(m.elecCurr||0)-parseFloat(m.elecPrev||0));
-    const wu=Math.max(0,parseFloat(m.waterCurr||0)-parseFloat(m.waterPrev||0));
+    const eu=Math.round(Math.max(0,parseFloat(m.elecCurr||0)-parseFloat(m.elecPrev||0))*10)/10;
+    const wu=Math.round(Math.max(0,parseFloat(m.waterCurr||0)-parseFloat(m.waterPrev||0))*10)/10;
     if(eu>0||wu>0){totalE+=eu;totalW+=wu;cnt++;}
     const [yr,mo]=keys[i].split('_');const lbl=MTH[parseInt(mo)-1]+' '+(parseInt(yr)+543);
     return`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #f5f5f5">

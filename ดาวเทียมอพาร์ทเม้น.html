@@ -1136,17 +1136,25 @@ async function scanMeter(event){
 }
 function renderScan(p,file){
   const ms=p.meters||[];const url=URL.createObjectURL(file);
-  const rows=ms.map(m=>`<tr><td style="padding:4px 7px;font-weight:500">ห้อง ${m.room}</td><td style="padding:4px 7px"><input type="number" id="sc-e-${m.room}" value="${m.elec??''}" style="width:100%;font-size:11px;padding:3px 5px;border:1px solid #FAC775;border-radius:4px;background:#FAEEDA"></td><td style="padding:4px 7px"><input type="number" id="sc-w-${m.room}" value="${m.water??''}" style="width:100%;font-size:11px;padding:3px 5px;border:1px solid #B5D4F4;border-radius:4px;background:#E6F1FB"></td></tr>`).join('');
-  document.getElementById('scan-result').innerHTML=`<div class="card"><div style="display:flex;gap:10px;align-items:flex-start"><img src="${url}" style="width:70px;height:70px;object-fit:cover;border-radius:6px;border:1px solid var(--border);flex-shrink:0"><div style="flex:1"><div style="font-size:11px;color:var(--gd);font-weight:600;margin-bottom:5px">✓ อ่านได้ ${ms.length} ห้อง</div><table style="width:100%;font-size:11px"><thead><tr style="background:var(--gl)"><th style="padding:3px 7px;text-align:left">ห้อง</th><th style="padding:3px 7px;text-align:left;color:#854F0B">ไฟ</th><th style="padding:3px 7px;text-align:left;color:#0C447C">น้ำ</th></tr></thead><tbody>${rows}</tbody></table><div style="display:flex;gap:7px;margin-top:8px"><button onclick="importScan(${JSON.stringify(ms.map(m=>m.room))})" class="btn btn-green btn-sm" style="font-size:11px"><i class="ti ti-download"></i> นำเข้า</button><button onclick="document.getElementById('scan-result').style.display='none'" class="btn btn-sm" style="font-size:11px">ยกเลิก</button></div></div></div></div>`;
+  const rows=ms.map((m,i)=>`<tr>
+    <td style="padding:4px 7px"><input type="number" id="sc-r-${i}" value="${m.room??1}" min="1" max="22" style="width:52px;font-size:11px;padding:3px 5px;border:1px solid #ccc;border-radius:4px;text-align:center;font-weight:600"></td>
+    <td style="padding:4px 7px"><input type="number" id="sc-e-${i}" value="${m.elec??''}" style="width:100%;font-size:11px;padding:3px 5px;border:1px solid #FAC775;border-radius:4px;background:#FAEEDA"></td>
+    <td style="padding:4px 7px"><input type="number" id="sc-w-${i}" value="${m.water??''}" style="width:100%;font-size:11px;padding:3px 5px;border:1px solid #B5D4F4;border-radius:4px;background:#E6F1FB"></td>
+  </tr>`).join('');
+  document.getElementById('scan-result').innerHTML=`<div class="card"><div style="display:flex;gap:10px;align-items:flex-start"><img src="${url}" style="width:70px;height:70px;object-fit:cover;border-radius:6px;border:1px solid var(--border);flex-shrink:0"><div style="flex:1"><div style="font-size:11px;color:var(--gd);font-weight:600;margin-bottom:5px">✓ อ่านได้ ${ms.length} ห้อง — แก้ไขได้ก่อนนำเข้า</div><table style="width:100%;font-size:11px"><thead><tr style="background:var(--gl)"><th style="padding:3px 7px;text-align:left">ห้อง</th><th style="padding:3px 7px;text-align:left;color:#854F0B">ไฟ</th><th style="padding:3px 7px;text-align:left;color:#0C447C">น้ำ</th></tr></thead><tbody>${rows}</tbody></table><div style="display:flex;gap:7px;margin-top:8px"><button onclick="importScan(${ms.length})" class="btn btn-green btn-sm" style="font-size:11px"><i class="ti ti-download"></i> นำเข้า</button><button onclick="document.getElementById('scan-result').style.display='none'" class="btn btn-sm" style="font-size:11px">ยกเลิก</button></div></div></div></div>`;
 }
-function importScan(rooms){
-  rooms.forEach(r=>{
-    const ev=document.getElementById('sc-e-'+r)?.value,wv=document.getElementById('sc-w-'+r)?.value;
-    if(ev){const i=document.getElementById('ec-'+r);if(i){i.value=ev;calcMC(r);}}
-    if(wv){const i=document.getElementById('wc-'+r);if(i){i.value=wv;calcMC(r);}}
-  });
+function importScan(count){
+  let imported=0;
+  for(let i=0;i<count;i++){
+    const r=parseInt(document.getElementById('sc-r-'+i)?.value||0);
+    const ev=document.getElementById('sc-e-'+i)?.value;
+    const wv=document.getElementById('sc-w-'+i)?.value;
+    if(!r)continue;
+    if(ev){const inp=document.getElementById('ec-'+r);if(inp){inp.value=ev;calcMC(r);imported++;}}
+    if(wv){const inp=document.getElementById('wc-'+r);if(inp){inp.value=wv;calcMC(r);}}
+  }
   document.getElementById('scan-result').style.display='none';
-  showToast(`✓ นำเข้า ${rooms.length} ห้อง กดบันทึกเพื่อบันทึก`);
+  showToast(`✓ นำเข้า ${imported} ห้อง กดบันทึกเพื่อบันทึก`);
 }
 
 // TENANT

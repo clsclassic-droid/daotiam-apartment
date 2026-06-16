@@ -1113,7 +1113,8 @@ function calcMC(room){
 }
 async function saveMeters(){
   const month=document.getElementById('meter-sel').value;
-  const data=tenants.map(t=>({room:t.room,elecPrev:parseFloat(document.getElementById('ep-'+t.room)?.value||0),elecCurr:parseFloat(document.getElementById('ec-'+t.room)?.value||0),waterPrev:parseFloat(document.getElementById('wp-'+t.room)?.value||0),waterCurr:parseFloat(document.getElementById('wc-'+t.room)?.value||0),prevDate:document.getElementById('pd-'+t.room)?.value||'',currDate:document.getElementById('cd-'+t.room)?.value||''})).filter(m=>m.elecCurr>0||m.waterCurr>0);
+  const allRooms=[...tenants.map(t=>t.room),22];
+  const data=allRooms.map(room=>({room,elecPrev:parseFloat(document.getElementById('ep-'+room)?.value||0),elecCurr:parseFloat(document.getElementById('ec-'+room)?.value||0),waterPrev:parseFloat(document.getElementById('wp-'+room)?.value||0),waterCurr:parseFloat(document.getElementById('wc-'+room)?.value||0),prevDate:document.getElementById('pd-'+room)?.value||'',currDate:document.getElementById('cd-'+room)?.value||''})).filter(m=>m.elecCurr>0||m.waterCurr>0);
   const res=await apiPost({action:'saveMeters',month,meters:data},'กำลังบันทึกมิเตอร์...');
   if(res?.success)showToast('✓ บันทึกมิเตอร์ '+res.count+' ห้องแล้ว');
 }

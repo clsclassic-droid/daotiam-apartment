@@ -1553,7 +1553,7 @@ function calcCo(){
   const m=window._coMeter||{};
   const elec=parseFloat(document.getElementById('co-elec')?.value||0),water=parseFloat(document.getElementById('co-water')?.value||0);
   const clean=parseFloat(document.getElementById('co-clean')?.value||0),depRet=parseFloat(document.getElementById('co-dep-ret')?.value||0);
-  const de=Math.max(0,elec-parseFloat(m.elecCurr||0)),dw=Math.max(0,water-parseFloat(m.waterCurr||0));
+  const de=Math.round(Math.max(0,elec-parseFloat(m.elecCurr||0))*10)/10,dw=Math.round(Math.max(0,water-parseFloat(m.waterCurr||0))*10)/10;
   const ec=Math.round(de*ELEC),wc=Math.round(dw*WATER);
   // คำนวณค่าเช่า: รายวัน ถ้าอยู่ไม่ครบเดือน, รายเดือน ถ้าอยู่ครบเดือน
   const coDateVal=document.getElementById('co-date')?.value;

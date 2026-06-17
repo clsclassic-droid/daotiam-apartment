@@ -331,7 +331,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
         </div>
         <div class="fr2" style="margin-bottom:12px">
           <div class="fg"><label>เลือกห้อง</label><select id="inv-room" class="fc" onchange="renderInv()"><option value="">-- เลือกห้อง --</option></select></div>
-          <div class="fg"><label>เดือน</label><select id="inv-month" class="fc"><option>มกราคม</option><option>กุมภาพันธ์</option><option>มีนาคม</option><option>เมษายน</option><option>พฤษภาคม</option><option selected>มิถุนายน</option><option>กรกฎาคม</option><option>สิงหาคม</option><option>กันยายน</option><option>ตุลาคม</option><option>พฤศจิกายน</option><option>ธันวาคม</option></select></div>
+          <div class="fg"><label>เดือน</label><select id="inv-month" class="fc" onchange="renderInv()"><option>มกราคม</option><option>กุมภาพันธ์</option><option>มีนาคม</option><option>เมษายน</option><option>พฤษภาคม</option><option>มิถุนายน</option><option>กรกฎาคม</option><option>สิงหาคม</option><option>กันยายน</option><option>ตุลาคม</option><option>พฤศจิกายน</option><option>ธันวาคม</option></select></div>
           <div class="fg"><label>วันที่ออกใบ</label><input type="text" id="inv-date" class="fc"></div>
           <div class="fg"><label>วันที่จดมิเตอร์</label><input type="text" id="inv-mdate" class="fc"></div>
         </div>
@@ -928,7 +928,7 @@ function goPage(p){
   document.getElementById('tb-sub').textContent=s;
   if(p==='dashboard')loadDashboard();
   else if(p==='meter')loadMeters();
-  else if(p==='invoice'){populateInvRoom();renderInv();}
+  else if(p==='invoice'){populateInvRoom();const _im=document.getElementById('inv-month');if(_im){const _mn=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];_im.value=_mn[new Date().getMonth()];}const _ip=document.getElementById('inv-preview');if(_ip)_ip.innerHTML='';}
   else if(p==='cashflow'){buildTxTabs();loadTx();}
   else if(p==='meter-history'){loadMeterHistory();}
   else if(p==='overdue')renderOverdue();

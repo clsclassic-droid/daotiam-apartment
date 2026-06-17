@@ -1520,22 +1520,37 @@ function showReceiptModal(d){
 function viewReceipt(room){const d=receiptStore[room];if(d)showReceiptModal(d);else showToast('ยังไม่มีใบเสร็จในเซสชันนี้','err');}
 
 // CHECKOUT
-function openCoModal(room){
+async function openCoModal(room){
   coRoom=room;
   const t=tenants.find(x=>String(x.room)===String(room));if(!t)return;
-  const m=meters.find(x=>String(x.room)===String(room))||{};
   document.getElementById('mo-co-title').innerHTML=`<i class="ti ti-door-exit"></i> ย้ายออก — ห้อง ${room}`;
   document.getElementById('mo-co-sub').textContent=t.name+' · เข้าพัก '+fmtDate(t.checkin);
   document.getElementById('co-date').value=new Date().toISOString().split('T')[0];
   document.getElementById('co-elec').value='';document.getElementById('co-water').value='';
   document.getElementById('co-clean').value='300';
   document.getElementById('co-dep-ret').value=t.deposit||3500;
-  document.getElementById('co-elec-prev').textContent=m.elecCurr?'มิเตอร์ก่อนหน้า: '+m.elecCurr:'';
-  document.getElementById('co-water-prev').textContent=m.waterCurr?'มิเตอร์ก่อนหน้า: '+m.waterCurr:'';
+  // โหลดมิเตอร์ล่าสุดของห้องนี้จาก Supabase (หาเดือนล่าสุดที่มีข้อมูล)
+  window._coMeter={};
+  const now=new Date(),cy=now.getFullYear();
+  for(let y=cy;y>=2022 && !window._coMeter.elecCurr;y--){
+    const mxM=y===cy?now.getMonth()+1:12;
+    for(let mo=mxM;mo>=1;mo--){
+      const key=y+'_'+String(mo).padStart(2,'0');
+      const data=await api({action:'getMeters',month:key});
+      const found=(data||[]).find(x=>String(x.room)===String(room));
+      if(found&&(found.elecCurr>0||found.waterCurr>0)){
+        window._coMeter={elecCurr:parseFloat(found.elecCurr||0),waterCurr:parseFloat(found.waterCurr||0),month:key};
+        break;
+      }
+    }
+  }
+  const cm=window._coMeter;
+  document.getElementById('co-elec-prev').textContent=cm.elecCurr?'มิเตอร์ก่อนหน้า: '+cm.elecCurr:'ยังไม่มีข้อมูลมิเตอร์';
+  document.getElementById('co-water-prev').textContent=cm.waterCurr?'มิเตอร์ก่อนหน้า: '+cm.waterCurr:'ยังไม่มีข้อมูลมิเตอร์';
   calcCo();openMo('mo-checkout');
 }
 function calcCo(){
-  const m=meters.find(x=>String(x.room)===String(coRoom))||{};
+  const m=window._coMeter||{};
   const elec=parseFloat(document.getElementById('co-elec')?.value||0),water=parseFloat(document.getElementById('co-water')?.value||0);
   const clean=parseFloat(document.getElementById('co-clean')?.value||0),depRet=parseFloat(document.getElementById('co-dep-ret')?.value||0);
   const de=Math.max(0,elec-parseFloat(m.elecCurr||0)),dw=Math.max(0,water-parseFloat(m.waterCurr||0));
@@ -1545,13 +1560,12 @@ function calcCo(){
   let rentCost=RENT, rentDetail='เต็มเดือน', daysStayed=0, daysInMonth=0;
   if(coDateVal){
     const d=new Date(coDateVal);
-    daysStayed=d.getDate();                                    // วันที่ย้ายออก = จำนวนวันที่อยู่ (รวมวันย้าย)
-    daysInMonth=new Date(d.getFullYear(),d.getMonth()+1,0).getDate(); // วันสุดท้ายของเดือนนั้น
+    daysStayed=d.getDate();
+    daysInMonth=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();
     if(daysStayed>=daysInMonth){ rentCost=RENT; rentDetail='เต็มเดือน'; }
     else { rentCost=daysStayed*DAY_RATE; rentDetail=`${daysStayed} วัน × ฿${DAY_RATE}`; }
   }
   const total=rentCost+ec+wc+clean,net=total-depRet;
-  // เก็บค่าไว้ใช้ตอนออกใบแจ้งหนี้
   window._coData={rentCost,rentDetail,daysStayed,daysInMonth,de,dw,ec,wc,clean,depRet,total,net,elec,water,elecPrev:parseFloat(m.elecCurr||0),waterPrev:parseFloat(m.waterCurr||0)};
   document.getElementById('co-summary').innerHTML=`
     <div style="display:flex;justify-content:space-between;color:var(--t2);margin-bottom:2px"><span>ค่าเช่า (${rentDetail})</span><span>฿${fmtN(rentCost)}</span></div>
@@ -1570,14 +1584,12 @@ async function confirmCo(){
   const depRet=parseFloat(document.getElementById('co-dep-ret').value)||0;
   const reason=document.getElementById('co-reason').value;
   const months=Math.max(1,Math.round((new Date(coDate)-new Date(t.checkin?.split('/').reverse().join('-')||coDate))/(30*864e5)));
-  // เก็บข้อมูลสำหรับออกใบแจ้งหนี้ก่อนลบ
   const coData=window._coData||{};
   const invoiceData={room:coRoom,name:t.name,checkin:t.checkin,coDate,...coData};
   await apiPost({action:'saveHistory',room:t.room,name:t.name,phone:t.phone||'',checkin:t.checkin,checkout:coDate,months,reason,deposit:t.deposit||3500,depositReturn:depRet,status:'good',note:''},'กำลังบันทึกประวัติ...');
   await apiPost({action:'deleteTenant',room:coRoom},'กำลังย้ายออก...');
   closeMo('mo-checkout');await loadTenants();
   showToast('✓ บันทึกย้ายออกแล้ว');
-  // เปิดใบแจ้งหนี้ย้ายออก
   showCheckoutInvoice(invoiceData);
 }
 function showCheckoutInvoice(d){

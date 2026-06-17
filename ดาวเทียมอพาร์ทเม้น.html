@@ -356,6 +356,17 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
         </div>
         </div>
         <div style="font-size:12px;color:var(--t2);margin-bottom:10px" id="tx-summary"></div>
+        <div id="tx-breakdown" style="margin-bottom:14px;display:none">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <div style="font-size:11px;font-weight:600;color:var(--t2)">สรุปตามประเภท</div>
+            <div style="display:flex;gap:5px">
+              <span style="background:var(--gl);color:var(--gd);font-size:10px;padding:2px 8px;border-radius:4px">รายรับ</span>
+              <span style="background:var(--rl);color:#791F1F;font-size:10px;padding:2px 8px;border-radius:4px">รายจ่าย</span>
+            </div>
+          </div>
+          <div id="tx-bars" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px"></div>
+          <div style="border-top:1px solid var(--border);padding-top:10px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px" id="tx-tax-cards"></div>
+        </div>
         <div class="tbl-wrap"><table class="tbl">
           <thead><tr><th>วันที่</th><th>รายการ</th><th class="c">ห้อง</th><th>ประเภท</th><th class="r">จำนวน</th><th>ช่องทาง</th><th class="r">คงเหลือ</th><th></th></tr></thead>
           <tbody id="tx-body"></tbody>
@@ -1271,6 +1282,48 @@ function renderTxTbl(){
   const balExtra=isAll?` &nbsp;|&nbsp; 💳 ธนาคาร <strong style="color:var(--blue)">฿${fmtN(bankBal)}</strong> · 💵 เงินสด <strong style="color:var(--amber)">฿${fmtN(cashBal)}</strong>`:'';
   document.getElementById('tx-summary').innerHTML=`รายรับ <strong style="color:var(--green)">฿${fmtN(tIn)}</strong> · รายจ่าย <strong style="color:var(--red)">฿${fmtN(tOut)}</strong> · คงเหลือ <strong style="color:${tIn-tOut>=0?'var(--green)':'var(--red)'}">฿${fmtN(tIn-tOut)}</strong>${balExtra}`;
   document.getElementById('tx-body').innerHTML=transactions.map(t=>{const isIn=t.type?.endsWith('-in');run+=(isIn?1:-1)*parseFloat(t.amount||0);const roomTxt=t.room?String(parseInt(t.room)||t.room):'—';return`<tr><td style="font-size:11px;color:var(--t3)">${fmtDate(t.date)||'—'}</td><td>${t.desc||'—'}</td><td class="c" style="font-size:12px;font-weight:600">${roomTxt}</td><td><span class="bdg ${isIn?'bg':'br'}">${TX_L[t.type]||t.type}</span></td><td class="r" style="font-weight:500;color:${isIn?'var(--green)':'var(--red)'}">${isIn?'+':'-'}฿${fmtN(t.amount)}</td><td style="font-size:11px;color:var(--t3)">${t.channel==='bank'?'โอน':'เงินสด'}</td><td class="r" style="font-size:11px;color:${run>=0?'var(--green)':'var(--red)'}">฿${fmtN(run)}</td><td style="display:flex;gap:4px"><button class="btn btn-sm btn-icon" style="color:var(--blue)" onclick="editTx('${t.id}')"><i class="ti ti-edit" style="font-size:11px"></i></button><button class="btn btn-sm btn-icon" style="color:var(--t3)" onclick="delTx('${t.id}')"><i class="ti ti-trash" style="font-size:11px"></i></button></td></tr>`;}).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--t3);padding:20px">ยังไม่มีรายการ</td></tr>';
+  renderTxBreakdown();
+}
+function renderTxBreakdown(){
+  const bd=document.getElementById('tx-breakdown');if(!bd)return;
+  if(!transactions.length){bd.style.display='none';return;}
+  bd.style.display='block';
+  const byType={};
+  transactions.forEach(t=>{const k=t.type||'other';byType[k]=(byType[k]||0)+parseFloat(t.amount||0);});
+  const incItems=INC_T.map(k=>({key:k,label:TX_L[k]||k,val:byType[k]||0})).filter(x=>x.val>0);
+  const expItems=EXP_T.map(k=>({key:k,label:TX_L[k]||k,val:byType[k]||0})).filter(x=>x.val>0);
+  const maxAll=Math.max(...incItems.map(x=>x.val),...expItems.map(x=>x.val),1);
+  const maxInc=Math.max(...incItems.map(x=>x.val),1);
+  const maxExp=Math.max(...expItems.map(x=>x.val),1);
+  const barRow=(item,isIncome)=>{
+    const pct=Math.round(item.val/maxAll*100);
+    const barColor=isIncome?(item.val===maxInc?'var(--green)':'#9FE1CB'):(item.val===maxExp?'var(--red)':'#F09595');
+    const amtColor=isIncome?'var(--gd)':'#A32D2D';
+    return`<div style="display:flex;align-items:center;gap:8px"><div style="font-size:11px;color:var(--t2);width:120px;flex-shrink:0">${item.label}</div><div style="flex:1;height:7px;background:#f0f2f5;border-radius:4px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${barColor};border-radius:4px"></div></div><div style="font-size:11px;font-weight:600;color:${amtColor};width:74px;text-align:right;flex-shrink:0">${isIncome?'+':'-'}฿${fmtN(item.val)}</div></div>`;
+  };
+  let barsHtml='';
+  if(incItems.length){barsHtml+=`<div style="font-size:10px;color:var(--gd);font-weight:600;margin-bottom:3px;margin-top:2px"><i class="ti ti-trending-up" style="font-size:11px"></i> รายรับ</div>`;barsHtml+=incItems.map(x=>barRow(x,true)).join('');}
+  if(expItems.length){barsHtml+=`<div style="font-size:10px;color:var(--red);font-weight:600;margin-top:8px;margin-bottom:3px"><i class="ti ti-trending-down" style="font-size:11px"></i> รายจ่าย</div>`;barsHtml+=expItems.map(x=>barRow(x,false)).join('');}
+  document.getElementById('tx-bars').innerHTML=barsHtml;
+  const totalInc=incItems.reduce((s,x)=>s+x.val,0);
+  const totalExp=expItems.reduce((s,x)=>s+x.val,0);
+  const netInc=totalInc-totalExp;
+  document.getElementById('tx-tax-cards').innerHTML=`
+    <div style="background:var(--gl);border-radius:7px;padding:8px 10px">
+      <div style="font-size:10px;color:var(--gd);margin-bottom:3px"><i class="ti ti-receipt" style="font-size:11px"></i> รายได้รวม (ภาษี)</div>
+      <div style="font-size:16px;font-weight:700;color:var(--gd)">฿${fmtN(totalInc)}</div>
+      <div style="font-size:9px;color:var(--green);margin-top:2px">ค่าเช่า + ค่าไฟ/น้ำที่เก็บ</div>
+    </div>
+    <div style="background:var(--rl);border-radius:7px;padding:8px 10px">
+      <div style="font-size:10px;color:#791F1F;margin-bottom:3px"><i class="ti ti-file-minus" style="font-size:11px"></i> ค่าใช้จ่ายหักได้</div>
+      <div style="font-size:16px;font-weight:700;color:var(--red)">฿${fmtN(totalExp)}</div>
+      <div style="font-size:9px;color:var(--red);margin-top:2px">ไฟ/น้ำ/เน็ต/ซ่อมบำรุง ฯลฯ</div>
+    </div>
+    <div style="background:#f8f9fa;border-radius:7px;padding:8px 10px">
+      <div style="font-size:10px;color:var(--t2);margin-bottom:3px"><i class="ti ti-calculator" style="font-size:11px"></i> รายได้สุทธิ</div>
+      <div style="font-size:16px;font-weight:700;color:${netInc>=0?'var(--green)':'var(--red)'}">฿${fmtN(netInc)}</div>
+      <div style="font-size:9px;color:var(--t3);margin-top:2px">ใช้คำนวณภาษีประจำปี</div>
+    </div>`;
 }
 function openTxModal(){document.getElementById('tx-date').value=new Date().toISOString().split('T')[0];openMo('mo-tx');}
 async function saveTx(){
@@ -1808,9 +1861,9 @@ async function renderMhMonth(){
   };
   const rows=roomData.map(({t,eu,wu,pEu,pWu})=>{
     const cost=Math.round(eu*ELEC+wu*WATER);const prevCost=Math.round(pEu*ELEC+pWu*WATER);
-    const dE=Math.round((eu-pEu)*10)/10;const dW=Math.round((wu-pWu)*10)/10;const dC=cost-prevCost;
-    const eBadge=eu>0?`<span style="background:#fff8e6;color:#d97706;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px">${eu}</span>`:`<span style="background:#f5f5f5;color:#bbb;font-size:10px;padding:2px 8px;border-radius:10px">—</span>`;
-    const wBadge=wu>0?`<span style="background:#e8f4ff;color:#3b6fd4;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px">${wu}</span>`:`<span style="background:#f5f5f5;color:#bbb;font-size:10px;padding:2px 8px;border-radius:10px">—</span>`;
+    const dE=Math.round(eu-pEu);const dW=Math.round(wu-pWu);const dC=cost-prevCost;
+    const eBadge=eu>0?`<span style="background:#fff8e6;color:#d97706;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px">${Math.round(eu)}</span>`:`<span style="background:#f5f5f5;color:#bbb;font-size:10px;padding:2px 8px;border-radius:10px">—</span>`;
+    const wBadge=wu>0?`<span style="background:#e8f4ff;color:#3b6fd4;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px">${Math.round(wu)}</span>`:`<span style="background:#f5f5f5;color:#bbb;font-size:10px;padding:2px 8px;border-radius:10px">—</span>`;
     return`<tr><td style="font-weight:600">${parseInt(t.room)}</td><td style="font-size:12px;color:var(--t2)">${t.name}</td><td style="text-align:right">${eBadge}</td><td style="text-align:right">${tbBadge(dE)}</td><td style="text-align:right">${wBadge}</td><td style="text-align:right">${tbBadge(dW)}</td><td style="text-align:right;font-size:11px;font-weight:500">${cost>0?'฿'+fmtN(cost):'—'}</td><td style="text-align:right">${tbBadge(dC,' ฿')}</td></tr>`;
   }).join('');
   document.getElementById('mh-month-body').innerHTML=rows||'<tr><td colspan="8" style="text-align:center;color:var(--t3);padding:16px">ยังไม่มีข้อมูล</td></tr>';

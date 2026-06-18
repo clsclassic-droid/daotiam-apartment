@@ -2244,32 +2244,30 @@ async function renderMhRoom(){
 // ===== LINE MESSAGING =====
 async function htmlToPdfBlob(htmlEl){
   const {jsPDF}=window.jspdf;
-  // clone และ set width 794px (A4 @ 96dpi) เพื่อให้ได้ขนาดเต็มแผ่น
   const clone=htmlEl.cloneNode(true);
-  clone.style.cssText='position:fixed;left:-9999px;top:0;width:794px;background:#fff;padding:20px;box-sizing:border-box;font-family:Sarabun,sans-serif';
+  // วาง clone ใน DOM จริงๆ ที่ซ้ายนอกหน้าจอ
+  clone.style.cssText='position:absolute;left:-9999px;top:0;width:620px;background:#fff;padding:16px;box-sizing:border-box;font-family:Sarabun,sans-serif;font-size:13px;z-index:-1';
   document.body.appendChild(clone);
+  // รอ browser render
+  await new Promise(r=>setTimeout(r,300));
+  const W=clone.offsetWidth||620;
+  const H=clone.offsetHeight||800;
   try{
     const canvas=await html2canvas(clone,{
       scale:2,useCORS:true,backgroundColor:'#ffffff',
-      logging:false,width:794,
-      windowWidth:794
+      logging:false,
+      width:W,height:H,
+      x:0,y:0,
+      scrollX:0,scrollY:0,
+      windowWidth:W+50
     });
     const imgData=canvas.toDataURL('image/jpeg',0.95);
-    const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
-    const pdfW=pdf.internal.pageSize.getWidth();   // 210mm
-    const pdfH=pdf.internal.pageSize.getHeight();  // 297mm
-    const imgH=(canvas.height*pdfW)/canvas.width;
-    // ถ้าสูงเกิน 1 หน้า ให้แบ่งหน้า
-    if(imgH<=pdfH){
-      pdf.addImage(imgData,'JPEG',0,0,pdfW,imgH);
-    } else {
-      let y=0;
-      while(y<imgH){
-        if(y>0)pdf.addPage();
-        pdf.addImage(imgData,'JPEG',0,-y,pdfW,imgH);
-        y+=pdfH;
-      }
-    }
+    // PDF ขนาดพอดีกับเนื้อหา ไม่มีที่ว่าง
+    const mmPerPx=25.4/96; // 1px = 0.2646mm at 96dpi
+    const pdfW=W*mmPerPx;
+    const pdfH=H*mmPerPx;
+    const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:[pdfW,pdfH]});
+    pdf.addImage(imgData,'JPEG',0,0,pdfW,pdfH);
     return pdf.output('blob');
   } finally {
     document.body.removeChild(clone);

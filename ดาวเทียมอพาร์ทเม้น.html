@@ -1055,7 +1055,7 @@ function renderDash(){
     <div class="stat"><div class="stat-l">เงินประกันรวม</div><div class="stat-v" style="color:var(--blue)">฿${fmtN(occ*3500)}</div></div>`;
   ['bdg-inv','bdg-ov'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=ov;});
   const bb=document.getElementById('bn-bdg-ov');if(bb){bb.textContent=ov;bb.style.display=ov>0?'flex':'none';}
-  let rm='';for(let i=1;i<=21;i++){const t=tenants.find(x=>String(x.room)===String(i));const cls=!t?'vac':t.status==='overdue'?'ov':'occ';rm+=`<div class="rc ${cls}" title="${t?.name||'ว่าง'}"><div class="rn">${i}</div><div class="rs">${!t?'ว่าง':t.status==='overdue'?'ค้างชำระ':'มีผู้เช่า'}</div></div>`;}
+  let rm='';for(let i=1;i<=21;i++){const t=tenants.find(x=>String(x.room)===String(i));const cls=!t?'vac':t.status==='overdue'?'ov':'occ';const click=t&&t.status==='overdue'?`onclick="goPageThenPay('${i}')"`:'';rm+=`<div class="rc ${cls}" title="${t?.name||'ว่าง'}" ${click} style="${t&&t.status==='overdue'?'cursor:pointer':''}"><div class="rn">${i}</div><div class="rs">${!t?'ว่าง':t.status==='overdue'?'ค้างชำระ':'มีผู้เช่า'}</div></div>`;}
   document.getElementById('room-map').innerHTML=rm;
   const odList=tenants.filter(t=>t.status==='overdue');
   document.getElementById('dash-overdue').innerHTML=odList.length?odList.map(t=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f5f5f5;font-size:12px"><div style="font-weight:500">ห้อง ${t.room} — ${t.name}</div><span class="bdg br">ค้างชำระ</span></div>`).join(''):'<div style="color:var(--t3);font-size:12px;padding:8px 0;text-align:center">ไม่มีห้องค้างชำระ 🎉</div>';
@@ -1576,6 +1576,11 @@ async function renderOverdue(){
   const rows=tenants.map(t=>{const m=meters.find(x=>String(x.room)===String(t.room))||{};const eu=Math.max(0,parseFloat(m.elecCurr||0)-parseFloat(m.elecPrev||0));const wu=Math.max(0,parseFloat(m.waterCurr||0)-parseFloat(m.waterPrev||0));const total=RENT+Math.round(eu*ELEC)+Math.round(wu*WATER);return{...t,total,eu,wu,m};});
   document.getElementById('ov-content').innerHTML=`<table class="tbl"><thead><tr><th style="width:40px">ห้อง</th><th>ชื่อ</th><th></th></tr></thead><tbody>${rows.map(t=>`<tr><td style="font-weight:600">${t.room}</td><td style="font-weight:500">${t.name}</td><td style="display:flex;gap:5px;justify-content:flex-end">${t.status==='overdue'?`<button class="od-pay-btn pb-ov" onclick="openPayModal('${t.room}')"><i class="ti ti-receipt" style="font-size:11px"></i> ค้างชำระ</button><button onclick="cancelOverdue('${t.room}')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:3px 8px;font-size:11px;cursor:pointer;color:var(--t2)" title="ยกเลิกการออกใบ"><i class="ti ti-x" style="font-size:10px"></i></button>`:`<button class="od-pay-btn pb-pd" onclick="viewReceipt('${t.room}')"><i class="ti ti-check" style="font-size:11px"></i> ชำระแล้ว</button>`}</td></tr>`).join('')}</tbody></table>`;
 }
+async function goPageThenPay(room){
+  goPage('overdue');
+  await renderOverdue();
+  openPayModal(room);
+}
 async function cancelOverdue(room){
   if(!confirm(`ยืนยันยกเลิกการออกใบแจ้งหนี้ห้อง ${parseInt(room)}?`))return;
   await _sb.from('tenants').update({status:'active'}).eq('room',room);
@@ -1658,7 +1663,7 @@ async function openPayModal(room){
   const wr=document.getElementById('pay-water-rate');if(wr)wr.textContent=WATER;
   // แสดงรายการพิเศษ
   const extrasEl=document.getElementById('pay-extras-tbody');
-  if(extrasEl) extrasEl.innerHTML=extras.map(x=>`<tr><td colspan="4" style="font-size:11px;color:var(--t2);padding:4px 8px">${x.desc||'อื่นๆ'}</td><td class="r" style="font-size:11px;color:var(--t2);padding:4px 8px">฿${fmt2(x.amount)}</td></tr>`).join('');
+  if(extrasEl) extrasEl.innerHTML=extras.map(x=>`<tr><td colspan="4" style="padding:4px 8px;color:var(--text)">${x.desc||'อื่นๆ'}</td><td class="r" style="padding:4px 8px;color:var(--text)">฿${fmt2(x.amount)}</td></tr>`).join('');
   // แสดง banner รายวัน
   let banner=document.getElementById('pay-day-banner');
   if(!banner){banner=document.createElement('div');banner.id='pay-day-banner';document.getElementById('pay-sub').after(banner);}

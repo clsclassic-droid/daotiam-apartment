@@ -592,6 +592,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
       <tr><td>ค่าเช่าห้อง</td><td class="c" style="color:var(--t3)">—</td><td></td><td></td><td class="r" id="pay-rent"></td></tr>
       <tr><td>ค่าไฟฟ้า</td><td class="c" id="pay-er" style="color:var(--t3)"></td><td class="c" id="pay-eu"></td><td class="c" style="color:var(--t3)" id="pay-elec-rate"></td><td class="r" id="pay-ec"></td></tr>
       <tr><td>ค่าน้ำประปา</td><td class="c" id="pay-wr" style="color:var(--t3)"></td><td class="c" id="pay-wu"></td><td class="c" style="color:var(--t3)" id="pay-water-rate">22</td><td class="r" id="pay-wc"></td></tr>
+      <tr id="pay-extras-rows"></tr>
       <tr><td><input type="text" id="pay-od" class="fc" style="font-size:11px;padding:3px 6px" placeholder="อื่นๆ" oninput="calcPayTotal()"></td><td colspan="3" class="r" style="font-size:10px;color:var(--t3)">จำนวนเงิน</td><td class="r"><input type="number" id="pay-oa" class="fc" style="font-size:11px;padding:3px 6px;text-align:right" value="0" oninput="calcPayTotal()"></td></tr>
       <tr style="background:#f9f9f9;font-weight:600"><td colspan="4" class="r" style="padding-right:11px">รวมทั้งสิ้น</td><td class="r" id="pay-total" style="color:var(--green);font-size:14px"></td></tr>
     </tbody>
@@ -1575,7 +1576,7 @@ function calcDayRent(checkin, checkout, month){
   }
   return RENT;
 }
-function openPayModal(room){
+async function openPayModal(room){
   const t=tenants.find(x=>String(x.room)===String(room));if(!t)return;
   const m=meters.find(x=>String(x.room)===String(room))||{};
   const eu=Math.max(0,parseFloat(m.elecCurr||0)-parseFloat(m.elecPrev||0));
@@ -1584,10 +1585,20 @@ function openPayModal(room){
   const ovSel=document.getElementById('ov-sel')?.value||'';
   const rentAmt=calcDayRent(t.checkin,t.checkout,ovSel);
   const isDayRate=rentAmt!==RENT;
-  payCurrentRoom=room;payMethod=null;payData={t,m,eu,wu,ec,wc,rentAmt};
+  // ดึงรายการพิเศษ other-in ของห้องนี้ในเดือนนี้
+  let extras=[];
+  try{
+    const {data}=await _sb.from('transactions').select('*').eq('room',room).eq('type','other-in').eq('month',ovSel);
+    extras=data||[];
+  }catch(e){}
+  const extraTotal=extras.reduce((s,x)=>s+parseFloat(x.amount||0),0);
+  payCurrentRoom=room;payMethod=null;payData={t,m,eu,wu,ec,wc,rentAmt,extraTotal};
   document.getElementById('pay-sub').textContent='ห้อง '+room+' · '+t.name;
   const er=document.getElementById('pay-elec-rate');if(er)er.textContent=ELEC;
   const wr=document.getElementById('pay-water-rate');if(wr)wr.textContent=WATER;
+  // แสดงรายการพิเศษ
+  const extrasEl=document.getElementById('pay-extras-rows');
+  if(extrasEl) extrasEl.innerHTML=extras.map(x=>`<td colspan="4" style="font-size:11px;color:var(--t2);padding:4px 8px">${x.desc||'อื่นๆ'}</td><td class="r" style="font-size:11px;color:var(--t2);padding:4px 8px">฿${fmt2(x.amount)}</td>`).join('</tr><tr>');
   // แสดง banner รายวัน
   let banner=document.getElementById('pay-day-banner');
   if(!banner){banner=document.createElement('div');banner.id='pay-day-banner';document.getElementById('pay-sub').after(banner);}
@@ -1610,7 +1621,7 @@ function openPayModal(room){
   document.getElementById('pay-confirm').style.opacity='0.35';
   calcPayTotal();openMo('mo-pay');
 }
-function calcPayTotal(){if(!payData.t)return;const other=parseFloat(document.getElementById('pay-oa').value)||0;const rentAmt=payData.rentAmt||RENT;payCurrentTotal=rentAmt+(payData.ec||0)+(payData.wc||0)+other;document.getElementById('pay-total').textContent='฿'+fmt2(payCurrentTotal);document.getElementById('pay-amount').value=payCurrentTotal.toFixed(2);checkPayDiff();}
+function calcPayTotal(){if(!payData.t)return;const other=parseFloat(document.getElementById('pay-oa').value)||0;const rentAmt=payData.rentAmt||RENT;const extraTotal=payData.extraTotal||0;payCurrentTotal=rentAmt+(payData.ec||0)+(payData.wc||0)+extraTotal+other;document.getElementById('pay-total').textContent='฿'+fmt2(payCurrentTotal);document.getElementById('pay-amount').value=payCurrentTotal.toFixed(2);checkPayDiff();}
 function checkPayDiff(){const paid=parseFloat(document.getElementById('pay-amount').value)||0;const diff=paid-payCurrentTotal;const el=document.getElementById('pay-diff');if(Math.abs(diff)<0.01){el.textContent='✓ ครบจำนวน';el.style.color='var(--green)';}else if(diff<0){el.textContent='ขาด ฿'+Math.abs(diff).toFixed(2);el.style.color='var(--red)';}else if(paid>0){el.textContent='เกิน ฿'+diff.toFixed(2);el.style.color='var(--amber)';}else{el.textContent='';}if(payMethod&&paid>0)document.getElementById('pay-confirm').style.opacity='1';}
 function selPayMethod(m){payMethod=m;const sel='background:var(--gl);border:1.5px solid var(--green);color:var(--gd);font-weight:500';const def='background:#f8f9fa';document.getElementById('pb-cash').style.cssText=`flex:1;padding:9px;border-radius:7px;border:1px solid var(--border);font-size:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;${m==='cash'?sel:def}`;document.getElementById('pb-bank').style.cssText=`flex:1;padding:9px;border-radius:7px;border:1px solid var(--border);font-size:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;${m==='bank'?sel:def}`;checkPayDiff();}
 async function confirmPay(){

@@ -630,6 +630,17 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
   <div class="mo-actions"><button class="btn btn-sm" onclick="closeMo('mo-checkout')">ยกเลิก</button><button class="btn btn-red btn-sm" onclick="confirmCo()"><i class="ti ti-check"></i> ยืนยันย้ายออก</button></div>
 </div></div>
 
+<div class="mo" id="mo-issue-inv"><div class="mo-box" style="max-width:520px">
+  <div class="mo-hd"><div class="mo-title"><i class="ti ti-file-invoice" style="color:var(--green)"></i> ออกใบแจ้งหนี้</div><button class="mo-close" onclick="closeMo('mo-issue-inv')">✕</button></div>
+  <div id="inv-modal-preview" style="margin-bottom:14px"></div>
+  <div style="border-top:1px solid var(--border);padding-top:12px;margin-bottom:8px">
+    <div style="font-size:12px;font-weight:500;color:var(--t2);margin-bottom:8px">รายการพิเศษเพิ่มเติม (ถ้ามี)</div>
+    <div id="inv-extra-list"></div>
+    <button onclick="addInvExtra()" style="background:none;border:1px dashed var(--border);border-radius:6px;width:100%;padding:6px;font-size:12px;color:var(--t2);cursor:pointer;margin-top:2px"><i class="ti ti-plus" style="font-size:11px"></i> เพิ่มรายการ</button>
+  </div>
+  <div class="mo-actions"><button class="btn btn-sm" onclick="closeMo('mo-issue-inv')">ยกเลิก</button><button class="btn btn-green btn-sm" onclick="confirmIssueInv()"><i class="ti ti-check"></i> ยืนยันออกใบ</button></div>
+</div></div>
+
 <div class="mo" id="mo-hist"><div class="mo-box">
   <div class="mo-hd"><div class="mo-title">บันทึกประวัติผู้เช่าเก่า</div><button class="mo-close" onclick="closeMo('mo-hist')">✕</button></div>
   <div class="fr2">
@@ -1274,11 +1285,13 @@ async function saveTenant(){
 
 // INVOICE
 function populateInvRoom(){const sel=document.getElementById('inv-room');if(!sel)return;sel.innerHTML='<option value="">-- เลือกห้อง --</option>'+tenants.map(t=>`<option value="${t.room}">ห้อง ${t.room} — ${t.name}</option>`).join('');}
-function buildInvHTML(rn,t,m,month,invDate,mDate,vacant){
+function buildInvHTML(rn,t,m,month,invDate,mDate,vacant,extras=[]){
   const eu=Math.max(0,parseFloat(m?.elecCurr||0)-parseFloat(m?.elecPrev||0));
   const wu=Math.max(0,parseFloat(m?.waterCurr||0)-parseFloat(m?.waterPrev||0));
   const ec=vacant?0:Math.round(eu*ELEC*100)/100,wc=vacant?0:Math.round(wu*WATER*100)/100;
-  const total=vacant?0:RENT+ec+wc;
+  const extraTotal=extras.reduce((s,x)=>s+parseFloat(x.amount||0),0);
+  const total=vacant?0:RENT+ec+wc+extraTotal;
+  const extraRows=extras.map(x=>`<tr><td style="border:1px solid #333;padding:6px 9px">${x.desc||'อื่นๆ'}</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">—</td><td style="border:1px solid #333;padding:6px 9px"></td><td style="border:1px solid #333;padding:6px 9px"></td><td style="border:1px solid #333;padding:6px 9px;text-align:right">${fmt2(x.amount)}</td></tr>`).join('');
   return`<div style="background:#fff;border:1px solid #ddd;border-radius:8px;padding:26px 30px;max-width:580px;font-family:'Sarabun',sans-serif;font-size:14px">
     <div style="text-align:center;font-size:19px;font-weight:700;margin-bottom:16px">ใบแจ้งยอดค่าเช่า</div>
     <div style="display:flex;justify-content:space-between;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid #eee">
@@ -1292,12 +1305,14 @@ function buildInvHTML(rn,t,m,month,invDate,mDate,vacant){
         <tr><td style="border:1px solid #333;padding:6px 9px">ค่าเช่าห้อง</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">—</td><td style="border:1px solid #333;padding:6px 9px"></td><td style="border:1px solid #333;padding:6px 9px"></td><td style="border:1px solid #333;padding:6px 9px;text-align:right">${vacant?'—':fmt2(RENT)}</td></tr>
         <tr><td style="border:1px solid #333;padding:6px 9px">ค่าไฟฟ้า</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">${m?.elecPrev||0} - ${m?.elecCurr||0}</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">${eu.toFixed(1)}</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">6.5</td><td style="border:1px solid #333;padding:6px 9px;text-align:right">${fmt2(ec)}</td></tr>
         <tr><td style="border:1px solid #333;padding:6px 9px">ค่าน้ำประปา</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">${m?.waterPrev||0} - ${m?.waterCurr||0}</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">${wu.toFixed(1)}</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">22</td><td style="border:1px solid #333;padding:6px 9px;text-align:right">${fmt2(wc)}</td></tr>
+        ${extraRows}
         <tr><td colspan="4" style="border:1px solid #333;padding:7px 9px;text-align:center;font-weight:600">จำนวนเงินรวมทั้งสิ้น (บาท)</td><td style="border:1px solid #333;padding:7px 9px;text-align:right;font-weight:700;font-size:15px">${vacant?'—':fmt2(total)}</td></tr>
       </tbody>
     </table>
     <div style="font-size:12px;line-height:1.9"><div style="font-weight:700;text-decoration:underline">หมายเหตุ</div>1. กรุณาชำระภายในวันที่ 1-5 ของเดือน<br>2. หากชำระเกินกำหนด ปรับวันละ 50.- หลังวันที่ 10 ปรับวันละ 100.-<br>3. โอนเงินเข้าบัญชี TTB 629-7-17118-0 นายโสภณ ภิญโญศาสตร์ และส่งหลักฐานไลน์ SissyKiss.Shop</div>
   </div>`;
 }
+let _invMeterCache=null;
 async function renderInv(){
   const room=document.getElementById('inv-room')?.value;if(!room)return;
   const t=tenants.find(x=>String(x.room)===String(room));if(!t)return;
@@ -1311,22 +1326,80 @@ async function renderInv(){
   if(moNum > now.getMonth()+1) yr=yr-1;
   const monthKey=yr+'_'+mo;
   const meterData=await api({action:'getMeters',month:monthKey})||[];
+  _invMeterCache={meterData,monthKey,monthName,invDate};
   const m=meterData.find(x=>String(x.room)===String(room));
   const mDate=m?.currDate||document.getElementById('inv-mdate').value;
   document.getElementById('inv-preview').innerHTML=buildInvHTML(room,t,m,monthName,invDate,mDate,false);
 }
+let _issueInvExtras=[];
+function addInvExtra(){
+  const idx=_issueInvExtras.length;
+  _issueInvExtras.push({desc:'',amount:0});
+  const el=document.getElementById('inv-extra-list');
+  const row=document.createElement('div');
+  row.id='inv-extra-row-'+idx;
+  row.style.cssText='display:flex;gap:6px;align-items:center;margin-bottom:6px';
+  row.innerHTML=`<input type="text" class="fc" placeholder="ชื่อรายการ" style="flex:2;font-size:12px;padding:5px 8px" oninput="_issueInvExtras[${idx}].desc=this.value"><input type="number" class="fc" placeholder="จำนวนเงิน" style="flex:1;font-size:12px;padding:5px 8px;text-align:right" oninput="_issueInvExtras[${idx}].amount=parseFloat(this.value)||0"><button onclick="removeInvExtra(${idx})" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:16px;padding:0 4px">✕</button>`;
+  el.appendChild(row);
+}
+function removeInvExtra(idx){
+  _issueInvExtras[idx]=null;
+  const row=document.getElementById('inv-extra-row-'+idx);
+  if(row)row.remove();
+}
 async function issueInv(){
   const room=document.getElementById('inv-room')?.value;if(!room)return;
   const t=tenants.find(x=>String(x.room)===String(room));if(!t)return;
-  // update status -> overdue ใน Supabase
-  await _sb.from('tenants').update({status:'overdue'}).eq('room',room);
-  // update ใน local array ด้วย
+  // เตรียมข้อมูลมิเตอร์สำหรับ popup preview
+  const monthName=document.getElementById('inv-month').value;
+  const invDate=document.getElementById('inv-date').value;
+  const MONTH_MAP={'มกราคม':'01','กุมภาพันธ์':'02','มีนาคม':'03','เมษายน':'04','พฤษภาคม':'05','มิถุนายน':'06','กรกฎาคม':'07','สิงหาคม':'08','กันยายน':'09','ตุลาคม':'10','พฤศจิกายน':'11','ธันวาคม':'12'};
+  const mo=MONTH_MAP[monthName]||String(new Date().getMonth()+1).padStart(2,'0');
+  const moNum=parseInt(mo);const now=new Date();let yr=now.getFullYear();
+  if(moNum>now.getMonth()+1)yr=yr-1;
+  const monthKey=yr+'_'+mo;
+  const meterData=await api({action:'getMeters',month:monthKey})||[];
+  const m=meterData.find(x=>String(x.room)===String(room));
+  const mDate=m?.currDate||document.getElementById('inv-mdate').value;
+  _invMeterCache={meterData,monthKey,monthName,invDate,m,mDate,room,t};
+  // reset รายการพิเศษ
+  _issueInvExtras=[];
+  document.getElementById('inv-extra-list').innerHTML='';
+  // แสดง preview ในmodal
+  const eu=Math.max(0,parseFloat(m?.elecCurr||0)-parseFloat(m?.elecPrev||0));
+  const wu=Math.max(0,parseFloat(m?.waterCurr||0)-parseFloat(m?.waterPrev||0));
+  const ec=Math.round(eu*ELEC*100)/100,wc=Math.round(wu*WATER*100)/100;
+  document.getElementById('inv-modal-preview').innerHTML=`
+    <div style="font-size:12px;color:var(--t2);margin-bottom:8px;font-weight:500">ห้อง ${parseInt(room)} · ${t.name} · ประจำเดือน ${monthName}</div>
+    <table class="tbl" style="margin-bottom:0;font-size:12px">
+      <thead><tr><th>รายการ</th><th class="c">หน่วย เก่า-ใหม่</th><th class="c">จำนวน</th><th class="r">เงิน</th></tr></thead>
+      <tbody>
+        <tr><td>ค่าเช่าห้อง</td><td class="c" style="color:var(--t3)">—</td><td></td><td class="r">฿${fmt2(RENT)}</td></tr>
+        <tr><td>ค่าไฟฟ้า</td><td class="c" style="color:var(--t3)">${m?.elecPrev||0}–${m?.elecCurr||0}</td><td class="c">${eu.toFixed(1)}</td><td class="r">฿${fmt2(ec)}</td></tr>
+        <tr><td>ค่าน้ำประปา</td><td class="c" style="color:var(--t3)">${m?.waterPrev||0}–${m?.waterCurr||0}</td><td class="c">${wu.toFixed(1)}</td><td class="r">฿${fmt2(wc)}</td></tr>
+      </tbody>
+    </table>`;
+  openMo('mo-issue-inv');
+}
+async function confirmIssueInv(){
+  const {monthKey,monthName,invDate,m,mDate,room,t}=_invMeterCache||{};
+  if(!room||!t)return;
+  const extras=_issueInvExtras.filter(x=>x&&x.amount>0);
+  // update status overdue เฉพาะเมื่อยังไม่ overdue
   const idx=tenants.findIndex(x=>String(x.room)===String(room));
-  if(idx>-1)tenants[idx].status='overdue';
-  // update badges
+  if(idx>-1&&tenants[idx].status!=='overdue'){
+    await _sb.from('tenants').update({status:'overdue'}).eq('room',room);
+    tenants[idx].status='overdue';
+  }
+  // บันทึกรายการพิเศษลง transactions
+  if(extras.length>0){
+    const today=new Date().toISOString().split('T')[0];
+    await _sb.from('transactions').insert(extras.map(x=>({date:today,type:'other-in',desc:x.desc||'อื่นๆ ห้อง '+room,room,amount:x.amount,channel:'cash',note:'',month:monthKey})));
+  }
   renderDash();
-  // render ใบแจ้งหนี้
-  await renderInv();
+  closeMo('mo-issue-inv');
+  // render ใบแจ้งหนี้ใน preview พร้อมรายการพิเศษ
+  document.getElementById('inv-preview').innerHTML=buildInvHTML(room,t,m,monthName,invDate,mDate,false,extras);
   showToast(`ออกใบแจ้งหนี้ห้อง ${parseInt(room)} แล้ว`);
 }
 async function printAllInv(){
@@ -1443,7 +1516,16 @@ async function renderOverdue(){
   const m2=await api({action:'getMeters',month},'กำลังโหลด...')||[];
   meters=m2;
   const rows=tenants.map(t=>{const m=meters.find(x=>String(x.room)===String(t.room))||{};const eu=Math.max(0,parseFloat(m.elecCurr||0)-parseFloat(m.elecPrev||0));const wu=Math.max(0,parseFloat(m.waterCurr||0)-parseFloat(m.waterPrev||0));const total=RENT+Math.round(eu*ELEC)+Math.round(wu*WATER);return{...t,total,eu,wu,m};});
-  document.getElementById('ov-content').innerHTML=`<table class="tbl"><thead><tr><th style="width:40px">ห้อง</th><th>ชื่อ</th><th></th></tr></thead><tbody>${rows.map(t=>`<tr><td style="font-weight:600">${t.room}</td><td style="font-weight:500">${t.name}</td><td>${t.status==='overdue'?`<button class="od-pay-btn pb-ov" onclick="openPayModal('${t.room}')"><i class="ti ti-receipt" style="font-size:11px"></i> ค้างชำระ</button>`:`<button class="od-pay-btn pb-pd" onclick="viewReceipt('${t.room}')"><i class="ti ti-check" style="font-size:11px"></i> ชำระแล้ว</button>`}</td></tr>`).join('')}</tbody></table>`;
+  document.getElementById('ov-content').innerHTML=`<table class="tbl"><thead><tr><th style="width:40px">ห้อง</th><th>ชื่อ</th><th></th></tr></thead><tbody>${rows.map(t=>`<tr><td style="font-weight:600">${t.room}</td><td style="font-weight:500">${t.name}</td><td style="display:flex;gap:5px;justify-content:flex-end">${t.status==='overdue'?`<button class="od-pay-btn pb-ov" onclick="openPayModal('${t.room}')"><i class="ti ti-receipt" style="font-size:11px"></i> ค้างชำระ</button><button onclick="cancelOverdue('${t.room}')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:3px 8px;font-size:11px;cursor:pointer;color:var(--t2)" title="ยกเลิกการออกใบ"><i class="ti ti-x" style="font-size:10px"></i></button>`:`<button class="od-pay-btn pb-pd" onclick="viewReceipt('${t.room}')"><i class="ti ti-check" style="font-size:11px"></i> ชำระแล้ว</button>`}</td></tr>`).join('')}</tbody></table>`;
+}
+async function cancelOverdue(room){
+  if(!confirm(`ยืนยันยกเลิกการออกใบแจ้งหนี้ห้อง ${parseInt(room)}?`))return;
+  await _sb.from('tenants').update({status:'active'}).eq('room',room);
+  const idx=tenants.findIndex(x=>String(x.room)===String(room));
+  if(idx>-1)tenants[idx].status='active';
+  renderDash();
+  renderOverdue();
+  showToast(`ยกเลิกใบแจ้งหนี้ห้อง ${parseInt(room)} แล้ว`);
 }
 
 // PAY

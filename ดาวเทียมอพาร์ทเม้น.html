@@ -1596,9 +1596,18 @@ async function openPayModal(room){
   document.getElementById('pay-sub').textContent='ห้อง '+room+' · '+t.name;
   const er=document.getElementById('pay-elec-rate');if(er)er.textContent=ELEC;
   const wr=document.getElementById('pay-water-rate');if(wr)wr.textContent=WATER;
-  // แสดงรายการพิเศษ
-  const extrasEl=document.getElementById('pay-extras-rows');
-  if(extrasEl) extrasEl.innerHTML=extras.map(x=>`<td colspan="4" style="font-size:11px;color:var(--t2);padding:4px 8px">${x.desc||'อื่นๆ'}</td><td class="r" style="font-size:11px;color:var(--t2);padding:4px 8px">฿${fmt2(x.amount)}</td>`).join('</tr><tr>');
+  // แสดงรายการพิเศษ — ลบ tr เก่าก่อน แล้ว insert ใหม่
+  document.querySelectorAll('.pay-extra-tr').forEach(el=>el.remove());
+  const extrasAnchor=document.getElementById('pay-extras-rows');
+  if(extrasAnchor){
+    extras.forEach(x=>{
+      const tr=document.createElement('tr');
+      tr.className='pay-extra-tr';
+      tr.innerHTML=`<td colspan="4" style="font-size:11px;color:var(--t2);padding:4px 8px">${x.desc||'อื่นๆ'}</td><td class="r" style="font-size:11px;color:var(--t2);padding:4px 8px">฿${fmt2(x.amount)}</td>`;
+      extrasAnchor.insertAdjacentElement('afterend',tr);
+    });
+    extrasAnchor.innerHTML='';
+  }
   // แสดง banner รายวัน
   let banner=document.getElementById('pay-day-banner');
   if(!banner){banner=document.createElement('div');banner.id='pay-day-banner';document.getElementById('pay-sub').after(banner);}

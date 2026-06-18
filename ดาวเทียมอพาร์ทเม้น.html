@@ -1332,9 +1332,9 @@ async function renderInv(){
   _invMeterCache={meterData,monthKey,monthName,invDate};
   const m=meterData.find(x=>String(x.room)===String(room));
   const mDate=m?.currDate||document.getElementById('inv-mdate').value;
-  // ดึงรายการพิเศษ other-in ของห้องนี้ในเดือนนี้
+  // ดึงรายการพิเศษจาก invoices
   let extras=[];
-  try{const {data}=await _sb.from('transactions').select('*').eq('room',room).eq('type','other-in').eq('month',monthKey);extras=data||[];}catch(e){}
+  try{const {data}=await _sb.from('invoices').select('extras').eq('room',room).eq('month',monthKey).maybeSingle();if(data?.extras){extras=typeof data.extras==='string'?JSON.parse(data.extras):data.extras;}}catch(e){}
   document.getElementById('inv-preview').innerHTML=buildInvHTML(room,t,m,monthName,invDate,mDate,false,extras);
 }
 let _issueInvExtras=[];
@@ -1391,22 +1391,33 @@ async function confirmIssueInv(){
   const {monthKey,monthName,invDate,m,mDate,room,t}=_invMeterCache||{};
   if(!room||!t)return;
   const extras=_issueInvExtras.filter(x=>x&&x.amount>0);
-  // update status overdue เฉพาะเมื่อยังไม่ overdue
-  const idx=tenants.findIndex(x=>String(x.room)===String(room));
-  if(idx>-1&&tenants[idx].status!=='overdue'){
-    await _sb.from('tenants').update({status:'overdue'}).eq('room',room);
-    tenants[idx].status='overdue';
-  }
-  // บันทึกรายการพิเศษลง transactions
-  if(extras.length>0){
-    const today=new Date().toISOString().split('T')[0];
-    await _sb.from('transactions').insert(extras.map(x=>({date:today,type:'other-in',desc:x.desc||'อื่นๆ ห้อง '+room,room,amount:x.amount,channel:'cash',note:'',month:monthKey})));
-  }
-  renderDash();
-  closeMo('mo-issue-inv');
-  // render ใบแจ้งหนี้ใน preview พร้อมรายการพิเศษ
-  document.getElementById('inv-preview').innerHTML=buildInvHTML(room,t,m,monthName,invDate,mDate,false,extras);
-  showToast(`ออกใบแจ้งหนี้ห้อง ${parseInt(room)} แล้ว`);
+  const eu=Math.max(0,parseFloat(m?.elecCurr||0)-parseFloat(m?.elecPrev||0));
+  const wu=Math.max(0,parseFloat(m?.waterCurr||0)-parseFloat(m?.waterPrev||0));
+  const ec=Math.round(eu*ELEC*100)/100,wc=Math.round(wu*WATER*100)/100;
+  const extraTotal=extras.reduce((s,x)=>s+parseFloat(x.amount||0),0);
+  const total=RENT+ec+wc+extraTotal;
+  showLoad('กำลังออกใบแจ้งหนี้...');
+  try{
+    // ลบ invoice เก่าของห้อง+เดือนนี้ก่อน (กันซ้ำ)
+    await _sb.from('invoices').delete().eq('room',room).eq('month',monthKey);
+    // insert invoice ใหม่
+    await _sb.from('invoices').insert({
+      room,month:monthKey,issued_date:invDate,
+      rent_amount:RENT,elec_amount:ec,water_amount:wc,
+      extras:JSON.stringify(extras),total,status:'pending'
+    });
+    // update status overdue เฉพาะเมื่อยังไม่ overdue
+    const idx=tenants.findIndex(x=>String(x.room)===String(room));
+    if(idx>-1&&tenants[idx].status!=='overdue'){
+      await _sb.from('tenants').update({status:'overdue'}).eq('room',room);
+      tenants[idx].status='overdue';
+    }
+    renderDash();
+    closeMo('mo-issue-inv');
+    document.getElementById('inv-preview').innerHTML=buildInvHTML(room,t,m,monthName,invDate,mDate,false,extras);
+    showToast(`ออกใบแจ้งหนี้ห้อง ${parseInt(room)} แล้ว`);
+  }catch(e){showToast('ออกใบไม่สำเร็จ','err');}
+  finally{hideLoad();}
 }
 async function printAllInv(){
   // update status -> overdue ทุกห้องที่มีผู้เช่า
@@ -1590,14 +1601,17 @@ async function openPayModal(room){
   const ovSel=document.getElementById('ov-sel')?.value||'';
   const rentAmt=calcDayRent(t.checkin,t.checkout,ovSel);
   const isDayRate=rentAmt!==RENT;
-  // ดึงรายการพิเศษ other-in ของห้องนี้ในเดือนนี้
-  let extras=[];
+  // ดึง invoice ของห้องนี้ในเดือนนี้
+  let extras=[],invoiceId=null;
   try{
-    const {data}=await _sb.from('transactions').select('*').eq('room',room).eq('type','other-in').eq('month',ovSel);
-    extras=data||[];
+    const {data}=await _sb.from('invoices').select('*').eq('room',room).eq('month',ovSel).maybeSingle();
+    if(data){
+      invoiceId=data.id;
+      extras=typeof data.extras==='string'?JSON.parse(data.extras):data.extras||[];
+    }
   }catch(e){}
   const extraTotal=extras.reduce((s,x)=>s+parseFloat(x.amount||0),0);
-  payCurrentRoom=room;payMethod=null;payData={t,m,eu,wu,ec,wc,rentAmt,extraTotal};
+  payCurrentRoom=room;payMethod=null;payData={t,m,eu,wu,ec,wc,rentAmt,extraTotal,invoiceId,extras};
   document.getElementById('pay-sub').textContent='ห้อง '+room+' · '+t.name;
   const er=document.getElementById('pay-elec-rate');if(er)er.textContent=ELEC;
   const wr=document.getElementById('pay-water-rate');if(wr)wr.textContent=WATER;
@@ -1637,14 +1651,22 @@ async function confirmPay(){
   const ch=payMethod==='cash'?'cash':'bank';
   const today=new Date().toISOString().split('T')[0];
   const rentAmt=payData.rentAmt||RENT;
+  const extras=payData.extras||[];
   showLoad('กำลังบันทึกการชำระ...');
   try{
-    await _sb.from('transactions').insert([
-      {date:today,type:'rent-in',desc:'ค่าเช่าห้อง '+payCurrentRoom,room:payCurrentRoom,amount:rentAmt,channel:ch,note:'',month},
-      {date:today,type:'elec-in',desc:'ค่าไฟห้อง '+payCurrentRoom,room:payCurrentRoom,amount:payData.ec,channel:ch,note:'',month},
-      {date:today,type:'water-in',desc:'ค่าน้ำห้อง '+payCurrentRoom,room:payCurrentRoom,amount:payData.wc,channel:ch,note:'',month},
-      ...(otherAmt>0?[{date:today,type:'other-in',desc:otherDesc||'อื่นๆ ห้อง '+payCurrentRoom,room:payCurrentRoom,amount:otherAmt,channel:ch,note:'',month}]:[])
-    ]);
+    // บันทึก transactions
+    const txRows=[
+      {date:today,type:'rent-in',description:'ค่าเช่าห้อง '+payCurrentRoom,room:payCurrentRoom,amount:rentAmt,channel:ch,note:'',month},
+      {date:today,type:'elec-in',description:'ค่าไฟห้อง '+payCurrentRoom,room:payCurrentRoom,amount:payData.ec,channel:ch,note:'',month},
+      {date:today,type:'water-in',description:'ค่าน้ำห้อง '+payCurrentRoom,room:payCurrentRoom,amount:payData.wc,channel:ch,note:'',month},
+      ...extras.map(x=>({date:today,type:'other-in',description:x.desc||'อื่นๆ ห้อง '+payCurrentRoom,room:payCurrentRoom,amount:x.amount,channel:ch,note:'',month})),
+      ...(otherAmt>0?[{date:today,type:'other-in',description:otherDesc||'อื่นๆ ห้อง '+payCurrentRoom,room:payCurrentRoom,amount:otherAmt,channel:ch,note:'',month}]:[])
+    ];
+    await _sb.from('transactions').insert(txRows);
+    // update invoice status=paid
+    if(payData.invoiceId){
+      await _sb.from('invoices').update({status:'paid'}).eq('id',payData.invoiceId);
+    }
     await apiPost({action:'saveTenant',...t,status:'active'});
     const d={room:payCurrentRoom,name:t.name,paid,method:payMethod,eu:payData.eu,wu:payData.wu,ec:payData.ec,wc:payData.wc,rentAmt,otherDesc,otherAmt,date:new Date().toLocaleDateString('th-TH')};
     receiptStore[payCurrentRoom]=d;

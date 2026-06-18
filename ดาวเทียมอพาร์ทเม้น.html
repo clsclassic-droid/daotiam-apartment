@@ -175,6 +175,8 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
   .page{display:none!important}
   #page-invoice{display:block!important}
   #page-invoice .card{border:none!important;padding:0!important;box-shadow:none!important}
+  #page-invoice .fg,#page-invoice select,#page-invoice input,#page-invoice .btn,#page-invoice button,#page-invoice label{display:none!important}
+  #page-invoice .card-hd{display:none!important}
   #inv-preview{display:block!important}
 }
 @media(max-width:768px){
@@ -327,7 +329,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
       <div class="card">
         <div class="section-hd">
           <div class="card-title" style="margin-bottom:0"><i class="ti ti-file-invoice"></i> ออกใบแจ้งหนี้</div>
-          <button class="btn btn-blue btn-sm" onclick="printAllInv()"><i class="ti ti-files"></i> ออกบิลทุกห้อง</button>
+          <button class="btn btn-blue btn-sm" onclick="printAllInv()"><i class="ti ti-files"></i> ออกใบแจ้งหนี้ทุกห้อง</button>
         </div>
         <div class="fr2" style="margin-bottom:12px">
           <div class="fg"><label>เลือกห้อง</label><select id="inv-room" class="fc" onchange="renderInv()"><option value="">-- เลือกห้อง --</option></select></div>
@@ -1461,14 +1463,42 @@ async function confirmIssueInv(){
   finally{hideLoad();}
 }
 async function printAllInv(){
-  // update status -> overdue ทุกห้องที่มีผู้เช่า
-  const roomsToUpdate=tenants.filter(t=>t.status!=='overdue').map(t=>t.room);
-  if(roomsToUpdate.length>0){
-    await _sb.from('tenants').update({status:'overdue'}).in('room',roomsToUpdate);
-    tenants.forEach(t=>{t.status='overdue';});
-    renderDash();
-  }
-  const month=document.getElementById('inv-month').value;const invDate=document.getElementById('inv-date').value;const mDate=document.getElementById('inv-mdate').value;const all=Array.from({length:21},(_,i)=>{const n=i+1;const t=tenants.find(x=>String(x.room)===String(n));const m=meters.find(x=>String(x.room)===String(n));return buildInvHTML(n,t||null,m||null,month,invDate,m?.currDate||mDate,!t);});const w=window.open('','_blank');w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>ใบแจ้งหนี้</title><style>body{margin:20px;font-family:'Sarabun',sans-serif}@media print{.np{display:none}.w{page-break-after:always}}</style></head><body><div class="np" style="margin-bottom:14px;text-align:center"><button onclick="window.print()" style="padding:7px 22px;background:#185FA5;color:#fff;border:none;border-radius:6px;cursor:pointer">พิมพ์ทุกห้อง</button></div>${all.map(h=>`<div class="w" style="margin-bottom:20px">${h}</div>`).join('')}</body></html>`);w.document.close();}
+  const month=document.getElementById('inv-month').value;
+  const invDate=document.getElementById('inv-date').value;
+  const mDate=document.getElementById('inv-mdate').value;
+  const MONTH_MAP={'มกราคม':'01','กุมภาพันธ์':'02','มีนาคม':'03','เมษายน':'04','พฤษภาคม':'05','มิถุนายน':'06','กรกฎาคม':'07','สิงหาคม':'08','กันยายน':'09','ตุลาคม':'10','พฤศจิกายน':'11','ธันวาคม':'12'};
+  const mo=MONTH_MAP[month]||String(new Date().getMonth()+1).padStart(2,'0');
+  const moNum=parseInt(mo);const now=new Date();let yr=now.getFullYear();
+  if(moNum>now.getMonth()+1)yr=yr-1;
+  const monthKey=yr+'_'+mo;
+  showLoad('กำลังออกใบแจ้งหนี้ทุกห้อง...');
+  try{
+    // update status overdue ทุกห้องที่มีผู้เช่า
+    const roomsToUpdate=tenants.filter(t=>t.status!=='overdue').map(t=>t.room);
+    if(roomsToUpdate.length>0){
+      await _sb.from('tenants').update({status:'overdue'}).in('room',roomsToUpdate);
+      tenants.forEach(t=>{t.status='overdue';});
+      renderDash();
+    }
+    // insert invoices ทุกห้องที่มีผู้เช่า (ลบเก่าก่อน)
+    const invoiceRows=tenants.map(t=>{
+      const m=meters.find(x=>String(x.room)===String(t.room))||{};
+      const eu=Math.max(0,parseFloat(m.elecCurr||0)-parseFloat(m.elecPrev||0));
+      const wu=Math.max(0,parseFloat(m.waterCurr||0)-parseFloat(m.waterPrev||0));
+      const ec=Math.round(eu*ELEC*100)/100,wc=Math.round(wu*WATER*100)/100;
+      return{room:String(t.room),month:monthKey,issued_date:invDate,rent_amount:RENT,elec_amount:ec,water_amount:wc,extras:'[]',total:RENT+ec+wc,status:'pending'};
+    });
+    if(invoiceRows.length>0){
+      await _sb.from('invoices').delete().eq('month',monthKey).in('room',tenants.map(t=>String(t.room)));
+      await _sb.from('invoices').insert(invoiceRows);
+    }
+  }catch(e){showToast('ออกใบบางห้องไม่สำเร็จ','err');}
+  finally{hideLoad();}
+  const all=Array.from({length:21},(_,i)=>{const n=i+1;const t=tenants.find(x=>String(x.room)===String(n));const m=meters.find(x=>String(x.room)===String(n));return buildInvHTML(n,t||null,m||null,month,invDate,m?.currDate||mDate,!t);});
+  const w=window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>ใบแจ้งหนี้</title><style>body{margin:20px;font-family:'Sarabun',sans-serif}@media print{.np{display:none}.w{page-break-after:always}}</style></head><body><div class="np" style="margin-bottom:14px;text-align:center"><button onclick="window.print()" style="padding:7px 22px;background:#185FA5;color:#fff;border:none;border-radius:6px;cursor:pointer">พิมพ์ทุกห้อง</button></div>${all.map(h=>`<div class="w" style="margin-bottom:20px">${h}</div>`).join('')}</body></html>`);
+  w.document.close();
+}
 
 // CASHFLOW
 async function loadTx(){

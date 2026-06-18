@@ -7,6 +7,8 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap');
 :root{
@@ -175,8 +177,6 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
   .page{display:none!important}
   #page-invoice{display:block!important}
   #page-invoice .card{border:none!important;padding:0!important;box-shadow:none!important}
-  #page-invoice .fg,#page-invoice select,#page-invoice input,#page-invoice .btn,#page-invoice button,#page-invoice label{display:none!important}
-  #page-invoice .card-hd{display:none!important}
   #inv-preview{display:block!important}
 }
 @media(max-width:768px){
@@ -329,7 +329,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
       <div class="card">
         <div class="section-hd">
           <div class="card-title" style="margin-bottom:0"><i class="ti ti-file-invoice"></i> ออกใบแจ้งหนี้</div>
-          <button class="btn btn-blue btn-sm" onclick="printAllInv()"><i class="ti ti-files"></i> ออกใบแจ้งหนี้ทุกห้อง</button>
+          <button class="btn btn-blue btn-sm" onclick="printAllInv()"><i class="ti ti-files"></i> ออกบิลทุกห้อง</button>
         </div>
         <div class="fr2" style="margin-bottom:12px">
           <div class="fg"><label>เลือกห้อง</label><select id="inv-room" class="fc" onchange="renderInv()"><option value="">-- เลือกห้อง --</option></select></div>
@@ -337,10 +337,12 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
           <div class="fg"><label>วันที่ออกใบ</label><input type="text" id="inv-date" class="fc"></div>
           <div class="fg"><label>วันที่จดมิเตอร์</label><input type="text" id="inv-mdate" class="fc"></div>
         </div>
-        <div style="display:flex;gap:7px;margin-bottom:14px">
+        <div style="display:flex;gap:7px;margin-bottom:14px;flex-wrap:wrap">
           <button class="btn btn-green btn-sm" onclick="issueInv()"><i class="ti ti-file-invoice"></i> ออกใบแจ้งหนี้</button>
           <button class="btn btn-sm" id="inv-edit-btn" onclick="editInv()" style="display:none"><i class="ti ti-edit"></i> แก้ไขใบ</button>
           <button class="btn btn-sm" onclick="window.print()"><i class="ti ti-printer"></i> พิมพ์</button>
+          <button class="btn btn-sm" id="inv-line-btn" onclick="sendLineInv()" style="display:none;background:#06c755;border-color:#06c755;color:#fff"><i class="ti ti-brand-line"></i> ส่ง LINE</button>
+          <button class="btn btn-sm" onclick="sendLineAllInv()" style="background:#06c755;border-color:#06c755;color:#fff;opacity:.85"><i class="ti ti-brand-line"></i> ส่งทุกห้อง LINE</button>
         </div>
         <div id="inv-preview"></div>
       </div>
@@ -550,6 +552,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
     <div class="fg"><label>ค่าประกัน (฿)</label><input type="number" id="t-deposit" class="fc" value="3500"></div>
     <div class="fg"><label>สถานะ</label><select id="t-status" class="fc"><option value="active">มีผู้เช่า</option><option value="overdue">ค้างชำระ</option></select></div>
   </div>
+  <div class="fg"><label>LINE User ID</label><input type="text" id="t-line" class="fc" placeholder="U xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"></div>
   <div class="fg"><label>หมายเหตุ</label><input type="text" id="t-note" class="fc"></div>
   <div id="t-meter-section" style="border-top:1px solid var(--border);margin-top:10px;padding-top:12px">
     <div style="font-size:12px;font-weight:600;color:var(--green);margin-bottom:8px"><i class="ti ti-gauge" style="font-size:13px"></i> เลขมิเตอร์เริ่มต้น (ตอนเข้าพัก)</div>
@@ -717,7 +720,8 @@ async function sbGetTenants(){
     return data.map(t=>({
       room:t.room, name:t.name, phone:t.phone||'', idcard:t.idcard||'',
       checkin:t.checkin||'', contract:t.contract||'', deposit:t.deposit||3500,
-      status:t.status||'active', note:t.note||''
+      status:t.status||'active', note:t.note||'',
+      line_user_id:t.line_user_id||''
     }));
   }catch(e){showToast('โหลดผู้เช่าไม่สำเร็จ','err');return [];}
   finally{hideLoad();}
@@ -810,7 +814,8 @@ async function sbSaveTenant(d){
     const {error}=await _sb.from('tenants').upsert({
       room:parseInt(d.room), name:d.name, phone:d.phone||'',
       idcard:d.idcard||'', checkin:d.checkin||'', contract:d.contract||'',
-      deposit:parseFloat(d.deposit)||3500, status:d.status||'active', note:d.note||''
+      deposit:parseFloat(d.deposit)||3500, status:d.status||'active', note:d.note||'',
+      line_user_id:d.line_user_id||''
     },{onConflict:'room'});
     if(error)throw error;
     return {success:true};
@@ -1247,6 +1252,7 @@ function filterTenants(){const q=document.getElementById('tenant-q').value.toLow
 function openTenantModal(t=null){
   document.getElementById('mo-tenant-title').textContent=t?'แก้ไขผู้เช่า':'เพิ่มผู้เช่าใหม่';
   ['room','name','phone','idcard','note'].forEach(f=>document.getElementById('t-'+f).value=t?t[f]||'':'');
+  document.getElementById('t-line').value=t?.line_user_id||'';
   document.getElementById('t-checkin').value=t?fmtDate(t.checkin):'';
   document.getElementById('t-contract').value=t?fmtDate(t.contract):'';
   document.getElementById('t-deposit').value=t?.deposit||3500;
@@ -1261,7 +1267,7 @@ function openTenantModal(t=null){
 function editTenant(room){openTenantModal(tenants.find(t=>String(t.room)===String(room)));}
 async function saveTenant(){
   const isNew=!document.getElementById('mo-tenant-title').textContent.includes('แก้ไข');
-  const d={room:document.getElementById('t-room').value,name:document.getElementById('t-name').value,phone:document.getElementById('t-phone').value,idcard:document.getElementById('t-idcard').value,checkin:document.getElementById('t-checkin').value,contract:document.getElementById('t-contract').value,deposit:document.getElementById('t-deposit').value,status:document.getElementById('t-status').value,note:document.getElementById('t-note').value};
+  const d={room:document.getElementById('t-room').value,name:document.getElementById('t-name').value,phone:document.getElementById('t-phone').value,idcard:document.getElementById('t-idcard').value,checkin:document.getElementById('t-checkin').value,contract:document.getElementById('t-contract').value,deposit:document.getElementById('t-deposit').value,status:document.getElementById('t-status').value,note:document.getElementById('t-note').value,line_user_id:document.getElementById('t-line').value||''};
   if(!d.room||!d.name){showToast('กรุณากรอกห้องและชื่อ','err');return;}
   // ตรวจเลขมิเตอร์เริ่มต้น (บังคับกรอกเฉพาะตอนเพิ่มใหม่)
   const elecStart=document.getElementById('t-elec-start').value,waterStart=document.getElementById('t-water-start').value;
@@ -1340,6 +1346,9 @@ async function renderInv(){
   // โชว์/ซ่อนปุ่มแก้ไข
   const editBtn=document.getElementById('inv-edit-btn');
   if(editBtn) editBtn.style.display=existingInvoice?'':'none';
+  // โชว์/ซ่อนปุ่ม LINE
+  const lineBtn=document.getElementById('inv-line-btn');
+  if(lineBtn) lineBtn.style.display=t?.line_user_id?'':'none';
   document.getElementById('inv-preview').innerHTML=buildInvHTML(room,t,m,monthName,invDate,mDate,false,extras);
 }
 async function editInv(){
@@ -1463,42 +1472,14 @@ async function confirmIssueInv(){
   finally{hideLoad();}
 }
 async function printAllInv(){
-  const month=document.getElementById('inv-month').value;
-  const invDate=document.getElementById('inv-date').value;
-  const mDate=document.getElementById('inv-mdate').value;
-  const MONTH_MAP={'มกราคม':'01','กุมภาพันธ์':'02','มีนาคม':'03','เมษายน':'04','พฤษภาคม':'05','มิถุนายน':'06','กรกฎาคม':'07','สิงหาคม':'08','กันยายน':'09','ตุลาคม':'10','พฤศจิกายน':'11','ธันวาคม':'12'};
-  const mo=MONTH_MAP[month]||String(new Date().getMonth()+1).padStart(2,'0');
-  const moNum=parseInt(mo);const now=new Date();let yr=now.getFullYear();
-  if(moNum>now.getMonth()+1)yr=yr-1;
-  const monthKey=yr+'_'+mo;
-  showLoad('กำลังออกใบแจ้งหนี้ทุกห้อง...');
-  try{
-    // update status overdue ทุกห้องที่มีผู้เช่า
-    const roomsToUpdate=tenants.filter(t=>t.status!=='overdue').map(t=>t.room);
-    if(roomsToUpdate.length>0){
-      await _sb.from('tenants').update({status:'overdue'}).in('room',roomsToUpdate);
-      tenants.forEach(t=>{t.status='overdue';});
-      renderDash();
-    }
-    // insert invoices ทุกห้องที่มีผู้เช่า (ลบเก่าก่อน)
-    const invoiceRows=tenants.map(t=>{
-      const m=meters.find(x=>String(x.room)===String(t.room))||{};
-      const eu=Math.max(0,parseFloat(m.elecCurr||0)-parseFloat(m.elecPrev||0));
-      const wu=Math.max(0,parseFloat(m.waterCurr||0)-parseFloat(m.waterPrev||0));
-      const ec=Math.round(eu*ELEC*100)/100,wc=Math.round(wu*WATER*100)/100;
-      return{room:String(t.room),month:monthKey,issued_date:invDate,rent_amount:RENT,elec_amount:ec,water_amount:wc,extras:'[]',total:RENT+ec+wc,status:'pending'};
-    });
-    if(invoiceRows.length>0){
-      await _sb.from('invoices').delete().eq('month',monthKey).in('room',tenants.map(t=>String(t.room)));
-      await _sb.from('invoices').insert(invoiceRows);
-    }
-  }catch(e){showToast('ออกใบบางห้องไม่สำเร็จ','err');}
-  finally{hideLoad();}
-  const all=Array.from({length:21},(_,i)=>{const n=i+1;const t=tenants.find(x=>String(x.room)===String(n));const m=meters.find(x=>String(x.room)===String(n));return buildInvHTML(n,t||null,m||null,month,invDate,m?.currDate||mDate,!t);});
-  const w=window.open('','_blank');
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>ใบแจ้งหนี้</title><style>body{margin:20px;font-family:'Sarabun',sans-serif}@media print{.np{display:none}.w{page-break-after:always}}</style></head><body><div class="np" style="margin-bottom:14px;text-align:center"><button onclick="window.print()" style="padding:7px 22px;background:#185FA5;color:#fff;border:none;border-radius:6px;cursor:pointer">พิมพ์ทุกห้อง</button></div>${all.map(h=>`<div class="w" style="margin-bottom:20px">${h}</div>`).join('')}</body></html>`);
-  w.document.close();
-}
+  // update status -> overdue ทุกห้องที่มีผู้เช่า
+  const roomsToUpdate=tenants.filter(t=>t.status!=='overdue').map(t=>t.room);
+  if(roomsToUpdate.length>0){
+    await _sb.from('tenants').update({status:'overdue'}).in('room',roomsToUpdate);
+    tenants.forEach(t=>{t.status='overdue';});
+    renderDash();
+  }
+  const month=document.getElementById('inv-month').value;const invDate=document.getElementById('inv-date').value;const mDate=document.getElementById('inv-mdate').value;const all=Array.from({length:21},(_,i)=>{const n=i+1;const t=tenants.find(x=>String(x.room)===String(n));const m=meters.find(x=>String(x.room)===String(n));return buildInvHTML(n,t||null,m||null,month,invDate,m?.currDate||mDate,!t);});const w=window.open('','_blank');w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>ใบแจ้งหนี้</title><style>body{margin:20px;font-family:'Sarabun',sans-serif}@media print{.np{display:none}.w{page-break-after:always}}</style></head><body><div class="np" style="margin-bottom:14px;text-align:center"><button onclick="window.print()" style="padding:7px 22px;background:#185FA5;color:#fff;border:none;border-radius:6px;cursor:pointer">พิมพ์ทุกห้อง</button></div>${all.map(h=>`<div class="w" style="margin-bottom:20px">${h}</div>`).join('')}</body></html>`);w.document.close();}
 
 // CASHFLOW
 async function loadTx(){
@@ -1630,6 +1611,7 @@ async function loadSettings(){
       ELEC=parseFloat(data.elec)||6.5;
       WATER=parseFloat(data.water)||22;
       DAY_RATE=parseFloat(data.day_rate)||116;
+      if(data.line_token) window._lineToken=data.line_token;
     }
   }catch(e){console.log('settings not found, using defaults');}
   const r=document.getElementById('cfg-rent');if(r)r.value=RENT;
@@ -2256,6 +2238,114 @@ async function renderMhRoom(){
   ['mh-room-elec-chart','mh-room-water-chart'].forEach(id=>{const old=Chart.getChart(id);if(old)old.destroy();});
   new Chart(document.getElementById('mh-room-elec-chart'),{type:'line',data:{labels:chartLabels,datasets:[{label:'ไฟ',data:chartE,borderColor:'#378ADD',backgroundColor:'rgba(55,138,221,0.08)',fill:true,tension:0.3,pointRadius:2,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:12}},y:{ticks:{font:{size:9}},beginAtZero:true}}}});
   new Chart(document.getElementById('mh-room-water-chart'),{type:'line',data:{labels:chartLabels,datasets:[{label:'น้ำ',data:chartW,borderColor:'#1D9E75',backgroundColor:'rgba(29,158,117,0.08)',fill:true,tension:0.3,pointRadius:2,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:12}},y:{ticks:{font:{size:9}},beginAtZero:true}}}});
+}
+
+
+// ===== LINE MESSAGING =====
+async function htmlToPdfBlob(htmlEl){
+  const {jsPDF}=window.jspdf;
+  const canvas=await html2canvas(htmlEl,{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false});
+  const imgData=canvas.toDataURL('image/jpeg',0.92);
+  const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const pdfW=pdf.internal.pageSize.getWidth();
+  const pdfH=(canvas.height*pdfW)/canvas.width;
+  pdf.addImage(imgData,'JPEG',0,0,pdfW,Math.min(pdfH,pdf.internal.pageSize.getHeight()));
+  return pdf.output('blob');
+}
+
+async function uploadPdfToSupabase(blob, filename){
+  showLoad('กำลังอัปโหลด PDF...');
+  try{
+    const {data,error}=await _sb.storage.from('invoices').upload(filename,blob,{contentType:'application/pdf',upsert:true});
+    if(error)throw error;
+    const {data:urlData}=_sb.storage.from('invoices').getPublicUrl(filename);
+    return urlData.publicUrl;
+  }catch(e){showToast('อัปโหลด PDF ไม่สำเร็จ: '+e.message,'err');return null;}
+  finally{hideLoad();}
+}
+
+async function sendLineMessage(lineUserId, pdfUrl, roomNo, tenantName, month, total){
+  const token=window._lineToken||'';
+  if(!token){showToast('ไม่พบ LINE Token ใน settings','err');return false;}
+  showLoad('กำลังส่ง LINE...');
+  try{
+    const resp=await fetch('https://api.line.me/v2/bot/message/push',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+      body:JSON.stringify({
+        to:lineUserId,
+        messages:[
+          {type:'text',text:`📋 ใบแจ้งยอดค่าเช่า\nห้อง ${roomNo} · ${tenantName}\nประจำเดือน ${month}\nยอดรวม ฿${fmtN(total)}\n\nกรุณาชำระภายในวันที่ 5 ของเดือน\nโอน TTB 629-7-17118-0 นายโสภณ ภิญโญศาสตร์`},
+          {type:'template',altText:'ใบแจ้งหนี้ PDF',template:{type:'buttons',text:`ดาวน์โหลดใบแจ้งหนี้ห้อง ${roomNo} เดือน ${month}`,actions:[{type:'uri',label:'📄 เปิดใบแจ้งหนี้ PDF',uri:pdfUrl}]}}
+        ]
+      })
+    });
+    if(!resp.ok){const err=await resp.json();throw new Error(err.message||'LINE API error '+resp.status);}
+    return true;
+  }catch(e){showToast('ส่ง LINE ไม่สำเร็จ: '+e.message,'err');return false;}
+  finally{hideLoad();}
+}
+
+async function sendLineInv(){
+  const room=document.getElementById('inv-room')?.value;if(!room)return;
+  const t=tenants.find(x=>String(x.room)===String(room));
+  if(!t?.line_user_id){showToast('ผู้เช่าไม่มี LINE User ID','err');return;}
+  const previewEl=document.getElementById('inv-preview');
+  if(!previewEl?.innerHTML){showToast('กรุณาเลือกห้องและเดือนก่อน','err');return;}
+  const monthName=document.getElementById('inv-month').value;
+  const MONTH_MAP={'มกราคม':'01','กุมภาพันธ์':'02','มีนาคม':'03','เมษายน':'04','พฤษภาคม':'05','มิถุนายน':'06','กรกฎาคม':'07','สิงหาคม':'08','กันยายน':'09','ตุลาคม':'10','พฤศจิกายน':'11','ธันวาคม':'12'};
+  const mo=MONTH_MAP[monthName]||'01';
+  const now=new Date();let yr=now.getFullYear();
+  if(parseInt(mo)>now.getMonth()+1)yr--;
+  const monthKey=yr+'_'+mo;
+  const m=(_invMeterCache?.meterData||[]).find(x=>String(x.room)===String(room))||{};
+  const eu=Math.max(0,parseFloat(m.elecCurr||0)-parseFloat(m.elecPrev||0));
+  const wu=Math.max(0,parseFloat(m.waterCurr||0)-parseFloat(m.waterPrev||0));
+  const total=RENT+Math.round(eu*ELEC)+Math.round(wu*WATER);
+  showLoad('กำลังสร้าง PDF...');
+  let blob;try{blob=await htmlToPdfBlob(previewEl);}catch(e){hideLoad();showToast('สร้าง PDF ไม่สำเร็จ','err');return;}
+  hideLoad();
+  const filename=`inv_r${String(room).padStart(2,'0')}_${monthKey}.pdf`;
+  const pdfUrl=await uploadPdfToSupabase(blob,filename);
+  if(!pdfUrl)return;
+  const ok=await sendLineMessage(t.line_user_id,pdfUrl,parseInt(room),t.name,monthName,total);
+  if(ok)showToast(`✓ ส่ง LINE ห้อง ${parseInt(room)} สำเร็จ`);
+}
+
+async function sendLineAllInv(){
+  const monthName=document.getElementById('inv-month').value;
+  const invDate=document.getElementById('inv-date').value;
+  const mDate=document.getElementById('inv-mdate').value;
+  const MONTH_MAP={'มกราคม':'01','กุมภาพันธ์':'02','มีนาคม':'03','เมษายน':'04','พฤษภาคม':'05','มิถุนายน':'06','กรกฎาคม':'07','สิงหาคม':'08','กันยายน':'09','ตุลาคม':'10','พฤศจิกายน':'11','ธันวาคม':'12'};
+  const mo=MONTH_MAP[monthName]||'01';
+  const now=new Date();let yr=now.getFullYear();
+  if(parseInt(mo)>now.getMonth()+1)yr--;
+  const monthKey=yr+'_'+mo;
+  const withLine=tenants.filter(t=>t.line_user_id);
+  if(!withLine.length){showToast('ไม่มีผู้เช่าที่มี LINE User ID','err');return;}
+  if(!confirm(`ยืนยันส่ง LINE ใบแจ้งหนี้ ${withLine.length} ห้อง?`))return;
+  const meterData=await api({action:'getMeters',month:monthKey})||[];
+  let ok=0,fail=0;
+  for(const t of withLine){
+    const m=meterData.find(x=>String(x.room)===String(t.room))||{};
+    const eu=Math.max(0,parseFloat(m.elecCurr||0)-parseFloat(m.elecPrev||0));
+    const wu=Math.max(0,parseFloat(m.waterCurr||0)-parseFloat(m.waterPrev||0));
+    const total=RENT+Math.round(eu*ELEC)+Math.round(wu*WATER);
+    const tmpDiv=document.createElement('div');
+    tmpDiv.style.cssText='position:fixed;left:-9999px;top:0;width:600px;background:#fff;z-index:-1';
+    tmpDiv.innerHTML=buildInvHTML(t.room,t,m,monthName,invDate,m.currDate||mDate,false,[]);
+    document.body.appendChild(tmpDiv);
+    try{
+      const blob=await htmlToPdfBlob(tmpDiv);
+      const filename=`inv_r${String(t.room).padStart(2,'0')}_${monthKey}.pdf`;
+      const pdfUrl=await uploadPdfToSupabase(blob,filename);
+      if(pdfUrl){const sent=await sendLineMessage(t.line_user_id,pdfUrl,parseInt(t.room),t.name,monthName,total);if(sent)ok++;else fail++;}
+      else fail++;
+    }catch(e){fail++;}
+    finally{try{document.body.removeChild(tmpDiv);}catch(e){}}
+    await new Promise(r=>setTimeout(r,1000));
+  }
+  showToast(`✓ ส่ง LINE สำเร็จ ${ok} ห้อง${fail>0?' · ล้มเหลว '+fail+' ห้อง':''}`);
 }
 
 // INIT

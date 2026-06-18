@@ -336,7 +336,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
           <div class="fg"><label>วันที่จดมิเตอร์</label><input type="text" id="inv-mdate" class="fc"></div>
         </div>
         <div style="display:flex;gap:7px;margin-bottom:14px">
-          <button class="btn btn-green btn-sm" onclick="renderInv()"><i class="ti ti-refresh"></i> แสดงใบ</button>
+          <button class="btn btn-green btn-sm" onclick="issueInv()"><i class="ti ti-file-invoice"></i> ออกใบแจ้งหนี้</button>
           <button class="btn btn-sm" onclick="window.print()"><i class="ti ti-printer"></i> พิมพ์</button>
         </div>
         <div id="inv-preview"></div>
@@ -1315,7 +1315,29 @@ async function renderInv(){
   const mDate=m?.currDate||document.getElementById('inv-mdate').value;
   document.getElementById('inv-preview').innerHTML=buildInvHTML(room,t,m,monthName,invDate,mDate,false);
 }
-function printAllInv(){const month=document.getElementById('inv-month').value;const invDate=document.getElementById('inv-date').value;const mDate=document.getElementById('inv-mdate').value;const all=Array.from({length:21},(_,i)=>{const n=i+1;const t=tenants.find(x=>String(x.room)===String(n));const m=meters.find(x=>String(x.room)===String(n));return buildInvHTML(n,t||null,m||null,month,invDate,m?.currDate||mDate,!t);});const w=window.open('','_blank');w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>ใบแจ้งหนี้</title><style>body{margin:20px;font-family:'Sarabun',sans-serif}@media print{.np{display:none}.w{page-break-after:always}}</style></head><body><div class="np" style="margin-bottom:14px;text-align:center"><button onclick="window.print()" style="padding:7px 22px;background:#185FA5;color:#fff;border:none;border-radius:6px;cursor:pointer">พิมพ์ทุกห้อง</button></div>${all.map(h=>`<div class="w" style="margin-bottom:20px">${h}</div>`).join('')}</body></html>`);w.document.close();}
+async function issueInv(){
+  const room=document.getElementById('inv-room')?.value;if(!room)return;
+  const t=tenants.find(x=>String(x.room)===String(room));if(!t)return;
+  // update status -> overdue ใน Supabase
+  await _sb.from('tenants').update({status:'overdue'}).eq('room',room);
+  // update ใน local array ด้วย
+  const idx=tenants.findIndex(x=>String(x.room)===String(room));
+  if(idx>-1)tenants[idx].status='overdue';
+  // update badges
+  renderDash();
+  // render ใบแจ้งหนี้
+  await renderInv();
+  showToast(`ออกใบแจ้งหนี้ห้อง ${parseInt(room)} แล้ว`);
+}
+async function printAllInv(){
+  // update status -> overdue ทุกห้องที่มีผู้เช่า
+  const roomsToUpdate=tenants.filter(t=>t.status!=='overdue').map(t=>t.room);
+  if(roomsToUpdate.length>0){
+    await _sb.from('tenants').update({status:'overdue'}).in('room',roomsToUpdate);
+    tenants.forEach(t=>{t.status='overdue';});
+    renderDash();
+  }
+  const month=document.getElementById('inv-month').value;const invDate=document.getElementById('inv-date').value;const mDate=document.getElementById('inv-mdate').value;const all=Array.from({length:21},(_,i)=>{const n=i+1;const t=tenants.find(x=>String(x.room)===String(n));const m=meters.find(x=>String(x.room)===String(n));return buildInvHTML(n,t||null,m||null,month,invDate,m?.currDate||mDate,!t);});const w=window.open('','_blank');w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>ใบแจ้งหนี้</title><style>body{margin:20px;font-family:'Sarabun',sans-serif}@media print{.np{display:none}.w{page-break-after:always}}</style></head><body><div class="np" style="margin-bottom:14px;text-align:center"><button onclick="window.print()" style="padding:7px 22px;background:#185FA5;color:#fff;border:none;border-radius:6px;cursor:pointer">พิมพ์ทุกห้อง</button></div>${all.map(h=>`<div class="w" style="margin-bottom:20px">${h}</div>`).join('')}</body></html>`);w.document.close();}
 
 // CASHFLOW
 async function loadTx(){

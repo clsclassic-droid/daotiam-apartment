@@ -2244,30 +2244,35 @@ async function renderMhRoom(){
 // ===== LINE MESSAGING =====
 async function htmlToPdfBlob(htmlEl){
   const {jsPDF}=window.jspdf;
+  // clone และ set width 794px (A4 @ 96dpi) เพื่อให้ได้ขนาดเต็มแผ่น
   const clone=htmlEl.cloneNode(true);
-  clone.style.cssText='position:fixed;left:-9999px;top:0;width:580px;background:#fff;padding:0;box-sizing:border-box;font-family:Sarabun,sans-serif;font-size:14px';
+  clone.style.cssText='position:fixed;left:-9999px;top:0;width:794px;background:#fff;padding:20px;box-sizing:border-box;font-family:Sarabun,sans-serif';
   document.body.appendChild(clone);
   try{
-    await new Promise(r=>setTimeout(r,200));
-    const W=clone.scrollWidth||580;
-    const H=clone.scrollHeight||800;
     const canvas=await html2canvas(clone,{
       scale:2,useCORS:true,backgroundColor:'#ffffff',
-      logging:false,width:W,height:H,
-      windowWidth:W,scrollX:0,scrollY:0
+      logging:false,width:794,
+      windowWidth:794
     });
     const imgData=canvas.toDataURL('image/jpeg',0.95);
-    // PDF ขนาดพอดีกับ content (mm)
-    const mmPerPx=0.2646;
-    const pdfW=W*mmPerPx;
-    const pdfH=H*mmPerPx;
-    const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:[pdfW,pdfH]});
-    pdf.addImage(imgData,'JPEG',0,0,pdfW,pdfH);
+    const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+    const pdfW=pdf.internal.pageSize.getWidth();   // 210mm
+    const pdfH=pdf.internal.pageSize.getHeight();  // 297mm
+    const imgH=(canvas.height*pdfW)/canvas.width;
+    // ถ้าสูงเกิน 1 หน้า ให้แบ่งหน้า
+    if(imgH<=pdfH){
+      pdf.addImage(imgData,'JPEG',0,0,pdfW,imgH);
+    } else {
+      let y=0;
+      while(y<imgH){
+        if(y>0)pdf.addPage();
+        pdf.addImage(imgData,'JPEG',0,-y,pdfW,imgH);
+        y+=pdfH;
+      }
+    }
     return pdf.output('blob');
   } finally {
     document.body.removeChild(clone);
-  }
-}
   }
 }
 
@@ -2282,12 +2287,35 @@ async function uploadPdfToSupabase(blob, filename){
   finally{hideLoad();}
 }
 
-async function sendLineMessage(lineUserId, pdfUrl, roomNo, tenantName, month, total){
+async function sendLineMessage(lineUserId, pdfUrl, roomNo, tenantName, month, total, detail={}){
   const token=window._lineToken||'';
   if(!token){showToast('ไม่พบ LINE Token ใน settings','err');return false;}
   showLoad('กำลังส่ง LINE...');
   try{
-    // เรียกผ่าน Supabase Edge Function เพื่อหลีกเลี่ยง CORS
+    // สร้างข้อความรายละเอียด
+    const rentAmt=detail.rentAmt||RENT;
+    const ec=detail.ec||0;
+    const wc=detail.wc||0;
+    const eu=detail.eu||0;
+    const wu=detail.wu||0;
+    const extras=detail.extras||[];
+    const extraTotal=extras.reduce((s,x)=>s+parseFloat(x.amount||0),0);
+    let msg=`📋 ใบแจ้งยอดค่าเช่า\n`;
+    msg+=`ห้อง ${roomNo} · ${tenantName}\n`;
+    msg+=`ประจำเดือน ${month}\n`;
+    msg+=`──────────────────\n`;
+    msg+=`🏠 ค่าเช่าห้อง      ฿${fmtN(rentAmt)}\n`;
+    msg+=`⚡ ค่าไฟ (${Math.round(eu)} หน่วย) ฿${fmtN(ec)}\n`;
+    msg+=`💧 ค่าน้ำ (${Math.round(wu)} หน่วย) ฿${fmtN(wc)}\n`;
+    if(extras.length>0){
+      extras.forEach(x=>{if(x&&x.amount>0)msg+=`📌 ${x.desc||'อื่นๆ'}      ฿${fmtN(x.amount)}\n`;});
+    }
+    msg+=`──────────────────\n`;
+    msg+=`💰 รวมทั้งสิ้น     ฿${fmtN(total)}\n\n`;
+    msg+=`📅 กรุณาชำระภายในวันที่ 5\n`;
+    msg+=`🏦 TTB 629-7-17118-0\n`;
+    msg+=`👤 นายโสภณ ภิญโญศาสตร์\n`;
+    msg+=`📲 แจ้งโอน LINE: SissyKiss.Shop`;
     const resp=await fetch('https://uokxrijfhezojnasnzps.supabase.co/functions/v1/send-line',{
       method:'POST',
       headers:{
@@ -2295,7 +2323,7 @@ async function sendLineMessage(lineUserId, pdfUrl, roomNo, tenantName, month, to
         'Authorization':'Bearer '+SUPABASE_KEY,
         'apikey':SUPABASE_KEY
       },
-      body:JSON.stringify({lineUserId,pdfUrl,roomNo,tenantName,month,total:fmtN(total),token})
+      body:JSON.stringify({lineUserId,pdfUrl,roomNo,tenantName,month,total:fmtN(total),msg,token})
     });
     const data=await resp.json();
     if(!resp.ok||data.error)throw new Error(data.error||data.data?.message||'LINE API error');
@@ -2326,7 +2354,7 @@ async function sendLineInv(){
   const filename=`inv_r${String(room).padStart(2,'0')}_${monthKey}.pdf`;
   const pdfUrl=await uploadPdfToSupabase(blob,filename);
   if(!pdfUrl)return;
-  const ok=await sendLineMessage(t.line_user_id,pdfUrl,parseInt(room),t.name,monthName,total);
+  const ok=await sendLineMessage(t.line_user_id,pdfUrl,parseInt(room),t.name,monthName,total,{rentAmt:RENT,eu,wu,ec:Math.round(eu*ELEC),wc:Math.round(wu*WATER),extras:[]});
   if(ok)showToast(`✓ ส่ง LINE ห้อง ${parseInt(room)} สำเร็จ`);
 }
 
@@ -2357,7 +2385,7 @@ async function sendLineAllInv(){
       const blob=await htmlToPdfBlob(tmpDiv);
       const filename=`inv_r${String(t.room).padStart(2,'0')}_${monthKey}.pdf`;
       const pdfUrl=await uploadPdfToSupabase(blob,filename);
-      if(pdfUrl){const sent=await sendLineMessage(t.line_user_id,pdfUrl,parseInt(t.room),t.name,monthName,total);if(sent)ok++;else fail++;}
+      if(pdfUrl){const sent=await sendLineMessage(t.line_user_id,pdfUrl,parseInt(t.room),t.name,monthName,total,{rentAmt:RENT,eu,wu,ec:Math.round(eu*ELEC),wc:Math.round(wu*WATER),extras:[]});if(sent)ok++;else fail++;}
       else fail++;
     }catch(e){fail++;}
     finally{try{document.body.removeChild(tmpDiv);}catch(e){}}

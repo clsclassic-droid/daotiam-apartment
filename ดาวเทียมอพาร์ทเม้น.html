@@ -2269,18 +2269,18 @@ async function sendLineMessage(lineUserId, pdfUrl, roomNo, tenantName, month, to
   if(!token){showToast('ไม่พบ LINE Token ใน settings','err');return false;}
   showLoad('กำลังส่ง LINE...');
   try{
-    const resp=await fetch('https://api.line.me/v2/bot/message/push',{
+    // เรียกผ่าน Supabase Edge Function เพื่อหลีกเลี่ยง CORS
+    const resp=await fetch('https://uokxrijfhezojnasnzps.supabase.co/functions/v1/send-line',{
       method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
-      body:JSON.stringify({
-        to:lineUserId,
-        messages:[
-          {type:'text',text:`📋 ใบแจ้งยอดค่าเช่า\nห้อง ${roomNo} · ${tenantName}\nประจำเดือน ${month}\nยอดรวม ฿${fmtN(total)}\n\nกรุณาชำระภายในวันที่ 5 ของเดือน\nโอน TTB 629-7-17118-0 นายโสภณ ภิญโญศาสตร์`},
-          {type:'template',altText:'ใบแจ้งหนี้ PDF',template:{type:'buttons',text:`ดาวน์โหลดใบแจ้งหนี้ห้อง ${roomNo} เดือน ${month}`,actions:[{type:'uri',label:'📄 เปิดใบแจ้งหนี้ PDF',uri:pdfUrl}]}}
-        ]
-      })
+      headers:{
+        'Content-Type':'application/json',
+        'Authorization':'Bearer '+SUPABASE_KEY,
+        'apikey':SUPABASE_KEY
+      },
+      body:JSON.stringify({lineUserId,pdfUrl,roomNo,tenantName,month,total:fmtN(total),token})
     });
-    if(!resp.ok){const err=await resp.json();throw new Error(err.message||'LINE API error '+resp.status);}
+    const data=await resp.json();
+    if(!resp.ok||data.error)throw new Error(data.error||data.data?.message||'LINE API error');
     return true;
   }catch(e){showToast('ส่ง LINE ไม่สำเร็จ: '+e.message,'err');return false;}
   finally{hideLoad();}

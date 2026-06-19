@@ -1500,10 +1500,10 @@ function renderTxTbl(){
   const tCapOut=transactions.filter(t=>t.type==='capital-out').reduce((s,t)=>s+parseFloat(t.amount||0),0);
   document.getElementById('tx-summary').innerHTML=`รายรับ <strong style="color:var(--green)">฿${fmtN(tIn)}</strong> · รายจ่าย <strong style="color:var(--red)">฿${fmtN(tOut)}</strong> · คงเหลือ <strong style="color:${tIn-tOut>=0?'var(--green)':'var(--red)'}">฿${fmtN(tIn-tOut)}</strong>`;
   let run=0;
-  const bankIn=transactions.filter(t=>INC_T.includes(t.type)&&t.channel==='bank').reduce((s,t)=>s+parseFloat(t.amount||0),0);
-  const bankOut=transactions.filter(t=>EXP_T.includes(t.type)&&t.channel==='bank').reduce((s,t)=>s+parseFloat(t.amount||0),0);
-  const cashIn=transactions.filter(t=>INC_T.includes(t.type)&&t.channel==='cash').reduce((s,t)=>s+parseFloat(t.amount||0),0);
-  const cashOut=transactions.filter(t=>EXP_T.includes(t.type)&&t.channel==='cash').reduce((s,t)=>s+parseFloat(t.amount||0),0);
+  const bankIn=transactions.filter(t=>(INC_T.includes(t.type)||t.type==='capital-in')&&t.channel==='bank').reduce((s,t)=>s+parseFloat(t.amount||0),0);
+  const bankOut=transactions.filter(t=>(EXP_T.includes(t.type)||t.type==='capital-out')&&t.channel==='bank').reduce((s,t)=>s+parseFloat(t.amount||0),0);
+  const cashIn=transactions.filter(t=>(INC_T.includes(t.type)||t.type==='capital-in')&&t.channel==='cash').reduce((s,t)=>s+parseFloat(t.amount||0),0);
+  const cashOut=transactions.filter(t=>(EXP_T.includes(t.type)||t.type==='capital-out')&&t.channel==='cash').reduce((s,t)=>s+parseFloat(t.amount||0),0);
   const bankBal=bankIn-bankOut, cashBal=cashIn-cashOut;
   const txSel=document.getElementById('tx-sel')?.value||'';
   const isAll=txSel==='all'||txSel.startsWith('year_')||txSel==='';

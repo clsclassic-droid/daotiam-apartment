@@ -1186,7 +1186,7 @@ function calcMC(room){
   const ep=parseFloat(document.getElementById('ep-'+room)?.value||0),ec=parseFloat(document.getElementById('ec-'+room)?.value||0);
   const wp=parseFloat(document.getElementById('wp-'+room)?.value||0),wc=parseFloat(document.getElementById('wc-'+room)?.value||0);
   const el=document.getElementById('mc-'+room);if(!el)return;
-  if(ec>ep&&wc>wp){const eC=Math.round((ec-ep)*ELEC),wC=Math.round((wc-wp)*WATER);el.textContent=`ไฟ ฿${fmtN(eC)} · น้ำ ฿${fmtN(wC)} · รวม ฿${fmtN(RENT+eC+wC)}`;el.style.color='var(--green)';}
+  if(ec>ep&&wc>wp){const eU=Math.round(ec-ep),wU=Math.round(wc-wp),eC=Math.round(eU*ELEC),wC=Math.round(wU*WATER);el.textContent=`ไฟ ${eU}×6.5 + น้ำ ${wU}×22 = ${fmtN(RENT+eC+wC)} บาท`;el.style.color='var(--green)';}
   else{el.textContent='กรอกเลขมิเตอร์เพื่อคำนวณ';el.style.color='var(--t3)';}
 }
 async function saveMeters(){
@@ -2244,31 +2244,30 @@ async function renderMhRoom(){
 // ===== LINE MESSAGING =====
 async function htmlToPdfBlob(htmlEl){
   const {jsPDF}=window.jspdf;
-  // หา element ใบแจ้งหนี้จริง (div ตัวแรกข้างใน)
-  const invoiceEl=htmlEl.querySelector('div')||htmlEl;
-  const clone=invoiceEl.cloneNode(true);
-  // ลบ max-width และ border ออก บังคับ width เต็ม
-  clone.style.cssText='position:absolute;left:-9999px;top:0;width:760px;max-width:none;background:#fff;padding:32px;box-sizing:border-box;font-family:Sarabun,sans-serif;font-size:17px;border:none;border-radius:0';
-  // ขยาย element ลูกทั้งหมดที่มี max-width
+  const clone=htmlEl.cloneNode(true);
+  // วาง clone ใน DOM จริงๆ ที่ซ้ายนอกหน้าจอ
+  clone.style.cssText='position:absolute;left:-9999px;top:0;width:620px;background:#fff;padding:16px;box-sizing:border-box;font-family:Sarabun,sans-serif;font-size:13px;z-index:-1';
   document.body.appendChild(clone);
-  clone.querySelectorAll('*').forEach(el=>{
-    if(el.style.maxWidth)el.style.maxWidth='none';
-  });
+  // รอ browser render
   await new Promise(r=>setTimeout(r,300));
-  const W=clone.offsetWidth;
-  const H=clone.offsetHeight;
+  const W=clone.offsetWidth||620;
+  const H=clone.offsetHeight||800;
   try{
     const canvas=await html2canvas(clone,{
-      scale:2.5,useCORS:true,backgroundColor:'#ffffff',
-      logging:false,width:W,height:H,windowWidth:W
+      scale:2,useCORS:true,backgroundColor:'#ffffff',
+      logging:false,
+      width:W,height:H,
+      x:0,y:0,
+      scrollX:0,scrollY:0,
+      windowWidth:W+50
     });
     const imgData=canvas.toDataURL('image/jpeg',0.95);
-    // สร้าง A4 แล้วขยายรูปให้เต็มความกว้าง A4 (210mm) มี margin เล็กน้อย
-    const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
-    const margin=10;
-    const pdfW=pdf.internal.pageSize.getWidth()-margin*2;  // 190mm
-    const imgH=(canvas.height*pdfW)/canvas.width;
-    pdf.addImage(imgData,'JPEG',margin,margin,pdfW,imgH);
+    // PDF ขนาดพอดีกับเนื้อหา ไม่มีที่ว่าง
+    const mmPerPx=25.4/96; // 1px = 0.2646mm at 96dpi
+    const pdfW=W*mmPerPx;
+    const pdfH=H*mmPerPx;
+    const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:[pdfW,pdfH]});
+    pdf.addImage(imgData,'JPEG',0,0,pdfW,pdfH);
     return pdf.output('blob');
   } finally {
     document.body.removeChild(clone);

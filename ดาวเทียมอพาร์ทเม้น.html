@@ -371,6 +371,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
           </div>
           <div id="tx-bars" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px"></div>
           <div style="border-top:1px solid var(--border);padding-top:10px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px" id="tx-tax-cards"></div>
+          <div id="tx-cap-cards" style="display:none;margin-top:8px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px"></div>
         </div>
         <div class="tbl-wrap"><table class="tbl">
           <thead><tr><th>วันที่</th><th>รายการ</th><th class="c">ห้อง</th><th>ประเภท</th><th class="r">จำนวน</th><th>ช่องทาง</th><th class="r">คงเหลือ</th><th></th></tr></thead>
@@ -1507,9 +1508,8 @@ function renderTxTbl(){
   const txSel=document.getElementById('tx-sel')?.value||'';
   const isAll=txSel==='all'||txSel.startsWith('year_')||txSel==='';
   const capNet=tCapIn-tCapOut;
-  const capExtra=(tCapIn>0||tCapOut>0)?` &nbsp;|&nbsp; 📥 ทุนเข้า <strong style="color:var(--blue)">฿${fmtN(tCapIn)}</strong> · 📤 ถอนทุน <strong style="color:var(--amber)">฿${fmtN(tCapOut)}</strong> · ทุนสุทธิ <strong style="color:${capNet>=0?'var(--blue)':'var(--red)'}" >฿${fmtN(capNet)}</strong>`:'';
   const balExtra=isAll?` &nbsp;|&nbsp; 💳 ธนาคาร <strong style="color:var(--blue)">฿${fmtN(bankBal)}</strong> · 💵 เงินสด <strong style="color:var(--amber)">฿${fmtN(cashBal)}</strong>`:'';
-  document.getElementById('tx-summary').innerHTML=`รายรับ <strong style="color:var(--green)">฿${fmtN(tIn)}</strong> · รายจ่าย <strong style="color:var(--red)">฿${fmtN(tOut)}</strong> · คงเหลือ <strong style="color:${tIn-tOut>=0?'var(--green)':'var(--red)'}">฿${fmtN(tIn-tOut)}</strong>${capExtra}${balExtra}`;
+  document.getElementById('tx-summary').innerHTML=`รายรับ <strong style="color:var(--green)">฿${fmtN(tIn)}</strong> · รายจ่าย <strong style="color:var(--red)">฿${fmtN(tOut)}</strong> · คงเหลือ <strong style="color:${tIn-tOut>=0?'var(--green)':'var(--red)'}">฿${fmtN(tIn-tOut)}</strong>${balExtra}`;
   document.getElementById('tx-body').innerHTML=transactions.map(t=>{const isCap=t.type==='capital-in'||t.type==='capital-out';const isCapIn=t.type==='capital-in';const isIn=isCap?isCapIn:t.type?.endsWith('-in');run+=(isIn?1:-1)*parseFloat(t.amount||0);const roomTxt=t.room?String(parseInt(t.room)||t.room):'—';const bdgClass=isCap?'':'bdg '+(isIn?'bg':'br');const bdgStyle=isCap?`style="background:#E6F1FB;color:#185FA5;font-size:11px;padding:2px 7px;border-radius:4px;font-weight:500"`:'class="bdg '+(isIn?'bg':'br')+'"';return`<tr><td style="font-size:11px;color:var(--t3)">${fmtDate(t.date)||'—'}</td><td>${t.desc||'—'}</td><td class="c" style="font-size:12px;font-weight:600">${roomTxt}</td><td><span ${bdgStyle}>${TX_L[t.type]||t.type}</span></td><td class="r" style="font-weight:500;color:${isCap?'var(--blue)':isIn?'var(--green)':'var(--red)'}">${isIn?'+':'-'}฿${fmtN(t.amount)}</td><td style="font-size:11px;color:var(--t3)">${t.channel==='bank'?'โอน':'เงินสด'}</td><td class="r" style="font-size:11px;color:${run>=0?'var(--green)':'var(--red)'}">฿${fmtN(run)}</td><td style="display:flex;gap:4px"><button class="btn btn-sm btn-icon" style="color:var(--blue)" onclick="editTx('${t.id}')"><i class="ti ti-edit" style="font-size:11px"></i></button><button class="btn btn-sm btn-icon" style="color:var(--t3)" onclick="delTx('${t.id}')"><i class="ti ti-trash" style="font-size:11px"></i></button></td></tr>`;}).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--t3);padding:20px">ยังไม่มีรายการ</td></tr>';
   renderTxBreakdown();
 }
@@ -1555,6 +1555,31 @@ function renderTxBreakdown(){
       <div style="font-size:16px;font-weight:700;color:${netInc>=0?'var(--green)':'var(--red)'}">฿${fmtN(netInc)}</div>
       <div style="font-size:9px;color:var(--t3);margin-top:2px">ใช้คำนวณภาษีประจำปี</div>
     </div>`;
+  const capCardEl=document.getElementById('tx-cap-cards');
+  if(capCardEl){
+    const tCapInV=transactions.filter(t=>t.type==='capital-in').reduce((s,t)=>s+parseFloat(t.amount||0),0);
+    const tCapOutV=transactions.filter(t=>t.type==='capital-out').reduce((s,t)=>s+parseFloat(t.amount||0),0);
+    const capNetV=tCapInV-tCapOutV;
+    if(tCapInV>0||tCapOutV>0){
+      capCardEl.style.display='grid';
+      capCardEl.innerHTML=`
+    <div style="background:#E6F1FB;border-radius:7px;padding:8px 10px">
+      <div style="font-size:10px;color:#185FA5;margin-bottom:3px"><i class="ti ti-arrow-bar-to-down" style="font-size:11px"></i> ทุนเข้ารวม</div>
+      <div style="font-size:16px;font-weight:700;color:#0C447C">฿${fmtN(tCapInV)}</div>
+      <div style="font-size:9px;color:#185FA5;margin-top:2px">เงินที่ลงทุนเข้ามา</div>
+    </div>
+    <div style="background:#FAEEDA;border-radius:7px;padding:8px 10px">
+      <div style="font-size:10px;color:#854F0B;margin-bottom:3px"><i class="ti ti-arrow-bar-up" style="font-size:11px"></i> ถอนทุนออก</div>
+      <div style="font-size:16px;font-weight:700;color:#633806">฿${fmtN(tCapOutV)}</div>
+      <div style="font-size:9px;color:#854F0B;margin-top:2px">เงินที่ถอนออกไป</div>
+    </div>
+    <div style="background:${capNetV>=0?'#EAF3DE':'#FCEBEB'};border-radius:7px;padding:8px 10px">
+      <div style="font-size:10px;color:${capNetV>=0?'#3B6D11':'#A32D2D'};margin-bottom:3px"><i class="ti ti-building-bank" style="font-size:11px"></i> ทุนสุทธิ</div>
+      <div style="font-size:16px;font-weight:700;color:${capNetV>=0?'#27500A':'#791F1F'}">฿${fmtN(capNetV)}</div>
+      <div style="font-size:9px;color:${capNetV>=0?'#3B6D11':'#A32D2D'};margin-top:2px">ทุนเข้า - ถอนทุน</div>
+    </div>`;
+    } else { capCardEl.style.display='none'; }
+  }
 }
 function openTxModal(){document.getElementById('tx-date').value=new Date().toISOString().split('T')[0];openMo('mo-tx');}
 async function saveTx(){

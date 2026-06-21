@@ -254,7 +254,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
   <div class="topbar">
     <div class="tb-left">
       <button class="tb-toggle" onclick="toggleSidebar()" id="sb-toggle">◀</button>
-      <div><div class="tb-title" id="tb-title">หน้าหลัก</div><div class="tb-sub" id="tb-sub"></div></div>
+      <div><div class="tb-title" id="tb-title">หน้าหลัก</div><div class="tb-sub" id="tb-sub">ภาพรวมดาวเทียมอพาร์ทเม้น</div></div>
     </div>
     <span style="font-size:12px;color:var(--t3)" id="tb-date"></span>
   </div>
@@ -283,6 +283,19 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
           <div class="card">
             <div class="card-title"><i class="ti ti-tool" style="color:var(--amber)"></i> ซ่อมบำรุงล่าสุด</div>
             <div id="dash-repair"></div>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <div style="font-size:15px;font-weight:700;color:var(--text)">รายรับย้อนหลัง 12 เดือน</div>
+          <div style="display:flex;gap:5px;flex-wrap:wrap" id="rev-year-tabs"></div>
+        </div>
+        <div style="position:relative;height:200px">
+          <canvas id="revenue-chart"></canvas>
+          <div id="rev-tooltip" style="display:none;position:absolute;background:#fff;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.12);border:1px solid var(--border);padding:9px 14px;pointer-events:none;transform:translate(-50%,-115%);text-align:center;min-width:110px;z-index:10">
+            <div id="rev-tip-month" style="font-size:11px;color:var(--t3);margin-bottom:2px;font-weight:500"></div>
+            <div id="rev-tip-val" style="font-size:17px;font-weight:800;color:var(--green)"></div>
           </div>
         </div>
       </div>
@@ -1045,6 +1058,123 @@ function populateFinSel(){
 function setFinView(v){finView=v;buildFinTabs();renderFinance();}
 
 // DASHBOARD
+// REVENUE CHART
+let revChart = null;
+let revYear = String(new Date().getFullYear());
+
+async function loadRevenueChart() {
+  const now = new Date(), cy = now.getFullYear();
+  // build year tabs
+  const tabs = document.getElementById('rev-year-tabs');
+  if (!tabs) return;
+  const years = []; for (let y = cy; y >= 2022; y--) years.push(String(y));
+  tabs.innerHTML = years.map(y => {
+    const lbl = 'ปี ' + (parseInt(y) + 543);
+    const act = revYear === y;
+    return `<button onclick="selectRevYear('${y}')" style="font-size:11px;padding:0 12px;height:28px;border:0.5px solid ${act?'var(--green)':'var(--border)'};border-radius:999px;cursor:pointer;background:${act?'var(--green)':'#fff'};color:${act?'#fff':'var(--t2)'};white-space:nowrap;font-family:'Sarabun',sans-serif">${lbl}</button>`;
+  }).join('');
+  // load transactions for selected year
+  const yr = revYear;
+  const mxM = parseInt(yr) === cy ? now.getMonth() + 1 : 12;
+  const results = await Promise.all(
+    Array.from({length: 12}, (_, i) => {
+      const m = i + 1;
+      if (m > mxM) return Promise.resolve([]);
+      return api({action:'getTransactions', month: yr + '_' + String(m).padStart(2,'0')});
+    })
+  );
+  const monthly = results.map(txns =>
+    (txns||[]).filter(t => INC_T.includes(t.type)).reduce((s,t) => s + parseFloat(t.amount||0), 0)
+  );
+  renderRevenueChart(monthly, mxM);
+}
+
+function selectRevYear(y) {
+  revYear = y;
+  loadRevenueChart();
+}
+
+function renderRevenueChart(monthly, mxM) {
+  const canvas = document.getElementById('revenue-chart');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const MTH_L = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+
+  if (revChart) { revChart.destroy(); revChart = null; }
+
+  const grad = ctx.createLinearGradient(0, 0, 0, 200);
+  grad.addColorStop(0, 'rgba(29,158,117,0.18)');
+  grad.addColorStop(1, 'rgba(29,158,117,0.01)');
+
+  const data = monthly.map((v, i) => i < mxM ? v : null);
+
+  revChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: MTH_L,
+      datasets: [{
+        data,
+        borderColor: '#1D9E75',
+        backgroundColor: grad,
+        borderWidth: 2.5,
+        fill: true,
+        tension: 0.4,
+        pointRadius: data.map((v,i) => i < mxM ? 4 : 0),
+        pointBackgroundColor: '#1D9E75',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+        pointHoverRadius: 6,
+        pointHoverBackgroundColor: '#1D9E75',
+        pointHoverBorderColor: '#fff',
+        pointHoverBorderWidth: 2.5,
+        spanGaps: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          enabled: false,
+          external: (context) => {
+            const tip = document.getElementById('rev-tooltip');
+            const tipM = document.getElementById('rev-tip-month');
+            const tipV = document.getElementById('rev-tip-val');
+            if (!tip) return;
+            if (context.tooltip.opacity === 0) { tip.style.display = 'none'; return; }
+            const dp = context.tooltip.dataPoints?.[0];
+            if (!dp || dp.raw === null) { tip.style.display = 'none'; return; }
+            tipM.textContent = dp.label + ' ' + (parseInt(revYear)+543);
+            tipV.textContent = '฿' + Math.round(dp.raw).toLocaleString('th-TH');
+            tip.style.display = 'block';
+            tip.style.left = context.tooltip.caretX + 'px';
+            tip.style.top = context.tooltip.caretY + 'px';
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          border: { display: false },
+          ticks: { font: { family: "'Sarabun', sans-serif", size: 11 }, color: '#9CA3AF' }
+        },
+        y: {
+          grid: { color: '#F5F5F5' },
+          border: { display: false },
+          ticks: {
+            font: { family: "'Sarabun', sans-serif", size: 11 },
+            color: '#9CA3AF',
+            callback: v => v === 0 ? '0' : (v/1000)+'K',
+            maxTicksLimit: 6,
+          }
+        }
+      },
+      interaction: { mode: 'index', intersect: false },
+    }
+  });
+}
+
 async function loadDashboard(){
   if(!tenants.length)tenants=await api({action:'getTenants'},'กำลังโหลด...')||[];
   if(!window._cachedSummary){
@@ -1076,6 +1206,7 @@ function renderDash(){
   const odList=tenants.filter(t=>t.status==='overdue');
   document.getElementById('dash-overdue').innerHTML=odList.length?odList.map(t=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f5f5f5;font-size:12px"><div style="font-weight:500">ห้อง ${t.room} — ${t.name}</div><span class="bdg br">ค้างชำระ</span></div>`).join(''):'<div style="color:var(--t3);font-size:12px;padding:8px 0;text-align:center">ไม่มีห้องค้างชำระ 🎉</div>';
   document.getElementById('dash-repair').innerHTML='<div style="color:var(--t3);font-size:12px;padding:8px 0;text-align:center">ดูที่หน้าซ่อมบำรุง</div>';
+  loadRevenueChart();
   const finEl=document.getElementById('fin-cards');
   if(finEl&&!window._finObserver){
     window._finObserver=new IntersectionObserver(entries=>{

@@ -71,7 +71,7 @@ input,select,textarea{font-family:'Sarabun',sans-serif}
 .card{background:var(--card);border-radius:var(--r);border:1px solid var(--border);padding:16px 18px;box-shadow:var(--sh)}
 .card-title{font-size:12px;font-weight:600;color:var(--t2);margin-bottom:12px;display:flex;align-items:center;gap:6px}
 .section-hd{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px}
-.stats{display:grid;grid-template-columns:repeat(7,1fr);gap:10px;margin-bottom:16px}
+.stats{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:16px}
 .stat{background:var(--card);border-radius:var(--r);border:1px solid var(--border);padding:13px 15px;box-shadow:var(--sh)}
 .stat-l{font-size:9px;font-weight:600;color:var(--t3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px}
 .stat-v{font-size:22px;font-weight:700;line-height:1}
@@ -254,7 +254,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
   <div class="topbar">
     <div class="tb-left">
       <button class="tb-toggle" onclick="toggleSidebar()" id="sb-toggle">◀</button>
-      <div><div class="tb-title" id="tb-title">หน้าหลัก</div><div class="tb-sub" id="tb-sub">ภาพรวมดาวเทียมอพาร์ทเม้น</div></div>
+      <div><div class="tb-title" id="tb-title">หน้าหลัก</div><div class="tb-sub" id="tb-sub"></div></div>
     </div>
     <span style="font-size:12px;color:var(--t3)" id="tb-date"></span>
   </div>
@@ -962,7 +962,7 @@ async function apiPost(d, msg){
 }
 
 // NAV
-const PAGES={dashboard:['หน้าหลัก','ภาพรวมดาวเทียมอพาร์ทเม้น'],meter:['มิเตอร์น้ำ-ไฟ','บันทึกมิเตอร์ประจำเดือน'],'meter-history':['ประวัติมิเตอร์','ตรวจสอบการใช้น้ำ-ไฟย้อนหลัง'],invoice:['ใบแจ้งหนี้','ออกใบแจ้งยอดค่าเช่า'],cashflow:['กระแสเงินสด','รายรับ-รายจ่าย'],overdue:['ค้างชำระ','รายการที่ยังไม่ชำระ'],tenant:['ผู้เช่า','ข้อมูลผู้เช่าปัจจุบัน'],maintenance:['ซ่อมบำรุง','ตารางซ่อมบำรุงและล้างแอร์'],history:['ประวัติ','ประวัติผู้เช่าเก่า'],'settings':['ตั้งค่า','อัตราค่าบริการ']};
+const PAGES={dashboard:['หน้าหลัก',''],meter:['มิเตอร์น้ำ-ไฟ','บันทึกมิเตอร์ประจำเดือน'],'meter-history':['ประวัติมิเตอร์','ตรวจสอบการใช้น้ำ-ไฟย้อนหลัง'],invoice:['ใบแจ้งหนี้','ออกใบแจ้งยอดค่าเช่า'],cashflow:['กระแสเงินสด','รายรับ-รายจ่าย'],overdue:['ค้างชำระ','รายการที่ยังไม่ชำระ'],tenant:['ผู้เช่า','ข้อมูลผู้เช่าปัจจุบัน'],maintenance:['ซ่อมบำรุง','ตารางซ่อมบำรุงและล้างแอร์'],history:['ประวัติ','ประวัติผู้เช่าเก่า'],'settings':['ตั้งค่า','อัตราค่าบริการ']};
 function goPage(p){
   document.querySelectorAll('.page').forEach(e=>e.classList.remove('act'));
   document.querySelectorAll('.ni,.bn-item').forEach(e=>e.classList.remove('act'));
@@ -1063,9 +1063,7 @@ function renderDash(){
   const occ=tenants.length,vac=21-occ,ov=tenants.filter(t=>t.status==='overdue').length;
   const _profit=(window._dashIncome||0)-(window._dashExpense||0);
   document.getElementById('dash-stats').innerHTML=`
-    <div class="stat"><div class="stat-l">ห้องทั้งหมด</div><div class="stat-v">21</div></div>
-    <div class="stat"><div class="stat-l">มีผู้เช่า</div><div class="stat-v" style="color:var(--green)">${occ}</div><div class="stat-s">${Math.round(occ/21*100)}%</div></div>
-    <div class="stat"><div class="stat-l">ห้องว่าง</div><div class="stat-v">${vac}</div></div>
+    <div class="stat" style="padding:11px 13px"><div class="stat-l">อัตราเข้าพัก</div><div class="stat-v" style="color:var(--green)">${Math.round(occ/21*100)}%</div><div class="stat-s" style="margin-bottom:7px">${occ} / 21 ห้อง${vac>0?' · ว่าง '+vac:''}</div><div style="height:4px;border-radius:2px;background:#E5E7EB;overflow:hidden"><div style="height:100%;width:${Math.round(occ/21*100)}%;border-radius:2px;background:var(--green)"></div></div></div>
     <div class="stat"><div class="stat-l">ค้างชำระ</div><div class="stat-v" style="color:var(--red)">${ov}</div></div>
     <div class="stat"><div class="stat-l">รายรับ/เดือน</div><div class="stat-v" style="color:var(--green)">฿${fmtN(window._dashIncome||0)}</div><div class="stat-s">เฉลี่ย ${window._dashIncomeMonths||0} เดือน</div></div>
     <div class="stat"><div class="stat-l">รายจ่าย/เดือน</div><div class="stat-v" style="color:var(--red)">฿${fmtN(window._dashExpense||0)}</div><div class="stat-s">เฉลี่ย ${window._dashExpenseMonths||0} เดือน</div></div>

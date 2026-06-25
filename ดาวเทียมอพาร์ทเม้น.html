@@ -256,7 +256,13 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
       <button class="tb-toggle" onclick="toggleSidebar()" id="sb-toggle">◀</button>
       <div><div class="tb-title" id="tb-title">หน้าหลัก</div><div class="tb-sub" id="tb-sub">ภาพรวมดาวเทียมอพาร์ทเม้น</div></div>
     </div>
-    <span style="font-size:12px;color:var(--t3)" id="tb-date"></span>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <span style="font-size:12px;color:var(--t3)" id="tb-date"></span>
+      <button onclick="doLogout()" title="ออกจากระบบ"
+        style="background:none;border:1.5px solid #ddd;border-radius:8px;padding:5px 10px;font-size:12px;color:#888;cursor:pointer;font-family:Sarabun,sans-serif;display:flex;align-items:center;gap:4px;">
+        <i class="ti ti-logout"></i> ออก
+      </button>
+    </div>
   </div>
 
   <div class="content">
@@ -702,6 +708,36 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
 </div></div>
 
 <div class="toast" id="toast"></div>
+
+<!-- LOGIN OVERLAY -->
+<div id="login-overlay" style="display:none;position:fixed;inset:0;background:#f4f6f8;z-index:9999;display:flex;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:16px;padding:40px 32px;width:340px;max-width:90vw;box-shadow:0 8px 32px rgba(0,0,0,0.12);">
+    <div style="text-align:center;margin-bottom:28px;">
+      <img src="https://raw.githubusercontent.com/clsclassic-droid/daotiam-apartment/main/building.gif" style="width:80px;height:80px;margin-bottom:8px;" alt="ดาวเทียมอพาร์ทเม้น">
+      <div style="font-size:18px;font-weight:700;color:#1a1a2e;">ดาวเทียมอพาร์ทเม้น</div>
+      <div style="font-size:13px;color:#888;margin-top:4px;">กรุณาเข้าสู่ระบบ</div>
+    </div>
+    <div style="margin-bottom:16px;">
+      <label style="font-size:13px;color:#555;font-weight:500;">อีเมล</label>
+      <input id="login-email" type="email" placeholder="email@example.com"
+        style="width:100%;margin-top:6px;padding:10px 14px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;font-family:Sarabun,sans-serif;box-sizing:border-box;outline:none;"
+        onfocus="this.style.borderColor='#1D9E75'" onblur="this.style.borderColor='#ddd'">
+    </div>
+    <div style="margin-bottom:24px;">
+      <label style="font-size:13px;color:#555;font-weight:500;">รหัสผ่าน</label>
+      <input id="login-password" type="password" placeholder="••••••••"
+        style="width:100%;margin-top:6px;padding:10px 14px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;font-family:Sarabun,sans-serif;box-sizing:border-box;outline:none;"
+        onfocus="this.style.borderColor='#1D9E75'" onblur="this.style.borderColor='#ddd'"
+        onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div id="login-err" style="display:none;background:#fff0f0;color:#E24B4A;border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:16px;"></div>
+    <p style="text-align:center;font-size:10px;color:#bbb;margin-bottom:12px;">Icon by <a href="https://www.freepik.com" style="color:#bbb;">Freepik</a> from <a href="https://www.flaticon.com" style="color:#bbb;">Flaticon</a></p>
+    <button onclick="doLogin()" id="login-btn"
+      style="width:100%;padding:12px;background:#1D9E75;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;font-family:Sarabun,sans-serif;cursor:pointer;">
+      เข้าสู่ระบบ
+    </button>
+  </div>
+</div>
 
 <script>
 // ===== CONFIG =====
@@ -2562,8 +2598,55 @@ async function sendLineAllInv(){
   showToast(`✓ ส่ง LINE สำเร็จ ${ok} ห้อง${fail>0?' · ล้มเหลว '+fail+' ห้อง':''}`);
 }
 
+// ===== AUTH =====
+function showLoginOverlay(show){
+  const el=document.getElementById('login-overlay');
+  el.style.display=show?'flex':'none';
+}
+
+async function doLogin(){
+  const email=document.getElementById('login-email').value.trim();
+  const pwd=document.getElementById('login-password').value;
+  const errEl=document.getElementById('login-err');
+  const btn=document.getElementById('login-btn');
+  errEl.style.display='none';
+  btn.textContent='กำลังเข้าสู่ระบบ...';
+  btn.disabled=true;
+  const {error}=await _sb.auth.signInWithPassword({email,password:pwd});
+  btn.textContent='เข้าสู่ระบบ';
+  btn.disabled=false;
+  if(error){
+    errEl.textContent='อีเมลหรือรหัสผ่านไม่ถูกต้อง';
+    errEl.style.display='block';
+  } else {
+    showLoginOverlay(false);
+    initApp();
+  }
+}
+
+async function doLogout(){
+  await _sb.auth.signOut();
+  showLoginOverlay(true);
+  document.getElementById('login-password').value='';
+}
+
 // INIT
 async function init(){
+  // listen for auth changes
+  _sb.auth.onAuthStateChange((event,session)=>{
+    if(!session) showLoginOverlay(true);
+  });
+  // check session
+  const {data:{session}}=await _sb.auth.getSession();
+  if(!session){
+    showLoginOverlay(true);
+    return;
+  }
+  showLoginOverlay(false);
+  initApp();
+}
+
+async function initApp(){
   const now=new Date();
   document.getElementById('tb-date').textContent=now.getDate()+' '+MTH[now.getMonth()]+' '+(now.getFullYear()+543);
   const d=now.getDate(),mo=now.getMonth()+1,yr=String(now.getFullYear()).slice(-2);

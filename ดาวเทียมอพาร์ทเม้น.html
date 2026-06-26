@@ -1564,9 +1564,9 @@ function buildInvHTML(rn,t,m,month,invDate,mDate,vacant,extras=[],checkoutDate='
       <thead><tr><th colspan="4" style="border:1px solid #333;padding:6px 9px;text-align:left">ชื่อผู้เช่า : ${vacant?'<span style="color:red">ห้องว่าง</span>':t?.name||'—'}</th><th style="border:1px solid #333;padding:6px 9px;text-align:right">ห้อง ${rn}</th></tr>
       <tr style="background:#f9f9f9"><th style="border:1px solid #333;padding:6px 9px">รายการ</th><th style="border:1px solid #333;padding:6px 9px;text-align:center">หน่วย เก่า-ใหม่</th><th style="border:1px solid #333;padding:6px 9px;text-align:center">จำนวน</th><th style="border:1px solid #333;padding:6px 9px;text-align:center">ราคา/หน่วย</th><th style="border:1px solid #333;padding:6px 9px;text-align:right">จำนวนเงิน</th></tr></thead>
       <tbody>
-        <tr><td style="border:1px solid #333;padding:6px 9px">ค่าเช่าห้อง</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">${vacant?'—':isProrate?rentRange:'—'}</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">${(!vacant&&isProrate)?rentDays:''}</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">${(!vacant&&isProrate)?INV_DAY_RATE:''}</td><td style="border:1px solid #333;padding:6px 9px;text-align:right">${vacant?'—':fmt2(rentAmt)}</td></tr>
-        <tr><td style="border:1px solid #333;padding:6px 9px">ค่าไฟฟ้า</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">${m?.elecPrev||0} - ${m?.elecCurr||0}</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">${eu.toFixed(1)}</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">6.5</td><td style="border:1px solid #333;padding:6px 9px;text-align:right">${fmt2(ec)}</td></tr>
-        <tr><td style="border:1px solid #333;padding:6px 9px">ค่าน้ำประปา</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">${m?.waterPrev||0} - ${m?.waterCurr||0}</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">${wu.toFixed(1)}</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">22</td><td style="border:1px solid #333;padding:6px 9px;text-align:right">${fmt2(wc)}</td></tr>
+        <tr><td style="border:1px solid #333;padding:6px 9px">ค่าเช่าห้อง</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">${vacant?'—':isProrate?rentRange:'—'}</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">${(!vacant&&isProrate)?fmtN(rentDays):''}</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">${(!vacant&&isProrate)?fmtN(INV_DAY_RATE):''}</td><td style="border:1px solid #333;padding:6px 9px;text-align:right">${vacant?'—':fmt2(rentAmt)}</td></tr>
+        <tr><td style="border:1px solid #333;padding:6px 9px">ค่าไฟฟ้า</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">${fmtN(m?.elecPrev||0)} - ${fmtN(m?.elecCurr||0)}</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">${eu.toFixed(1)}</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">6.5</td><td style="border:1px solid #333;padding:6px 9px;text-align:right">${fmt2(ec)}</td></tr>
+        <tr><td style="border:1px solid #333;padding:6px 9px">ค่าน้ำประปา</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">${fmtN(m?.waterPrev||0)} - ${fmtN(m?.waterCurr||0)}</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">${wu.toFixed(1)}</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">22</td><td style="border:1px solid #333;padding:6px 9px;text-align:right">${fmt2(wc)}</td></tr>
         ${extraRows}
         <tr><td colspan="4" style="border:1px solid #333;padding:7px 9px;text-align:center;font-weight:600">จำนวนเงินรวมทั้งสิ้น (บาท)</td><td style="border:1px solid #333;padding:7px 9px;text-align:right;font-weight:700;font-size:15px">${vacant?'—':fmt2(total)}</td></tr>
       </tbody>
@@ -1636,16 +1636,27 @@ async function editInv(){
   const wu=Math.max(0,parseFloat(m?.waterCurr||0)-parseFloat(m?.waterPrev||0));
   const ec=Math.round(eu*ELEC*100)/100,wc=Math.round(wu*WATER*100)/100;
   const _coModal=document.getElementById('inv-checkout-date')?.value||'';
-  const _INV_DR=117,_pDays=_coModal?(()=>{const p=_coModal.trim().split('/');return p.length>=3?parseInt(p[0]):0;})():0;
-  const _rentDisp=_coModal&&_pDays>0?`${_pDays} วัน × ${_INV_DR} = ฿${fmt2(_pDays*_INV_DR)}`:('฿'+fmt2(RENT));
+  const _INV_DR=117;
+  let _pDays=0,_rentRange='—',_rentModalAmt=RENT;
+  if(_coModal){
+    const _pm=_coModal.trim().split('/');
+    if(_pm.length>=3){
+      _pDays=parseInt(_pm[0]);
+      const _pyr=parseInt(_pm[2])<100?2000+parseInt(_pm[2]):parseInt(_pm[2]);
+      const _pmo=parseInt(_pm[1]);
+      const _startStr='01/'+String(_pmo).padStart(2,'0')+'/'+String(_pyr).slice(-2);
+      _rentRange=_startStr+'–'+_coModal;
+      _rentModalAmt=Math.round(_pDays*_INV_DR);
+    }
+  }
   document.getElementById('inv-modal-preview').innerHTML=`
     <div style="font-size:12px;color:var(--t2);margin-bottom:8px;font-weight:500">ห้อง ${parseInt(room)} · ${t.name} · ประจำเดือน ${monthName}</div>
     <table class="tbl" style="margin-bottom:0;font-size:12px">
-      <thead><tr><th>รายการ</th><th class="c">หน่วย เก่า-ใหม่</th><th class="c">จำนวน</th><th class="r">เงิน</th></tr></thead>
+      <thead><tr><th>รายการ</th><th class="c">หน่วย เก่า-ใหม่</th><th class="c">จำนวน</th><th class="c">ราคา/หน่วย</th><th class="r">เงิน</th></tr></thead>
       <tbody>
-        <tr><td>ค่าเช่าห้อง</td><td class="c" style="color:var(--t3)">—</td><td></td><td class="r">${_rentDisp}</td></tr>
-        <tr><td>ค่าไฟฟ้า</td><td class="c" style="color:var(--t3)">${m?.elecPrev||0}–${m?.elecCurr||0}</td><td class="c">${eu.toFixed(1)}</td><td class="r">฿${fmt2(ec)}</td></tr>
-        <tr><td>ค่าน้ำประปา</td><td class="c" style="color:var(--t3)">${m?.waterPrev||0}–${m?.waterCurr||0}</td><td class="c">${wu.toFixed(1)}</td><td class="r">฿${fmt2(wc)}</td></tr>
+        <tr><td>ค่าเช่าห้อง</td><td class="c" style="color:var(--t3)">${_pDays>0?_rentRange:'—'}</td><td class="c">${_pDays>0?fmtN(_pDays):''}</td><td class="c">${_pDays>0?fmtN(_INV_DR):''}</td><td class="r">${fmt2(_rentModalAmt)}</td></tr>
+        <tr><td>ค่าไฟฟ้า</td><td class="c" style="color:var(--t3)">${fmtN(m?.elecPrev||0)}–${fmtN(m?.elecCurr||0)}</td><td class="c">${eu.toFixed(1)}</td><td class="c">6.5</td><td class="r">${fmt2(ec)}</td></tr>
+        <tr><td>ค่าน้ำประปา</td><td class="c" style="color:var(--t3)">${fmtN(m?.waterPrev||0)}–${fmtN(m?.waterCurr||0)}</td><td class="c">${wu.toFixed(1)}</td><td class="c">22</td><td class="r">${fmt2(wc)}</td></tr>
       </tbody>
     </table>`;
   openMo('mo-issue-inv');
@@ -1689,16 +1700,27 @@ async function issueInv(){
   const wu=Math.max(0,parseFloat(m?.waterCurr||0)-parseFloat(m?.waterPrev||0));
   const ec=Math.round(eu*ELEC*100)/100,wc=Math.round(wu*WATER*100)/100;
   const _coModal=document.getElementById('inv-checkout-date')?.value||'';
-  const _INV_DR=117,_pDays=_coModal?(()=>{const p=_coModal.trim().split('/');return p.length>=3?parseInt(p[0]):0;})():0;
-  const _rentDisp=_coModal&&_pDays>0?`${_pDays} วัน × ${_INV_DR} = ฿${fmt2(_pDays*_INV_DR)}`:('฿'+fmt2(RENT));
+  const _INV_DR=117;
+  let _pDays=0,_rentRange='—',_rentModalAmt=RENT;
+  if(_coModal){
+    const _pm=_coModal.trim().split('/');
+    if(_pm.length>=3){
+      _pDays=parseInt(_pm[0]);
+      const _pyr=parseInt(_pm[2])<100?2000+parseInt(_pm[2]):parseInt(_pm[2]);
+      const _pmo=parseInt(_pm[1]);
+      const _startStr='01/'+String(_pmo).padStart(2,'0')+'/'+String(_pyr).slice(-2);
+      _rentRange=_startStr+'–'+_coModal;
+      _rentModalAmt=Math.round(_pDays*_INV_DR);
+    }
+  }
   document.getElementById('inv-modal-preview').innerHTML=`
     <div style="font-size:12px;color:var(--t2);margin-bottom:8px;font-weight:500">ห้อง ${parseInt(room)} · ${t.name} · ประจำเดือน ${monthName}</div>
     <table class="tbl" style="margin-bottom:0;font-size:12px">
-      <thead><tr><th>รายการ</th><th class="c">หน่วย เก่า-ใหม่</th><th class="c">จำนวน</th><th class="r">เงิน</th></tr></thead>
+      <thead><tr><th>รายการ</th><th class="c">หน่วย เก่า-ใหม่</th><th class="c">จำนวน</th><th class="c">ราคา/หน่วย</th><th class="r">เงิน</th></tr></thead>
       <tbody>
-        <tr><td>ค่าเช่าห้อง</td><td class="c" style="color:var(--t3)">—</td><td></td><td class="r">${_rentDisp}</td></tr>
-        <tr><td>ค่าไฟฟ้า</td><td class="c" style="color:var(--t3)">${m?.elecPrev||0}–${m?.elecCurr||0}</td><td class="c">${eu.toFixed(1)}</td><td class="r">฿${fmt2(ec)}</td></tr>
-        <tr><td>ค่าน้ำประปา</td><td class="c" style="color:var(--t3)">${m?.waterPrev||0}–${m?.waterCurr||0}</td><td class="c">${wu.toFixed(1)}</td><td class="r">฿${fmt2(wc)}</td></tr>
+        <tr><td>ค่าเช่าห้อง</td><td class="c" style="color:var(--t3)">${_pDays>0?_rentRange:'—'}</td><td class="c">${_pDays>0?fmtN(_pDays):''}</td><td class="c">${_pDays>0?fmtN(_INV_DR):''}</td><td class="r">${fmt2(_rentModalAmt)}</td></tr>
+        <tr><td>ค่าไฟฟ้า</td><td class="c" style="color:var(--t3)">${fmtN(m?.elecPrev||0)}–${fmtN(m?.elecCurr||0)}</td><td class="c">${eu.toFixed(1)}</td><td class="c">6.5</td><td class="r">${fmt2(ec)}</td></tr>
+        <tr><td>ค่าน้ำประปา</td><td class="c" style="color:var(--t3)">${fmtN(m?.waterPrev||0)}–${fmtN(m?.waterCurr||0)}</td><td class="c">${wu.toFixed(1)}</td><td class="c">22</td><td class="r">${fmt2(wc)}</td></tr>
       </tbody>
     </table>`;
   openMo('mo-issue-inv');

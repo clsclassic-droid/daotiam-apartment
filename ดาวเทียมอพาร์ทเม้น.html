@@ -1526,7 +1526,7 @@ async function saveTenant(){
 
 // INVOICE
 function populateInvRoom(){const sel=document.getElementById('inv-room');if(!sel)return;sel.innerHTML='<option value="">-- เลือกห้อง --</option>'+tenants.map(t=>`<option value="${t.room}">ห้อง ${t.room} — ${t.name}</option>`).join('');}
-function buildInvHTML(rn,t,m,month,invDate,mDate,vacant,extras=[],checkoutDate=''){
+function buildInvHTML(rn,t,m,month,invDate,mDate,vacant,extras=[],checkoutDate='',monthKey=''){
   const eu=Math.max(0,parseFloat(m?.elecCurr||0)-parseFloat(m?.elecPrev||0));
   const wu=Math.max(0,parseFloat(m?.waterCurr||0)-parseFloat(m?.waterPrev||0));
   const ec=vacant?0:Math.round(eu*ELEC*100)/100,wc=vacant?0:Math.round(wu*WATER*100)/100;
@@ -1537,8 +1537,9 @@ function buildInvHTML(rn,t,m,month,invDate,mDate,vacant,extras=[],checkoutDate='
     const parseDMY=s=>{const p=s.trim().split('/');if(p.length<3)return null;const y=parseInt(p[2])<100?2000+parseInt(p[2]):parseInt(p[2]);return new Date(y,parseInt(p[1])-1,parseInt(p[0]));};
     const coDate=parseDMY(checkoutDate);
     let startDate=null;
-    if(window._invMeterCache?.monthKey){
-      const[myr,mmo]=window._invMeterCache.monthKey.split('_').map(Number);
+    const _mk=monthKey||window._invMeterCache?.monthKey||'';
+    if(_mk){
+      const[myr,mmo]=_mk.split('_').map(Number);
       startDate=new Date(myr,mmo-1,1);
     }
     if(coDate&&startDate){
@@ -1600,7 +1601,7 @@ async function renderInv(){
   const lineBtn=document.getElementById('inv-line-btn');
   if(lineBtn) lineBtn.style.display=t?.line_user_id?'':'none';
   const _coDateVal=document.getElementById('inv-checkout-date')?.value||'';
-  document.getElementById('inv-preview').innerHTML=buildInvHTML(room,t,m,monthName,invDate,mDate,false,extras,_coDateVal);
+  document.getElementById('inv-preview').innerHTML=buildInvHTML(room,t,m,monthName,invDate,mDate,false,extras,_coDateVal,monthKey);
 }
 async function editInv(){
   // เปิด popup ออกใบแจ้งหนี้พร้อมโหลด extras เดิมมาแก้ไข
@@ -1750,7 +1751,7 @@ async function confirmIssueInv(){
     }
     renderDash();
     closeMo('mo-issue-inv');
-    document.getElementById('inv-preview').innerHTML=buildInvHTML(room,t,m,monthName,invDate,mDate,false,extras,_coDateVal2);
+    document.getElementById('inv-preview').innerHTML=buildInvHTML(room,t,m,monthName,invDate,mDate,false,extras,_coDateVal2,monthKey);
     showToast(`ออกใบแจ้งหนี้ห้อง ${parseInt(room)} แล้ว`);
   }catch(e){showToast('ออกใบไม่สำเร็จ','err');}
   finally{hideLoad();}

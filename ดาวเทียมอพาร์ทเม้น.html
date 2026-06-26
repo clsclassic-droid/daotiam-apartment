@@ -1587,20 +1587,26 @@ async function renderInv(){
   let yr=now.getFullYear();
   if(moNum > now.getMonth()+1) yr=yr-1;
   const monthKey=yr+'_'+mo;
+  const _coDateVal=document.getElementById('inv-checkout-date')?.value||'';
+  // reuse cache ถ้า room+month ไม่เปลี่ยน (กรณีแค่แก้ checkoutDate)
+  if(_invMeterCache&&_invMeterCache.monthKey===monthKey&&_invMeterCache._room===room){
+    const m=(_invMeterCache.meterData||[]).find(x=>String(x.room)===String(room));
+    const mDate=m?.currDate||document.getElementById('inv-mdate').value;
+    document.getElementById('inv-preview').innerHTML=buildInvHTML(room,t,m,monthName,invDate,mDate,false,_invMeterCache._extras||[],_coDateVal);
+    return;
+  }
   const meterData=await api({action:'getMeters',month:monthKey})||[];
-  _invMeterCache={meterData,monthKey,monthName,invDate};
-  const m=meterData.find(x=>String(x.room)===String(room));
-  const mDate=m?.currDate||document.getElementById('inv-mdate').value;
-  // ดึงรายการพิเศษจาก invoices
   let extras=[],existingInvoice=null;
   try{const {data}=await _sb.from('invoices').select('*').eq('room',room).eq('month',monthKey).maybeSingle();if(data){existingInvoice=data;extras=typeof data.extras==='string'?JSON.parse(data.extras):data.extras||[];}}catch(e){}
+  _invMeterCache={meterData,monthKey,monthName,invDate,_room:room,_extras:extras};
+  const m=meterData.find(x=>String(x.room)===String(room));
+  const mDate=m?.currDate||document.getElementById('inv-mdate').value;
   // โชว์/ซ่อนปุ่มแก้ไข
   const editBtn=document.getElementById('inv-edit-btn');
   if(editBtn) editBtn.style.display=existingInvoice?'':'none';
   // โชว์/ซ่อนปุ่ม LINE
   const lineBtn=document.getElementById('inv-line-btn');
   if(lineBtn) lineBtn.style.display=t?.line_user_id?'':'none';
-  const _coDateVal=document.getElementById('inv-checkout-date')?.value||'';
   document.getElementById('inv-preview').innerHTML=buildInvHTML(room,t,m,monthName,invDate,mDate,false,extras,_coDateVal);
 }
 async function editInv(){
@@ -1629,12 +1635,15 @@ async function editInv(){
   const eu=Math.max(0,parseFloat(m?.elecCurr||0)-parseFloat(m?.elecPrev||0));
   const wu=Math.max(0,parseFloat(m?.waterCurr||0)-parseFloat(m?.waterPrev||0));
   const ec=Math.round(eu*ELEC*100)/100,wc=Math.round(wu*WATER*100)/100;
+  const _coModal=document.getElementById('inv-checkout-date')?.value||'';
+  const _INV_DR=117,_pDays=_coModal?(()=>{const p=_coModal.trim().split('/');return p.length>=3?parseInt(p[0]):0;})():0;
+  const _rentDisp=_coModal&&_pDays>0?`${_pDays} วัน × ${_INV_DR} = ฿${fmt2(_pDays*_INV_DR)}`:('฿'+fmt2(RENT));
   document.getElementById('inv-modal-preview').innerHTML=`
     <div style="font-size:12px;color:var(--t2);margin-bottom:8px;font-weight:500">ห้อง ${parseInt(room)} · ${t.name} · ประจำเดือน ${monthName}</div>
     <table class="tbl" style="margin-bottom:0;font-size:12px">
       <thead><tr><th>รายการ</th><th class="c">หน่วย เก่า-ใหม่</th><th class="c">จำนวน</th><th class="r">เงิน</th></tr></thead>
       <tbody>
-        <tr><td>ค่าเช่าห้อง</td><td class="c" style="color:var(--t3)">—</td><td></td><td class="r">฿${fmt2(RENT)}</td></tr>
+        <tr><td>ค่าเช่าห้อง</td><td class="c" style="color:var(--t3)">—</td><td></td><td class="r">${_rentDisp}</td></tr>
         <tr><td>ค่าไฟฟ้า</td><td class="c" style="color:var(--t3)">${m?.elecPrev||0}–${m?.elecCurr||0}</td><td class="c">${eu.toFixed(1)}</td><td class="r">฿${fmt2(ec)}</td></tr>
         <tr><td>ค่าน้ำประปา</td><td class="c" style="color:var(--t3)">${m?.waterPrev||0}–${m?.waterCurr||0}</td><td class="c">${wu.toFixed(1)}</td><td class="r">฿${fmt2(wc)}</td></tr>
       </tbody>
@@ -1679,12 +1688,15 @@ async function issueInv(){
   const eu=Math.max(0,parseFloat(m?.elecCurr||0)-parseFloat(m?.elecPrev||0));
   const wu=Math.max(0,parseFloat(m?.waterCurr||0)-parseFloat(m?.waterPrev||0));
   const ec=Math.round(eu*ELEC*100)/100,wc=Math.round(wu*WATER*100)/100;
+  const _coModal=document.getElementById('inv-checkout-date')?.value||'';
+  const _INV_DR=117,_pDays=_coModal?(()=>{const p=_coModal.trim().split('/');return p.length>=3?parseInt(p[0]):0;})():0;
+  const _rentDisp=_coModal&&_pDays>0?`${_pDays} วัน × ${_INV_DR} = ฿${fmt2(_pDays*_INV_DR)}`:('฿'+fmt2(RENT));
   document.getElementById('inv-modal-preview').innerHTML=`
     <div style="font-size:12px;color:var(--t2);margin-bottom:8px;font-weight:500">ห้อง ${parseInt(room)} · ${t.name} · ประจำเดือน ${monthName}</div>
     <table class="tbl" style="margin-bottom:0;font-size:12px">
       <thead><tr><th>รายการ</th><th class="c">หน่วย เก่า-ใหม่</th><th class="c">จำนวน</th><th class="r">เงิน</th></tr></thead>
       <tbody>
-        <tr><td>ค่าเช่าห้อง</td><td class="c" style="color:var(--t3)">—</td><td></td><td class="r">฿${fmt2(RENT)}</td></tr>
+        <tr><td>ค่าเช่าห้อง</td><td class="c" style="color:var(--t3)">—</td><td></td><td class="r">${_rentDisp}</td></tr>
         <tr><td>ค่าไฟฟ้า</td><td class="c" style="color:var(--t3)">${m?.elecPrev||0}–${m?.elecCurr||0}</td><td class="c">${eu.toFixed(1)}</td><td class="r">฿${fmt2(ec)}</td></tr>
         <tr><td>ค่าน้ำประปา</td><td class="c" style="color:var(--t3)">${m?.waterPrev||0}–${m?.waterCurr||0}</td><td class="c">${wu.toFixed(1)}</td><td class="r">฿${fmt2(wc)}</td></tr>
       </tbody>

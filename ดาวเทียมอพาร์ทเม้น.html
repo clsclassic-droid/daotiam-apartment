@@ -1972,17 +1972,17 @@ async function openPayModal(room){
   const wu=Math.max(0,parseFloat(m.waterCurr||0)-parseFloat(m.waterPrev||0));
   const ec=Math.round(eu*ELEC*100)/100,wc=Math.round(wu*WATER*100)/100;
   const ovSel=document.getElementById('ov-sel')?.value||'';
-  const rentAmt=calcDayRent(t.checkin,t.checkout,ovSel);
-  const isDayRate=rentAmt!==RENT;
-  // ดึง invoice ของห้องนี้ในเดือนนี้
-  let extras=[],invoiceId=null;
+  // ดึง invoice ของห้องนี้ในเดือนนี้ — ใช้ rent_amount จาก invoice เป็นหลัก
+  let extras=[],invoiceId=null,rentAmt=RENT;
   try{
     const {data}=await _sb.from('invoices').select('*').eq('room',room).eq('month',ovSel).maybeSingle();
     if(data){
       invoiceId=data.id;
       extras=typeof data.extras==='string'?JSON.parse(data.extras):data.extras||[];
+      if(data.rent_amount) rentAmt=parseFloat(data.rent_amount);
     }
   }catch(e){}
+  const isDayRate=rentAmt!==RENT;
   const extraTotal=extras.reduce((s,x)=>s+parseFloat(x.amount||0),0);
   payCurrentRoom=room;payMethod=null;payData={t,m,eu,wu,ec,wc,rentAmt,extraTotal,invoiceId,extras};
   document.getElementById('pay-sub').textContent='ห้อง '+room+' · '+t.name;
@@ -1995,11 +1995,8 @@ async function openPayModal(room){
   let banner=document.getElementById('pay-day-banner');
   if(!banner){banner=document.createElement('div');banner.id='pay-day-banner';document.getElementById('pay-sub').after(banner);}
   if(isDayRate){
-    const[yr,mo]=ovSel.split('_').map(Number);
-    const ci=new Date(t.checkin);const lastDay=new Date(yr,mo,0).getDate();
-    const isFirst=ci.getFullYear()===yr&&ci.getMonth()+1===mo;
-    const days=isFirst?lastDay-ci.getDate()+1:new Date(t.checkout).getDate();
-    banner.innerHTML=`<div style="background:#E1F5EE;border:0.5px solid #9FE1CB;border-radius:7px;padding:7px 10px;margin-bottom:10px;font-size:12px;color:#085041">คิดรายวัน ${days} วัน × ฿${DAY_RATE} = ฿${fmtN(rentAmt)}</div>`;
+    const days=Math.round(rentAmt/117);
+    banner.innerHTML=`<div style="background:#E1F5EE;border:0.5px solid #9FE1CB;border-radius:7px;padding:7px 10px;margin-bottom:10px;font-size:12px;color:#085041">คิดรายวัน ${days} วัน × ฿117 = ฿${fmtN(rentAmt)}</div>`;
   }else{banner.innerHTML='';}
   document.getElementById('pay-rent').textContent='฿'+fmt2(rentAmt);
   document.getElementById('pay-er').textContent=(m.elecPrev||0)+' – '+(m.elecCurr||0);

@@ -689,7 +689,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
   </table>
   <div style="background:#f8f9fa;border-radius:7px;padding:9px 11px;margin-bottom:12px">
     <div style="font-size:11px;color:var(--t2);margin-bottom:5px;font-weight:500">จำนวนที่ชำระ (฿)</div>
-    <div style="display:flex;align-items:center;gap:7px"><span style="color:var(--t3)">฿</span><input type="number" id="pay-amount" style="flex:1;font-size:18px;font-weight:600;padding:6px 9px;border:1px solid var(--border);border-radius:7px;text-align:right;background:#fff;color:var(--text)" oninput="checkPayDiff()"></div>
+    <div style="display:flex;align-items:center;gap:7px"><span style="color:var(--t3)">฿</span><input type="text" id="pay-amount" inputmode="decimal" style="flex:1;font-size:18px;font-weight:600;padding:6px 9px;border:1px solid var(--border);border-radius:7px;text-align:right;background:#fff;color:var(--text)" oninput="checkPayDiff()"></div>
     <div id="pay-diff" style="font-size:11px;min-height:16px;margin-top:4px;text-align:right"></div>
   </div>
   <div style="font-size:11px;font-weight:500;color:var(--t2);margin-bottom:7px">ช่องทางการชำระ</div>
@@ -2025,11 +2025,11 @@ async function openPayModal(room){
   document.getElementById('pay-confirm').style.opacity='0.35';
   calcPayTotal();openMo('mo-pay');
 }
-function calcPayTotal(){if(!payData.t)return;const rentAmt=payData.rentAmt||RENT;const extraTotal=payData.extraTotal||0;payCurrentTotal=rentAmt+(payData.ec||0)+(payData.wc||0)+extraTotal;document.getElementById('pay-total').textContent='฿'+fmt2(payCurrentTotal);document.getElementById('pay-amount').value=payCurrentTotal.toFixed(2);checkPayDiff();}
-function checkPayDiff(){const paid=parseFloat(document.getElementById('pay-amount').value)||0;const diff=paid-payCurrentTotal;const el=document.getElementById('pay-diff');if(Math.abs(diff)<0.01){el.textContent='✓ ครบจำนวน';el.style.color='var(--green)';}else if(diff<0){el.textContent='ขาด ฿'+Math.abs(diff).toFixed(2);el.style.color='var(--red)';}else if(paid>0){el.textContent='เกิน ฿'+diff.toFixed(2);el.style.color='var(--amber)';}else{el.textContent='';}if(payMethod&&paid>0)document.getElementById('pay-confirm').style.opacity='1';}
+function calcPayTotal(){if(!payData.t)return;const rentAmt=payData.rentAmt||RENT;const extraTotal=payData.extraTotal||0;payCurrentTotal=rentAmt+(payData.ec||0)+(payData.wc||0)+extraTotal;document.getElementById('pay-total').textContent=fmt2(payCurrentTotal);document.getElementById('pay-amount').value=payCurrentTotal.toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});checkPayDiff();}
+function checkPayDiff(){const paid=parseFloat((document.getElementById('pay-amount').value||'0').replace(/,/g,''))||0;const diff=paid-payCurrentTotal;const el=document.getElementById('pay-diff');if(Math.abs(diff)<0.01){el.textContent='✓ ครบจำนวน';el.style.color='var(--green)';}else if(diff<0){el.textContent='ขาด ฿'+Math.abs(diff).toFixed(2);el.style.color='var(--red)';}else if(paid>0){el.textContent='เกิน ฿'+diff.toFixed(2);el.style.color='var(--amber)';}else{el.textContent='';}if(payMethod&&paid>0)document.getElementById('pay-confirm').style.opacity='1';}
 function selPayMethod(m){payMethod=m;const sel='background:var(--gl);border:1.5px solid var(--green);color:var(--gd);font-weight:500';const def='background:#f8f9fa';document.getElementById('pb-cash').style.cssText=`flex:1;padding:9px;border-radius:7px;border:1px solid var(--border);font-size:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;${m==='cash'?sel:def}`;document.getElementById('pb-bank').style.cssText=`flex:1;padding:9px;border-radius:7px;border:1px solid var(--border);font-size:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;${m==='bank'?sel:def}`;checkPayDiff();}
 async function confirmPay(){
-  const paid=parseFloat(document.getElementById('pay-amount').value)||0;
+  const paid=parseFloat((document.getElementById('pay-amount').value||'0').replace(/,/g,''))||0;
   if(!payMethod||!payCurrentRoom||paid<=0)return;
   const t=payData.t;
   const month=document.getElementById('ov-sel')?.value||'';

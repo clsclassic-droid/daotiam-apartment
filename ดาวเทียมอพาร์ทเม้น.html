@@ -2026,11 +2026,13 @@ async function openPayModal(room){
   calcPayTotal();openMo('mo-pay');
 }
 function calcPayTotal(){if(!payData.t)return;const rentAmt=payData.rentAmt||RENT;const extraTotal=payData.extraTotal||0;payCurrentTotal=rentAmt+(payData.ec||0)+(payData.wc||0)+extraTotal;document.getElementById('pay-total').textContent=fmt2(payCurrentTotal);document.getElementById('pay-amount').value=payCurrentTotal.toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});checkPayDiff();}
-function checkPayDiff(){const paid=parseFloat((document.getElementById('pay-amount').value||'0').replace(/,/g,''))||0;const diff=paid-payCurrentTotal;const el=document.getElementById('pay-diff');if(Math.abs(diff)<0.01){el.textContent='✓ ครบจำนวน';el.style.color='var(--green)';}else if(diff<0){el.textContent='ขาด ฿'+Math.abs(diff).toFixed(2);el.style.color='var(--red)';}else if(paid>0){el.textContent='เกิน ฿'+diff.toFixed(2);el.style.color='var(--amber)';}else{el.textContent='';}if(payMethod&&paid>0)document.getElementById('pay-confirm').style.opacity='1';}
+function checkPayDiff(){const paid=parseFloat((document.getElementById('pay-amount').value||'0').replace(/,/g,''))||0;const diff=paid-payCurrentTotal;const el=document.getElementById('pay-diff');const btn=document.getElementById('pay-confirm');if(Math.abs(diff)<0.01){el.textContent='✓ ครบจำนวน';el.style.color='var(--green)';}else if(Math.abs(diff)<=1){el.textContent=(diff<0?'ขาด':'เกิน')+' ฿'+Math.abs(diff).toFixed(2)+' (ยืนยันได้)';el.style.color='var(--amber)';}else if(diff<0){el.textContent='ขาด ฿'+Math.abs(diff).toFixed(2)+' — กรุณาชำระให้ครบก่อน';el.style.color='var(--red)';}else{el.textContent='เกิน ฿'+diff.toFixed(2);el.style.color='var(--amber)';}const canConfirm=payMethod&&paid>0&&(Math.abs(diff)<=1);btn.style.opacity=canConfirm?'1':'0.35';btn.style.pointerEvents=canConfirm?'auto':'none';}
 function selPayMethod(m){payMethod=m;const sel='background:var(--gl);border:1.5px solid var(--green);color:var(--gd);font-weight:500';const def='background:#f8f9fa';document.getElementById('pb-cash').style.cssText=`flex:1;padding:9px;border-radius:7px;border:1px solid var(--border);font-size:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;${m==='cash'?sel:def}`;document.getElementById('pb-bank').style.cssText=`flex:1;padding:9px;border-radius:7px;border:1px solid var(--border);font-size:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;${m==='bank'?sel:def}`;checkPayDiff();}
 async function confirmPay(){
   const paid=parseFloat((document.getElementById('pay-amount').value||'0').replace(/,/g,''))||0;
   if(!payMethod||!payCurrentRoom||paid<=0)return;
+  const diff=paid-payCurrentTotal;
+  if(Math.abs(diff)>1){showToast('กรุณาชำระให้ครบก่อน','err');return;}
   const t=payData.t;
   const month=document.getElementById('ov-sel')?.value||'';
   const ch=payMethod==='cash'?'cash':'bank';
@@ -2039,15 +2041,21 @@ async function confirmPay(){
   const extras=payData.extras||[];
   showLoad('กำลังบันทึกการชำระ...');
   try{
-    // บันทึก transactions
-    const txRows=[
+    // สร้าง transaction rows ตามปกติก่อน
+    const baseRows=[
       {date:today,type:'rent-in',description:'ค่าเช่าห้อง '+payCurrentRoom,room:payCurrentRoom,amount:rentAmt,channel:ch,note:'',month},
       {date:today,type:'elec-in',description:'ค่าไฟห้อง '+payCurrentRoom,room:payCurrentRoom,amount:payData.ec,channel:ch,note:'',month},
       {date:today,type:'water-in',description:'ค่าน้ำห้อง '+payCurrentRoom,room:payCurrentRoom,amount:payData.wc,channel:ch,note:'',month},
       ...extras.map(x=>({date:today,type:'other-in',description:x.desc||'อื่นๆ ห้อง '+payCurrentRoom,room:payCurrentRoom,amount:x.amount,channel:ch,note:'',month}))
     ];
+    // ถ้ามี diff (±1 บาท) ให้ปรับรายการสุดท้าย
+    const txRows=[...baseRows];
+    if(Math.abs(diff)>0.01){
+      const last=txRows[txRows.length-1];
+      const adjusted=Math.round((parseFloat(last.amount)+diff)*100)/100;
+      txRows[txRows.length-1]={...last,amount:adjusted};
+    }
     await _sb.from('transactions').insert(txRows);
-    // update invoice status=paid
     if(payData.invoiceId){
       await _sb.from('invoices').update({status:'paid'}).eq('id',payData.invoiceId);
     }
@@ -2062,9 +2070,10 @@ async function confirmPay(){
 function showReceiptModal(d){
   const mL=d.method==='cash'?'เงินสด':'โอนเงิน';
   const rNo='RC'+String(d.room).padStart(4,'0')+'-'+String(new Date().getMonth()+1).padStart(2,'0')+String(new Date().getFullYear()).slice(-2);
+  const rentAmt=d.rentAmt||RENT;
   const extraTotal=(d.extras||[]).reduce((s,x)=>s+parseFloat(x.amount||0),0);
-  const grand=RENT+(d.ec||0)+(d.wc||0)+extraTotal,short=grand-d.paid;
-  const extraRows=(d.extras||[]).map(x=>`<tr><td style="padding:3px 0;color:var(--t3)">${x.desc||'อื่นๆ'}</td><td style="text-align:right">฿${fmt2(x.amount)}</td></tr>`).join('');
+  const grand=rentAmt+(d.ec||0)+(d.wc||0)+extraTotal;
+  const extraRows=(d.extras||[]).map(x=>`<tr><td style="padding:3px 0;color:var(--t3)">${x.desc||'อื่นๆ'}</td><td style="text-align:right">${fmt2(x.amount)}</td></tr>`).join('');
   document.getElementById('receipt-content').innerHTML=`
     <div style="text-align:center;margin-bottom:12px">
       <div style="font-size:16px;font-weight:600">ใบเสร็จรับเงิน</div>
@@ -2074,15 +2083,14 @@ function showReceiptModal(d){
       <div>เลขที่: <strong style="color:var(--text)">${rNo}</strong></div><div>ห้อง: <strong style="color:var(--text)">${d.room} — ${d.name}</strong></div>
     </div>
     <table style="width:100%;font-size:12px;border-collapse:collapse;margin-bottom:8px">
-      <tr><td style="padding:3px 0;color:var(--t3)">ค่าเช่าห้อง</td><td style="text-align:right">฿${fmt2(RENT)}</td></tr>
-      <tr><td style="padding:3px 0;color:var(--t3)">ค่าไฟ (${d.eu?.toFixed(1)||0} × 6.50)</td><td style="text-align:right">฿${fmt2(d.ec||0)}</td></tr>
-      <tr><td style="padding:3px 0;color:var(--t3)">ค่าน้ำ (${d.wu?.toFixed(1)||0} × 22)</td><td style="text-align:right">฿${fmt2(d.wc||0)}</td></tr>
+      <tr><td style="padding:3px 0;color:var(--t3)">ค่าเช่าห้อง</td><td style="text-align:right">${fmt2(rentAmt)}</td></tr>
+      <tr><td style="padding:3px 0;color:var(--t3)">ค่าไฟ (${d.eu?.toFixed(1)||0} × 6.50)</td><td style="text-align:right">${fmt2(d.ec||0)}</td></tr>
+      <tr><td style="padding:3px 0;color:var(--t3)">ค่าน้ำ (${d.wu?.toFixed(1)||0} × 22)</td><td style="text-align:right">${fmt2(d.wc||0)}</td></tr>
       ${extraRows}
     </table>
     <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:600;border-top:2px solid var(--text);padding-top:7px">
-      <span>รับเงิน (${mL})</span><span style="color:var(--green)">฿${fmt2(d.paid)}</span>
+      <span>รับเงิน (${mL})</span><span style="color:var(--green)">${fmt2(d.paid)}</span>
     </div>
-    ${short>0.01?`<div style="text-align:right;font-size:11px;color:var(--red);margin-top:3px">ยังขาด ฿${fmt2(short)}</div>`:''}
     <div style="text-align:center;margin-top:12px;font-size:11px;color:var(--t3)">ขอบคุณครับ</div>`;
   openMo('mo-receipt');
 }

@@ -1623,7 +1623,7 @@ async function editInv(){
   const meterData=await api({action:'getMeters',month:monthKey})||[];
   const m=meterData.find(x=>String(x.room)===String(room));
   const mDate=m?.currDate||document.getElementById('inv-mdate').value;
-  _invMeterCache={meterData,monthKey,monthName,invDate,m,mDate,room,t};
+  _invMeterCache={meterData,monthKey,monthName,invDate,m,mDate,room,t,_room:room,_extras:[]};
   // โหลด extras เดิมจาก invoices
   let existingExtras=[];
   try{const {data}=await _sb.from('invoices').select('extras').eq('room',room).eq('month',monthKey).maybeSingle();if(data?.extras){existingExtras=typeof data.extras==='string'?JSON.parse(data.extras):data.extras||[];}}catch(e){}
@@ -1691,7 +1691,7 @@ async function issueInv(){
   const meterData=await api({action:'getMeters',month:monthKey})||[];
   const m=meterData.find(x=>String(x.room)===String(room));
   const mDate=m?.currDate||document.getElementById('inv-mdate').value;
-  _invMeterCache={meterData,monthKey,monthName,invDate,m,mDate,room,t};
+  _invMeterCache={meterData,monthKey,monthName,invDate,m,mDate,room,t,_room:room,_extras:[]};
   // reset รายการพิเศษ
   _issueInvExtras=[];
   document.getElementById('inv-extra-list').innerHTML='';
@@ -1729,22 +1729,27 @@ async function confirmIssueInv(){
   const {monthKey,monthName,invDate,m,mDate,room,t}=_invMeterCache||{};
   if(!room||!t)return;
   const extras=_issueInvExtras.filter(x=>x&&x.amount>0);
+  const extraTotal=extras.reduce((s,x)=>s+parseFloat(x.amount||0),0);
   const eu=Math.max(0,parseFloat(m?.elecCurr||0)-parseFloat(m?.elecPrev||0));
   const wu=Math.max(0,parseFloat(m?.waterCurr||0)-parseFloat(m?.waterPrev||0));
   const ec=Math.round(eu*ELEC*100)/100,wc=Math.round(wu*WATER*100)/100;
-  const extraTotal=extras.reduce((s,x)=>s+parseFloat(x.amount||0),0);
-  const total=RENT+ec+wc+extraTotal;
+  // คำนวณค่าเช่า: รายวัน 117 บาท ถ้ากรอกวันออก
+  const _coDateVal2=document.getElementById('inv-checkout-date')?.value||'';
+  const INV_DAY_RATE=117;
+  let rentAmtFinal=RENT;
+  if(_coDateVal2){
+    const _pm=_coDateVal2.trim().split('/');
+    if(_pm.length>=3){const days=parseInt(_pm[0]);if(days>0)rentAmtFinal=Math.round(days*INV_DAY_RATE);}
+  }
+  const total=rentAmtFinal+ec+wc+extraTotal;
   showLoad('กำลังออกใบแจ้งหนี้...');
   try{
-    // ลบ invoice เก่าของห้อง+เดือนนี้ก่อน (กันซ้ำ)
     await _sb.from('invoices').delete().eq('room',room).eq('month',monthKey);
-    // insert invoice ใหม่
     await _sb.from('invoices').insert({
       room,month:monthKey,issued_date:invDate,
-      rent_amount:RENT,elec_amount:ec,water_amount:wc,
+      rent_amount:rentAmtFinal,elec_amount:ec,water_amount:wc,
       extras:JSON.stringify(extras),total,status:'pending'
     });
-    // update status overdue เฉพาะเมื่อยังไม่ overdue
     const idx=tenants.findIndex(x=>String(x.room)===String(room));
     if(idx>-1&&tenants[idx].status!=='overdue'){
       await _sb.from('tenants').update({status:'overdue'}).eq('room',room);
@@ -1752,7 +1757,6 @@ async function confirmIssueInv(){
     }
     renderDash();
     closeMo('mo-issue-inv');
-    const _coDateVal2=document.getElementById('inv-checkout-date')?.value||'';
     document.getElementById('inv-preview').innerHTML=buildInvHTML(room,t,m,monthName,invDate,mDate,false,extras,_coDateVal2);
     showToast(`ออกใบแจ้งหนี้ห้อง ${parseInt(room)} แล้ว`);
   }catch(e){showToast('ออกใบไม่สำเร็จ','err');}

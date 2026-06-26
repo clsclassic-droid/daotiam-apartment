@@ -678,7 +678,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
   <table class="tbl" style="margin-bottom:10px">
     <thead><tr><th>รายการ</th><th class="c">หน่วยเก่า–ใหม่</th><th class="c">จำนวน</th><th class="c">ราคา/หน่วย</th><th class="r">เงิน</th></tr></thead>
     <tbody>
-      <tr><td>ค่าเช่าห้อง</td><td class="c" style="color:var(--t3)">—</td><td></td><td></td><td class="r" id="pay-rent"></td></tr>
+      <tr><td>ค่าเช่าห้อง</td><td class="c" id="pay-rent-range" style="color:var(--t3)">—</td><td class="c" id="pay-rent-days"></td><td class="c" id="pay-rent-rate"></td><td class="r" id="pay-rent"></td></tr>
       <tr><td>ค่าไฟฟ้า</td><td class="c" id="pay-er" style="color:var(--t3)"></td><td class="c" id="pay-eu"></td><td class="c" style="color:var(--t3)" id="pay-elec-rate"></td><td class="r" id="pay-ec"></td></tr>
       <tr><td>ค่าน้ำประปา</td><td class="c" id="pay-wr" style="color:var(--t3)"></td><td class="c" id="pay-wu"></td><td class="c" style="color:var(--t3)" id="pay-water-rate">22</td><td class="r" id="pay-wc"></td></tr>
     </tbody>
@@ -1994,17 +1994,33 @@ async function openPayModal(room){
   // แสดง banner รายวัน
   let banner=document.getElementById('pay-day-banner');
   if(!banner){banner=document.createElement('div');banner.id='pay-day-banner';document.getElementById('pay-sub').after(banner);}
+  banner.innerHTML='';
+  // แสดงค่าเช่า: ถ้ารายวันให้แสดง range+วัน+ราคา ถ้าเต็มเดือนแสดง —
   if(isDayRate){
     const days=Math.round(rentAmt/117);
-    banner.innerHTML=`<div style="background:#E1F5EE;border:0.5px solid #9FE1CB;border-radius:7px;padding:7px 10px;margin-bottom:10px;font-size:12px;color:#085041">คิดรายวัน ${days} วัน × ฿117 = ฿${fmtN(rentAmt)}</div>`;
-  }else{banner.innerHTML='';}
-  document.getElementById('pay-rent').textContent='฿'+fmt2(rentAmt);
-  document.getElementById('pay-er').textContent=(m.elecPrev||0)+' – '+(m.elecCurr||0);
+    const[ovYr,ovMo]=ovSel.split('_').map(Number);
+    const startStr='01/'+String(ovMo).padStart(2,'0')+'/'+String(ovYr).slice(-2);
+    // หาวันที่ออกจาก invoice หรือคำนวณจาก days
+    const endDay=String(days).padStart(2,'0');
+    const endStr=endDay+'/'+String(ovMo).padStart(2,'0')+'/'+String(ovYr).slice(-2);
+    const rentRange=startStr+'–'+endStr;
+    document.getElementById('pay-rent').textContent=fmt2(rentAmt);
+    const rentRow=document.getElementById('pay-rent').closest('tr');
+    document.getElementById('pay-rent-range').textContent=rentRange;
+    document.getElementById('pay-rent-days').textContent=fmtN(days);
+    document.getElementById('pay-rent-rate').textContent='117';
+  } else {
+    document.getElementById('pay-rent').textContent=fmt2(rentAmt);
+    document.getElementById('pay-rent-range').textContent='—';
+    document.getElementById('pay-rent-days').textContent='';
+    document.getElementById('pay-rent-rate').textContent='';
+  }
+  document.getElementById('pay-er').textContent=fmtN(m.elecPrev||0)+' – '+fmtN(m.elecCurr||0);
   document.getElementById('pay-eu').textContent=eu.toFixed(1);
-  document.getElementById('pay-ec').textContent='฿'+fmt2(ec);
-  document.getElementById('pay-wr').textContent=(m.waterPrev||0)+' – '+(m.waterCurr||0);
+  document.getElementById('pay-ec').textContent=fmt2(ec);
+  document.getElementById('pay-wr').textContent=fmtN(m.waterPrev||0)+' – '+fmtN(m.waterCurr||0);
   document.getElementById('pay-wu').textContent=wu.toFixed(1);
-  document.getElementById('pay-wc').textContent='฿'+fmt2(wc);
+  document.getElementById('pay-wc').textContent=fmt2(wc);
   ['pb-cash','pb-bank'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.background='#f8f9fa';});
   document.getElementById('pay-confirm').style.opacity='0.35';
   calcPayTotal();openMo('mo-pay');

@@ -361,6 +361,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
           <div class="fg"><label>เดือน</label><select id="inv-month" class="fc" onchange="renderInv()"><option>มกราคม</option><option>กุมภาพันธ์</option><option>มีนาคม</option><option>เมษายน</option><option>พฤษภาคม</option><option>มิถุนายน</option><option>กรกฎาคม</option><option>สิงหาคม</option><option>กันยายน</option><option>ตุลาคม</option><option>พฤศจิกายน</option><option>ธันวาคม</option></select></div>
           <div class="fg"><label>วันที่ออกใบ</label><input type="text" id="inv-date" class="fc"></div>
           <div class="fg"><label>วันที่จดมิเตอร์</label><input type="text" id="inv-mdate" class="fc"></div>
+          <div class="fg"><label>วันที่ออก (กลางเดือน)</label><input type="text" id="inv-checkout-date" class="fc" placeholder="เว้นว่าง = เต็มเดือน เช่น 25/06/26" oninput="renderInv()"></div>
         </div>
         <div style="display:flex;gap:7px;margin-bottom:14px;flex-wrap:wrap">
           <button class="btn btn-green btn-sm" onclick="issueInv()"><i class="ti ti-file-invoice"></i> ออกใบแจ้งหนี้</button>
@@ -1525,12 +1526,33 @@ async function saveTenant(){
 
 // INVOICE
 function populateInvRoom(){const sel=document.getElementById('inv-room');if(!sel)return;sel.innerHTML='<option value="">-- เลือกห้อง --</option>'+tenants.map(t=>`<option value="${t.room}">ห้อง ${t.room} — ${t.name}</option>`).join('');}
-function buildInvHTML(rn,t,m,month,invDate,mDate,vacant,extras=[]){
+function buildInvHTML(rn,t,m,month,invDate,mDate,vacant,extras=[],checkoutDate=''){
   const eu=Math.max(0,parseFloat(m?.elecCurr||0)-parseFloat(m?.elecPrev||0));
   const wu=Math.max(0,parseFloat(m?.waterCurr||0)-parseFloat(m?.waterPrev||0));
   const ec=vacant?0:Math.round(eu*ELEC*100)/100,wc=vacant?0:Math.round(wu*WATER*100)/100;
+  // คำนวณค่าเช่า: รายวัน 117 บาท ถ้ากรอกวันออกกลางเดือน
+  const INV_DAY_RATE=117;
+  let rentAmt=RENT,rentRange='—',rentDays=0,isProrate=false;
+  if(!vacant&&checkoutDate){
+    const parseDMY=s=>{const p=s.trim().split('/');if(p.length<3)return null;const y=parseInt(p[2])<100?2000+parseInt(p[2]):parseInt(p[2]);return new Date(y,parseInt(p[1])-1,parseInt(p[0]));};
+    const coDate=parseDMY(checkoutDate);
+    let startDate=null;
+    if(window._invMeterCache?.monthKey){
+      const[myr,mmo]=window._invMeterCache.monthKey.split('_').map(Number);
+      startDate=new Date(myr,mmo-1,1);
+    }
+    if(coDate&&startDate){
+      const days=coDate.getDate();
+      const fmt2d=n=>String(n).padStart(2,'0');
+      const startStr=fmt2d(startDate.getDate())+'/'+fmt2d(startDate.getMonth()+1)+'/'+String(startDate.getFullYear()).slice(-2);
+      rentDays=days;
+      rentAmt=Math.round(days*INV_DAY_RATE);
+      rentRange=startStr+'–'+checkoutDate;
+      isProrate=true;
+    }
+  }
   const extraTotal=extras.reduce((s,x)=>s+parseFloat(x.amount||0),0);
-  const total=vacant?0:RENT+ec+wc+extraTotal;
+  const total=vacant?0:rentAmt+ec+wc+extraTotal;
   const extraRows=extras.map(x=>`<tr><td style="border:1px solid #333;padding:6px 9px">${x.desc||'อื่นๆ'}</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">—</td><td style="border:1px solid #333;padding:6px 9px"></td><td style="border:1px solid #333;padding:6px 9px"></td><td style="border:1px solid #333;padding:6px 9px;text-align:right">${fmt2(x.amount)}</td></tr>`).join('');
   return`<div style="background:#fff;border:1px solid #ddd;border-radius:8px;padding:26px 30px;max-width:580px;font-family:'Sarabun',sans-serif;font-size:14px">
     <div style="text-align:center;font-size:19px;font-weight:700;margin-bottom:16px">ใบแจ้งยอดค่าเช่า</div>
@@ -1542,7 +1564,7 @@ function buildInvHTML(rn,t,m,month,invDate,mDate,vacant,extras=[]){
       <thead><tr><th colspan="4" style="border:1px solid #333;padding:6px 9px;text-align:left">ชื่อผู้เช่า : ${vacant?'<span style="color:red">ห้องว่าง</span>':t?.name||'—'}</th><th style="border:1px solid #333;padding:6px 9px;text-align:right">ห้อง ${rn}</th></tr>
       <tr style="background:#f9f9f9"><th style="border:1px solid #333;padding:6px 9px">รายการ</th><th style="border:1px solid #333;padding:6px 9px;text-align:center">หน่วย เก่า-ใหม่</th><th style="border:1px solid #333;padding:6px 9px;text-align:center">จำนวน</th><th style="border:1px solid #333;padding:6px 9px;text-align:center">ราคา/หน่วย</th><th style="border:1px solid #333;padding:6px 9px;text-align:right">จำนวนเงิน</th></tr></thead>
       <tbody>
-        <tr><td style="border:1px solid #333;padding:6px 9px">ค่าเช่าห้อง</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">—</td><td style="border:1px solid #333;padding:6px 9px"></td><td style="border:1px solid #333;padding:6px 9px"></td><td style="border:1px solid #333;padding:6px 9px;text-align:right">${vacant?'—':fmt2(RENT)}</td></tr>
+        <tr><td style="border:1px solid #333;padding:6px 9px">ค่าเช่าห้อง</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">${vacant?'—':isProrate?rentRange:'—'}</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">${(!vacant&&isProrate)?rentDays:''}</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">${(!vacant&&isProrate)?INV_DAY_RATE:''}</td><td style="border:1px solid #333;padding:6px 9px;text-align:right">${vacant?'—':fmt2(rentAmt)}</td></tr>
         <tr><td style="border:1px solid #333;padding:6px 9px">ค่าไฟฟ้า</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">${m?.elecPrev||0} - ${m?.elecCurr||0}</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">${eu.toFixed(1)}</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">6.5</td><td style="border:1px solid #333;padding:6px 9px;text-align:right">${fmt2(ec)}</td></tr>
         <tr><td style="border:1px solid #333;padding:6px 9px">ค่าน้ำประปา</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">${m?.waterPrev||0} - ${m?.waterCurr||0}</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">${wu.toFixed(1)}</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">22</td><td style="border:1px solid #333;padding:6px 9px;text-align:right">${fmt2(wc)}</td></tr>
         ${extraRows}
@@ -1578,7 +1600,8 @@ async function renderInv(){
   // โชว์/ซ่อนปุ่ม LINE
   const lineBtn=document.getElementById('inv-line-btn');
   if(lineBtn) lineBtn.style.display=t?.line_user_id?'':'none';
-  document.getElementById('inv-preview').innerHTML=buildInvHTML(room,t,m,monthName,invDate,mDate,false,extras);
+  const _coDateVal=document.getElementById('inv-checkout-date')?.value||'';
+  document.getElementById('inv-preview').innerHTML=buildInvHTML(room,t,m,monthName,invDate,mDate,false,extras,_coDateVal);
 }
 async function editInv(){
   // เปิด popup ออกใบแจ้งหนี้พร้อมโหลด extras เดิมมาแก้ไข
@@ -1695,7 +1718,8 @@ async function confirmIssueInv(){
     }
     renderDash();
     closeMo('mo-issue-inv');
-    document.getElementById('inv-preview').innerHTML=buildInvHTML(room,t,m,monthName,invDate,mDate,false,extras);
+    const _coDateVal2=document.getElementById('inv-checkout-date')?.value||'';
+    document.getElementById('inv-preview').innerHTML=buildInvHTML(room,t,m,monthName,invDate,mDate,false,extras,_coDateVal2);
     showToast(`ออกใบแจ้งหนี้ห้อง ${parseInt(room)} แล้ว`);
   }catch(e){showToast('ออกใบไม่สำเร็จ','err');}
   finally{hideLoad();}

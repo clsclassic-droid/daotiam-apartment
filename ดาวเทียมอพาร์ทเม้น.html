@@ -2154,7 +2154,12 @@ async function confirmCo(){
   const _reason=document.getElementById('co-reason').value;
   const _reasonOther=document.getElementById('co-reason-other').value.trim();
   const reason=_reason==='อื่นๆ'&&_reasonOther?_reasonOther:_reason;
-  const months=Math.max(1,Math.round((new Date(coDate)-new Date(t.checkin?.split('/').reverse().join('-')||coDate))/(30*864e5)));
+  // checkin อาจเป็น ISO (YYYY-MM-DD) หรือ dd/mm/yy
+  const _ciStr=t.checkin||coDate;
+  let _ciDate;
+  if(_ciStr.match(/^\d{4}-\d{2}-\d{2}/)){_ciDate=new Date(_ciStr);}
+  else{const p=_ciStr.split('/');const y=parseInt(p[2])<100?2000+parseInt(p[2]):parseInt(p[2]);_ciDate=new Date(y,parseInt(p[1])-1,parseInt(p[0]));}
+  const months=Math.max(1,Math.round((new Date(coDate)-_ciDate)/(30*864e5)));
   const cd=window._coData||{};
   const month=coDate.slice(0,7).replace('-','_').replace('-','_').split('-').join('_');
   const coMonth=coDate.substring(0,4)+'_'+coDate.substring(5,7);

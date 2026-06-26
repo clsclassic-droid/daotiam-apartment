@@ -1587,14 +1587,6 @@ async function renderInv(){
   let yr=now.getFullYear();
   if(moNum > now.getMonth()+1) yr=yr-1;
   const monthKey=yr+'_'+mo;
-  const _coDateVal=document.getElementById('inv-checkout-date')?.value||'';
-  // reuse cache ถ้า room+month ไม่เปลี่ยน (กรณีแค่แก้ checkoutDate)
-  if(_invMeterCache&&_invMeterCache.monthKey===monthKey&&_invMeterCache._room===room){
-    const m=(_invMeterCache.meterData||[]).find(x=>String(x.room)===String(room));
-    const mDate=m?.currDate||document.getElementById('inv-mdate').value;
-    document.getElementById('inv-preview').innerHTML=buildInvHTML(room,t,m,monthName,invDate,mDate,false,_invMeterCache._extras||[],_coDateVal);
-    return;
-  }
   const meterData=await api({action:'getMeters',month:monthKey})||[];
   let extras=[],existingInvoice=null;
   try{const {data}=await _sb.from('invoices').select('*').eq('room',room).eq('month',monthKey).maybeSingle();if(data){existingInvoice=data;extras=typeof data.extras==='string'?JSON.parse(data.extras):data.extras||[];}}catch(e){}
@@ -1607,6 +1599,7 @@ async function renderInv(){
   // โชว์/ซ่อนปุ่ม LINE
   const lineBtn=document.getElementById('inv-line-btn');
   if(lineBtn) lineBtn.style.display=t?.line_user_id?'':'none';
+  const _coDateVal=document.getElementById('inv-checkout-date')?.value||'';
   document.getElementById('inv-preview').innerHTML=buildInvHTML(room,t,m,monthName,invDate,mDate,false,extras,_coDateVal);
 }
 async function editInv(){

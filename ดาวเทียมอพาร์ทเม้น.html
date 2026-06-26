@@ -712,7 +712,8 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
   <div id="mo-co-sub" style="font-size:11px;color:var(--t3);margin-bottom:12px"></div>
   <div class="fr2" style="margin-bottom:10px">
     <div class="fg"><label>วันที่ย้ายออก</label><input type="date" id="co-date" class="fc" oninput="calcCo()"></div>
-    <div class="fg"><label>เหตุผล</label><select id="co-reason" class="fc"><option>หมดสัญญา</option><option>ย้ายที่ทำงาน</option><option>ออกก่อนกำหนด</option><option>ซื้อบ้านใหม่</option><option>อื่นๆ</option></select></div>
+    <div class="fg"><label>เหตุผล</label><select id="co-reason" class="fc" onchange="toggleCoReason(this)"><option>หมดสัญญา</option><option>ย้ายที่ทำงาน</option><option>ออกก่อนกำหนด</option><option>ซื้อบ้านใหม่</option><option>ไม่จ่ายค่าเช่า</option><option>รบกวนผู้เช่าอื่น</option><option>อื่นๆ</option></select>
+    <input type="text" id="co-reason-other" class="fc" placeholder="ระบุเหตุผล..." style="margin-top:6px;display:none"></div>
     <div class="fg"><label>คืนค่าเช่าล่วงหน้า (฿)</label><input type="number" id="co-clean" value="3500" oninput="calcCo()" class="fc"></div>
     <div class="fg"><label>คืนเงินประกัน (฿)</label><input type="number" id="co-dep-ret" class="fc" oninput="calcCo()"></div>
   </div>
@@ -2125,6 +2126,11 @@ async function openCoModal(room){
   document.getElementById('co-water-prev').textContent=cm.waterCurr||'—';
   calcCo();openMo('mo-checkout');
 }
+function toggleCoReason(sel){
+  const other=document.getElementById('co-reason-other');
+  other.style.display=sel.value==='อื่นๆ'?'block':'none';
+  if(sel.value!=='อื่นๆ') other.value='';
+}
 function calcCo(){
   const m=window._coMeter||{};
   const rentAdv=parseFloat(document.getElementById('co-clean')?.value||0);
@@ -2145,7 +2151,9 @@ async function confirmCo(){
   if(!coDate){showToast('กรุณาระบุวันที่ย้ายออก','err');return;}
   if(!confirm(`ยืนยันย้ายออก ห้อง ${coRoom} — ${t.name}?\nข้อมูลจะถูกย้ายไปหน้าประวัติ`))return;
   const depRet=parseFloat(document.getElementById('co-dep-ret').value)||0;
-  const reason=document.getElementById('co-reason').value;
+  const _reason=document.getElementById('co-reason').value;
+  const _reasonOther=document.getElementById('co-reason-other').value.trim();
+  const reason=_reason==='อื่นๆ'&&_reasonOther?_reasonOther:_reason;
   const months=Math.max(1,Math.round((new Date(coDate)-new Date(t.checkin?.split('/').reverse().join('-')||coDate))/(30*864e5)));
   const cd=window._coData||{};
   const month=coDate.slice(0,7).replace('-','_').replace('-','_').split('-').join('_');

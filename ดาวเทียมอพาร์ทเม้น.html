@@ -2159,7 +2159,10 @@ async function confirmCo(){
   let _ciDate;
   if(_ciStr.match(/^\d{4}-\d{2}-\d{2}/)){_ciDate=new Date(_ciStr);}
   else{const p=_ciStr.split('/');const y=parseInt(p[2])<100?2000+parseInt(p[2]):parseInt(p[2]);_ciDate=new Date(y,parseInt(p[1])-1,parseInt(p[0]));}
-  const months=Math.max(1,Math.round((new Date(coDate)-_ciDate)/(30*864e5)));
+  const _coD=new Date(coDate);
+  let _yrs=_coD.getFullYear()-_ciDate.getFullYear(),_mos=_coD.getMonth()-_ciDate.getMonth(),_days=_coD.getDate()-_ciDate.getDate();
+  if(_days<0){_mos--;} if(_mos<0){_yrs--;_mos+=12;}
+  const months=Math.max(0,_yrs*12+_mos);
   const cd=window._coData||{};
   const month=coDate.slice(0,7).replace('-','_').replace('-','_').split('-').join('_');
   const coMonth=coDate.substring(0,4)+'_'+coDate.substring(5,7);
@@ -2323,8 +2326,23 @@ async function loadHist(){
 }
 let histData=[];
 let histSelRoom=0;
+function calcStayExact(checkin, checkout){
+  if(!checkin||!checkout) return '—';
+  const parseD=s=>{if(!s)return null;if(s.match(/^\d{4}-\d{2}-\d{2}/))return new Date(s);const p=s.split('/');if(p.length<3)return null;const y=parseInt(p[2])<100?2000+parseInt(p[2]):parseInt(p[2]);return new Date(y,parseInt(p[1])-1,parseInt(p[0]));};
+  const s=parseD(checkin),e=parseD(checkout);
+  if(!s||!e)return '—';
+  let yrs=e.getFullYear()-s.getFullYear(),mos=e.getMonth()-s.getMonth(),days=e.getDate()-s.getDate();
+  if(days<0){mos--;const prev=new Date(e.getFullYear(),e.getMonth(),0);days+=prev.getDate();}
+  if(mos<0){yrs--;mos+=12;}
+  const totalMos=yrs*12+mos;
+  let r='';
+  if(yrs>0)r+=yrs+' ปี ';
+  if(mos>0)r+=mos+' เดือน ';
+  if(days>0)r+=days+' วัน';
+  return r.trim()||'0 วัน';
+}
 function renderHistTable(data){
-  document.getElementById('hist-body').innerHTML=data.map(h=>`<tr><td style="font-weight:600">${parseInt(h.room)||h.room}</td><td style="font-weight:500">${h.name}<div style="font-size:10px;color:var(--t3)">${h.phone||''}</div></td><td style="font-size:11px;color:var(--t3)">${fmtDate(h.checkin)}</td><td style="font-size:11px;color:var(--t3)">${fmtDate(h.checkout)}</td><td>${h.months||'—'} เดือน</td><td style="font-size:11px;color:var(--t3)">${h.reason||'—'}</td><td>฿${fmtN(h.depositReturn||0)}</td><td><span class="bdg ${h.status==='blacklist'?'br':'bg'}">${h.status==='blacklist'?'แบล็คลิสต์':'ออกปกติ'}</span></td></tr>`).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--t3);padding:20px">ไม่พบข้อมูล</td></tr>';
+  document.getElementById('hist-body').innerHTML=data.map(h=>`<tr><td style="font-weight:600">${parseInt(h.room)||h.room}</td><td style="font-weight:500">${h.name}<div style="font-size:10px;color:var(--t3)">${h.phone||''}</div></td><td style="font-size:11px;color:var(--t3)">${fmtDate(h.checkin)}</td><td style="font-size:11px;color:var(--t3)">${fmtDate(h.checkout)}</td><td>${calcStayExact(h.checkin,h.checkout)||((h.months||'—')+' เดือน')}</td><td style="font-size:11px;color:var(--t3)">${h.reason||'—'}</td><td>฿${fmtN(h.depositReturn||0)}</td><td><span class="bdg ${h.status==='blacklist'?'br':'bg'}">${h.status==='blacklist'?'แบล็คลิสต์':'ออกปกติ'}</span></td></tr>`).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--t3);padding:20px">ไม่พบข้อมูล</td></tr>';
 }
 function setHistRoom(room){
   histSelRoom=room;

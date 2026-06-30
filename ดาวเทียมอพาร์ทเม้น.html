@@ -1764,6 +1764,9 @@ async function confirmIssueInv(){
 }
 async function printAllInv(){
   if(!confirm('ยืนยันออกใบแจ้งหนี้ทุกห้อง? ระบบจะบันทึกใบแจ้งหนี้และเปลี่ยนสถานะเป็นค้างชำระทุกห้อง'))return;
+  // เปิดหน้าต่างทันทีตอนนี้ (ก่อน await ใดๆ) ป้องกัน Safari บล็อก popup
+  const w=window.open('','_blank');
+  if(w) w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>กำลังโหลด...</title></head><body style="font-family:sans-serif;padding:40px;text-align:center;color:#888">กำลังออกใบแจ้งหนี้ทุกห้อง กรุณารอสักครู่...</body></html>');
   const monthName=document.getElementById('inv-month').value;
   const invDate=document.getElementById('inv-date').value;
   const mDate=document.getElementById('inv-mdate').value;
@@ -1808,7 +1811,12 @@ async function printAllInv(){
       tenants.forEach(t=>{t.status='overdue';});
       renderDash();
     }
-    const w=window.open('','_blank');w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>ใบแจ้งหนี้</title><style>body{margin:20px;font-family:'Sarabun',sans-serif}@media print{.np{display:none}.w{page-break-after:always}}</style></head><body><div class="np" style="margin-bottom:14px;text-align:center"><button onclick="window.print()" style="padding:7px 22px;background:#185FA5;color:#fff;border:none;border-radius:6px;cursor:pointer">พิมพ์ทุกห้อง</button></div>${all.map(h=>`<div class="w" style="margin-bottom:20px">${h}</div>`).join('')}</body></html>`);w.document.close();
+    if(w){
+      w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>ใบแจ้งหนี้</title><style>body{margin:20px;font-family:'Sarabun',sans-serif}@media print{.np{display:none}.w{page-break-after:always}}</style></head><body><div class="np" style="margin-bottom:14px;text-align:center"><button onclick="window.print()" style="padding:7px 22px;background:#185FA5;color:#fff;border:none;border-radius:6px;cursor:pointer">พิมพ์ทุกห้อง</button></div>${all.map(h=>`<div class="w" style="margin-bottom:20px">${h}</div>`).join('')}</body></html>`);
+      w.document.close();
+    } else {
+      showToast('เบราว์เซอร์บล็อก popup กรุณาอนุญาตแล้วลองใหม่','err');
+    }
     showToast(skipped>0?`✓ ออกใบแล้ว · ข้าม ${skipped} ห้องที่มีใบอยู่แล้ว`:'✓ ออกใบแจ้งหนี้ทุกห้องและบันทึกแล้ว');
   }catch(e){showToast('ออกใบไม่สำเร็จ','err');}
   finally{hideLoad();}

@@ -2132,17 +2132,37 @@ async function confirmPay(){
     ];
     // ถ้ามี diff (±1 บาท) ให้ปรับรายการสุดท้าย
     const txRows=[...baseRows];
+    let finalRentAmt=rentAmt,finalEc=payData.ec,finalWc=payData.wc,finalExtras=extras;
     if(Math.abs(diff)>0.01){
       const last=txRows[txRows.length-1];
       const adjusted=Math.round((parseFloat(last.amount)+diff)*100)/100;
       txRows[txRows.length-1]={...last,amount:adjusted};
+      // sync ค่าที่ปรับแล้วกลับเข้าตัวแปรสำหรับบันทึก receipt ให้ตรงกับ transactions จริง
+      if(extras.length>0){
+        finalExtras=[...extras];
+        finalExtras[finalExtras.length-1]={...finalExtras[finalExtras.length-1],amount:adjusted};
+      } else if(payData.wc>0){ finalWc=adjusted; }
+      else if(payData.ec>0){ finalEc=adjusted; }
+      else { finalRentAmt=adjusted; }
     }
     await _sb.from('transactions').insert(txRows);
     if(payData.invoiceId){
       await _sb.from('invoices').update({status:'paid'}).eq('id',payData.invoiceId);
     }
     await apiPost({action:'saveTenant',...t,status:'active'});
-    const d={room:payCurrentRoom,name:t.name,paid,method:payMethod,eu:payData.eu,wu:payData.wu,ec:payData.ec,wc:payData.wc,rentAmt,extras,date:new Date().toLocaleDateString('th-TH')};
+    // สร้างเลขที่ใบเสร็จ running ต่อเนื่อง (นับจากจำนวน receipts ที่มีอยู่ทั้งหมด +1)
+    const {count}=await _sb.from('receipts').select('id',{count:'exact',head:true});
+    const seq=(count||0)+1;
+    const yrBE=new Date(today).getFullYear()+543;
+    const receiptNo='RC'+String(yrBE).slice(-2)+String(seq).padStart(5,'0');
+    const grandTotal=finalRentAmt+finalEc+finalWc+finalExtras.reduce((s,x)=>s+parseFloat(x.amount||0),0);
+    await _sb.from('receipts').insert({
+      receipt_no:receiptNo,room:payCurrentRoom,month,date:today,
+      rent_amount:finalRentAmt,elec_amount:finalEc,water_amount:finalWc,
+      extras:JSON.stringify(finalExtras),total:grandTotal,
+      channel:ch,tenant_name:t.name
+    });
+    const d={room:payCurrentRoom,name:t.name,paid,method:payMethod,eu:payData.eu,wu:payData.wu,ec:finalEc,wc:finalWc,rentAmt:finalRentAmt,extras:finalExtras,date:fmtDate(today),receiptNo};
     receiptStore[payCurrentRoom]=d;
     closeMo('mo-pay');showReceiptModal(d);
     await loadTenants();renderOverdue();
@@ -2152,7 +2172,7 @@ async function confirmPay(){
 function showReceiptModal(d){
   const mL=d.method==='cash'?'เงินสด':'โอนเงิน';
   const dateLbl=d.date||new Date().toLocaleDateString('th-TH');
-  const rNo='RC'+String(d.room).padStart(4,'0')+'-'+String(new Date().getMonth()+1).padStart(2,'0')+String(new Date().getFullYear()).slice(-2);
+  const rNo=d.receiptNo||('RC'+String(d.room).padStart(4,'0')+'-'+String(new Date().getMonth()+1).padStart(2,'0')+String(new Date().getFullYear()).slice(-2));
   const rentAmt=d.rentAmt||RENT;
   const extraTotal=(d.extras||[]).reduce((s,x)=>s+parseFloat(x.amount||0),0);
   const grand=rentAmt+(d.ec||0)+(d.wc||0)+extraTotal;
@@ -2178,38 +2198,28 @@ function showReceiptModal(d){
   openMo('mo-receipt');
 }
 async function viewReceipt(room){
-  // ถ้ามีใน receiptStore (เพิ่งจ่ายในเซสชันนี้) ใช้ก่อนเพื่อความเร็ว
-  if(receiptStore[room]){showReceiptModal(receiptStore[room]);return;}
   const month=document.getElementById('ov-sel')?.value||'';
   showLoad('กำลังโหลดใบเสร็จ...');
   try{
-    const {data:inv}=await _sb.from('invoices').select('*').eq('room',room).eq('month',month).maybeSingle();
-    if(!inv||inv.status!=='paid'){showToast('ไม่พบใบเสร็จของห้องนี้ในเดือนนี้','err');return;}
-    // ดึง transactions ของห้องนี้ในเดือนนั้นเพื่อหาวันที่จ่ายจริงและช่องทาง
-    const {data:txs}=await _sb.from('transactions').select('*').eq('room',room).eq('month',month).in('type',['rent-in','elec-in','water-in','other-in']);
-    const rentTx=(txs||[]).find(t=>t.type==='rent-in');
-    const ecTx=(txs||[]).find(t=>t.type==='elec-in');
-    const wcTx=(txs||[]).find(t=>t.type==='water-in');
-    const extraTxs=(txs||[]).filter(t=>t.type==='other-in');
-    const t=tenants.find(x=>String(x.room)===String(room));
-    const histRaw=t?null:(await api({action:'getHistory'})||[]).find(h=>String(h.room)===String(room));
-    const name=t?.name||histRaw?.name||'(ไม่พบชื่อ)';
-    const totalPaid=(txs||[]).reduce((s,x)=>s+parseFloat(x.amount||0),0);
-    const m=meters.find(x=>String(x.room)===String(room))||{};
-    const eu=Math.max(0,parseFloat(m.elecCurr||0)-parseFloat(m.elecPrev||0));
-    const wu=Math.max(0,parseFloat(m.waterCurr||0)-parseFloat(m.waterPrev||0));
-    const d={
-      room,name,
-      paid:totalPaid,
-      method:rentTx?.channel==='cash'?'cash':'bank',
-      rentAmt:parseFloat(rentTx?.amount||inv.rent_amount||0),
-      ec:parseFloat(ecTx?.amount||inv.elec_amount||0),
-      wc:parseFloat(wcTx?.amount||inv.water_amount||0),
-      eu,wu,
-      extras:extraTxs.map(x=>({desc:x.description,amount:parseFloat(x.amount||0)})),
-      date:rentTx?.date?fmtDate(rentTx.date):''
-    };
-    showReceiptModal(d);
+    // ดึงจาก receipts table (snapshot ถาวร) เป็นหลัก
+    const {data:rec}=await _sb.from('receipts').select('*').eq('room',room).eq('month',month).order('created_at',{ascending:false}).limit(1).maybeSingle();
+    if(rec){
+      const extras=typeof rec.extras==='string'?JSON.parse(rec.extras):rec.extras||[];
+      const m=meters.find(x=>String(x.room)===String(room))||{};
+      const eu=Math.max(0,parseFloat(m.elecCurr||0)-parseFloat(m.elecPrev||0));
+      const wu=Math.max(0,parseFloat(m.waterCurr||0)-parseFloat(m.waterPrev||0));
+      const d={
+        room,name:rec.tenant_name,paid:parseFloat(rec.total||0),
+        method:rec.channel==='cash'?'cash':'bank',
+        rentAmt:parseFloat(rec.rent_amount||0),ec:parseFloat(rec.elec_amount||0),wc:parseFloat(rec.water_amount||0),
+        eu,wu,extras,date:fmtDate(rec.date),receiptNo:rec.receipt_no
+      };
+      showReceiptModal(d);
+      return;
+    }
+    // fallback: ถ้าไม่มีใน receipts (จ่ายก่อนระบบนี้มีอยู่) ลองดู receiptStore ในความจำ
+    if(receiptStore[room]){showReceiptModal(receiptStore[room]);return;}
+    showToast('ไม่พบใบเสร็จของห้องนี้ในเดือนนี้','err');
   }catch(e){showToast('โหลดใบเสร็จไม่สำเร็จ','err');}
   finally{hideLoad();}
 }

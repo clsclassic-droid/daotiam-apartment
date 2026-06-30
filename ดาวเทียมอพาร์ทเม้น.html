@@ -815,6 +815,7 @@ let apiCount=0;
 // UTILS
 const fmt2=n=>parseFloat(n||0).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});
 const fmtN=n=>Math.round(n||0).toLocaleString('th-TH');
+const fmtN1=n=>parseFloat(n||0).toLocaleString('th-TH',{minimumFractionDigits:1,maximumFractionDigits:1});
 function fmtDate(v){if(!v)return'';if(typeof v==='string'){if(v.includes('T')||v.match(/^\d{4}-\d{2}-\d{2}/)){const d=new Date(v.replace(' ','T'));return`${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getFullYear()).slice(-2)}`;}}return v;}
 function calcStay(checkin){if(!checkin)return'—';const parts=checkin.split('/');if(parts.length<3)return'—';const y=parseInt(parts[2])<100?2000+parseInt(parts[2]):parseInt(parts[2]);const start=new Date(y,parseInt(parts[1])-1,parseInt(parts[0]));const now=new Date();let yrs=now.getFullYear()-start.getFullYear();let mos=now.getMonth()-start.getMonth();let days=now.getDate()-start.getDate();if(days<0){mos--;const prev=new Date(now.getFullYear(),now.getMonth(),0);days+=prev.getDate();}if(mos<0){yrs--;mos+=12;}let r='';if(yrs>0)r+=yrs+' ปี ';if(mos>0)r+=mos+' เดือน ';r+=days+' วัน';return r.trim();}
 function showToast(msg,t='ok'){const el=document.getElementById('toast');el.innerHTML=`<i class="ti ti-${t==='ok'?'check':'alert-circle'}" style="color:${t==='ok'?'#1D9E75':'#E24B4A'}"></i>${msg}`;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2800);}
@@ -1567,8 +1568,8 @@ function buildInvHTML(rn,t,m,month,invDate,mDate,vacant,extras=[],checkoutDate='
       <tr style="background:#f9f9f9"><th style="border:1px solid #333;padding:6px 9px">รายการ</th><th style="border:1px solid #333;padding:6px 9px;text-align:center">หน่วย เก่า-ใหม่</th><th style="border:1px solid #333;padding:6px 9px;text-align:center">จำนวน</th><th style="border:1px solid #333;padding:6px 9px;text-align:center">ราคา/หน่วย</th><th style="border:1px solid #333;padding:6px 9px;text-align:right">จำนวนเงิน</th></tr></thead>
       <tbody>
         <tr><td style="border:1px solid #333;padding:6px 9px">ค่าเช่าห้อง</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">${vacant?'—':isProrate?rentRange:'—'}</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">${(!vacant&&isProrate)?fmtN(rentDays):''}</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">${(!vacant&&isProrate)?fmtN(INV_DAY_RATE):''}</td><td style="border:1px solid #333;padding:6px 9px;text-align:right">${vacant?'—':fmt2(rentAmt)}</td></tr>
-        <tr><td style="border:1px solid #333;padding:6px 9px">ค่าไฟฟ้า</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">${fmtN(m?.elecPrev||0)} - ${fmtN(m?.elecCurr||0)}</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">${eu.toFixed(1)}</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">6.5</td><td style="border:1px solid #333;padding:6px 9px;text-align:right">${fmt2(ec)}</td></tr>
-        <tr><td style="border:1px solid #333;padding:6px 9px">ค่าน้ำประปา</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">${fmtN(m?.waterPrev||0)} - ${fmtN(m?.waterCurr||0)}</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">${wu.toFixed(1)}</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">22</td><td style="border:1px solid #333;padding:6px 9px;text-align:right">${fmt2(wc)}</td></tr>
+        <tr><td style="border:1px solid #333;padding:6px 9px">ค่าไฟฟ้า</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">${fmtN1(m?.elecPrev||0)} - ${fmtN1(m?.elecCurr||0)}</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">${eu.toFixed(1)}</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">6.5</td><td style="border:1px solid #333;padding:6px 9px;text-align:right">${fmt2(ec)}</td></tr>
+        <tr><td style="border:1px solid #333;padding:6px 9px">ค่าน้ำประปา</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">${fmtN1(m?.waterPrev||0)} - ${fmtN1(m?.waterCurr||0)}</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">${wu.toFixed(1)}</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">22</td><td style="border:1px solid #333;padding:6px 9px;text-align:right">${fmt2(wc)}</td></tr>
         ${extraRows}
         <tr><td colspan="4" style="border:1px solid #333;padding:7px 9px;text-align:center;font-weight:600">จำนวนเงินรวมทั้งสิ้น (บาท)</td><td style="border:1px solid #333;padding:7px 9px;text-align:right;font-weight:700;font-size:15px">${vacant?'—':fmt2(total)}</td></tr>
       </tbody>
@@ -1650,8 +1651,8 @@ async function editInv(){
       <thead><tr><th>รายการ</th><th class="c">หน่วย เก่า-ใหม่</th><th class="c">จำนวน</th><th class="c">ราคา/หน่วย</th><th class="r">เงิน</th></tr></thead>
       <tbody>
         <tr><td>ค่าเช่าห้อง</td><td class="c" style="color:var(--t3)">${_pDays>0?_rentRange:'—'}</td><td class="c">${_pDays>0?fmtN(_pDays):''}</td><td class="c">${_pDays>0?fmtN(_INV_DR):''}</td><td class="r">${fmt2(_rentModalAmt)}</td></tr>
-        <tr><td>ค่าไฟฟ้า</td><td class="c" style="color:var(--t3)">${fmtN(m?.elecPrev||0)}–${fmtN(m?.elecCurr||0)}</td><td class="c">${eu.toFixed(1)}</td><td class="c">6.5</td><td class="r">${fmt2(ec)}</td></tr>
-        <tr><td>ค่าน้ำประปา</td><td class="c" style="color:var(--t3)">${fmtN(m?.waterPrev||0)}–${fmtN(m?.waterCurr||0)}</td><td class="c">${wu.toFixed(1)}</td><td class="c">22</td><td class="r">${fmt2(wc)}</td></tr>
+        <tr><td>ค่าไฟฟ้า</td><td class="c" style="color:var(--t3)">${fmtN1(m?.elecPrev||0)}–${fmtN1(m?.elecCurr||0)}</td><td class="c">${eu.toFixed(1)}</td><td class="c">6.5</td><td class="r">${fmt2(ec)}</td></tr>
+        <tr><td>ค่าน้ำประปา</td><td class="c" style="color:var(--t3)">${fmtN1(m?.waterPrev||0)}–${fmtN1(m?.waterCurr||0)}</td><td class="c">${wu.toFixed(1)}</td><td class="c">22</td><td class="r">${fmt2(wc)}</td></tr>
       </tbody>
     </table>`;
   openMo('mo-issue-inv');
@@ -1714,8 +1715,8 @@ async function issueInv(){
       <thead><tr><th>รายการ</th><th class="c">หน่วย เก่า-ใหม่</th><th class="c">จำนวน</th><th class="c">ราคา/หน่วย</th><th class="r">เงิน</th></tr></thead>
       <tbody>
         <tr><td>ค่าเช่าห้อง</td><td class="c" style="color:var(--t3)">${_pDays>0?_rentRange:'—'}</td><td class="c">${_pDays>0?fmtN(_pDays):''}</td><td class="c">${_pDays>0?fmtN(_INV_DR):''}</td><td class="r">${fmt2(_rentModalAmt)}</td></tr>
-        <tr><td>ค่าไฟฟ้า</td><td class="c" style="color:var(--t3)">${fmtN(m?.elecPrev||0)}–${fmtN(m?.elecCurr||0)}</td><td class="c">${eu.toFixed(1)}</td><td class="c">6.5</td><td class="r">${fmt2(ec)}</td></tr>
-        <tr><td>ค่าน้ำประปา</td><td class="c" style="color:var(--t3)">${fmtN(m?.waterPrev||0)}–${fmtN(m?.waterCurr||0)}</td><td class="c">${wu.toFixed(1)}</td><td class="c">22</td><td class="r">${fmt2(wc)}</td></tr>
+        <tr><td>ค่าไฟฟ้า</td><td class="c" style="color:var(--t3)">${fmtN1(m?.elecPrev||0)}–${fmtN1(m?.elecCurr||0)}</td><td class="c">${eu.toFixed(1)}</td><td class="c">6.5</td><td class="r">${fmt2(ec)}</td></tr>
+        <tr><td>ค่าน้ำประปา</td><td class="c" style="color:var(--t3)">${fmtN1(m?.waterPrev||0)}–${fmtN1(m?.waterCurr||0)}</td><td class="c">${wu.toFixed(1)}</td><td class="c">22</td><td class="r">${fmt2(wc)}</td></tr>
       </tbody>
     </table>`;
   openMo('mo-issue-inv');
@@ -2016,10 +2017,10 @@ async function openPayModal(room){
     document.getElementById('pay-rent-days').textContent='';
     document.getElementById('pay-rent-rate').textContent='';
   }
-  document.getElementById('pay-er').textContent=fmtN(m.elecPrev||0)+' – '+fmtN(m.elecCurr||0);
+  document.getElementById('pay-er').textContent=fmtN1(m.elecPrev||0)+' – '+fmtN1(m.elecCurr||0);
   document.getElementById('pay-eu').textContent=eu.toFixed(1);
   document.getElementById('pay-ec').textContent=fmt2(ec);
-  document.getElementById('pay-wr').textContent=fmtN(m.waterPrev||0)+' – '+fmtN(m.waterCurr||0);
+  document.getElementById('pay-wr').textContent=fmtN1(m.waterPrev||0)+' – '+fmtN1(m.waterCurr||0);
   document.getElementById('pay-wu').textContent=wu.toFixed(1);
   document.getElementById('pay-wc').textContent=fmt2(wc);
   ['pb-cash','pb-bank'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.background='#f8f9fa';});

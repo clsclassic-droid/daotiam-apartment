@@ -1557,7 +1557,7 @@ function buildInvHTML(rn,t,m,month,invDate,mDate,vacant,extras=[],checkoutDate='
   const extraTotal=extras.reduce((s,x)=>s+parseFloat(x.amount||0),0);
   const total=vacant?0:rentAmt+ec+wc+extraTotal;
   const extraRows=extras.map(x=>`<tr><td style="border:1px solid #333;padding:6px 9px">${x.desc||'อื่นๆ'}</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">—</td><td style="border:1px solid #333;padding:6px 9px"></td><td style="border:1px solid #333;padding:6px 9px"></td><td style="border:1px solid #333;padding:6px 9px;text-align:right">${fmt2(x.amount)}</td></tr>`).join('');
-  return`<div style="background:#fff;border:1px solid #ddd;border-radius:8px;padding:26px 30px;max-width:580px;font-family:'Sarabun',sans-serif;font-size:14px">
+  return`<div style="background:#fff;border:1px solid #ddd;border-radius:8px;padding:26px 30px;max-width:464px;font-family:'Sarabun',sans-serif;font-size:14px">
     <div style="text-align:center;font-size:19px;font-weight:700;margin-bottom:16px">ใบแจ้งยอดค่าเช่า</div>
     <div style="display:flex;justify-content:space-between;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid #eee">
       <div><div style="font-weight:700">ดาวเทียมอพาร์ทเม้น</div><div style="font-size:12px;color:#555">336 ม.7 ซ.เศรษฐี อ.เมือง จ.อุดรธานี · 081-6492615</div></div>
@@ -1574,7 +1574,7 @@ function buildInvHTML(rn,t,m,month,invDate,mDate,vacant,extras=[],checkoutDate='
         <tr><td colspan="4" style="border:1px solid #333;padding:7px 9px;text-align:center;font-weight:600">จำนวนเงินรวมทั้งสิ้น (บาท)</td><td style="border:1px solid #333;padding:7px 9px;text-align:right;font-weight:700;font-size:15px">${vacant?'—':fmt2(total)}</td></tr>
       </tbody>
     </table>
-    <div style="font-size:12px;line-height:1.9"><div style="font-weight:700;text-decoration:underline">หมายเหตุ</div>1. กรุณาชำระภายในวันที่ 1-5 ของเดือน<br>2. หากชำระเกินกำหนด ปรับวันละ 50.- หลังวันที่ 10 ปรับวันละ 100.-<br>3. กรุณาโอนเงินเข้าบัญชีธนาคารทหารไทยธนชาติ ttb เลขที่บัญชี 629-7-17118-0 นายโสภณ ภิญโญศาสตร์ และส่งหลักฐานการโอนเข้าไลน์ (ID Line : SissyKiss.Shop)</div>
+    <div style="font-size:12px;line-height:1.9"><div style="font-weight:700;text-decoration:underline">หมายเหตุ</div>1. กรุณาชำระภายในวันที่ 1-5 ของเดือน<br>2. หากชำระเกินกำหนด ปรับวันละ 50.- หลังวันที่ 10 ปรับวันละ 100.-<br>3. กรุณาโอนเงินเข้าบัญชีธนาคารทหารไทยธนชาติ ttb เลขที่บัญชี 629-7-17118-0<br>นายโสภณ ภิญโญศาสตร์ และส่งหลักฐานการโอนเข้าไลน์ (ID Line : SissyKiss.Shop)</div>
   </div>`;
 }
 let _invMeterCache=null;
@@ -2185,7 +2185,7 @@ function showCheckoutInvoice(d){
   const invDate=`${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getFullYear()).slice(-2)}`;
   const coDateFmt=d.coDate?(()=>{const x=new Date(d.coDate);return `${String(x.getDate()).padStart(2,'0')}/${String(x.getMonth()+1).padStart(2,'0')}/${String(x.getFullYear()).slice(-2)}`;})():'';
   const net=d.net||0;
-  const html=`<div style="background:#fff;border:1px solid #ddd;border-radius:8px;padding:26px 30px;max-width:580px;font-family:'Sarabun',sans-serif;font-size:14px">
+  const html=`<div style="background:#fff;border:1px solid #ddd;border-radius:8px;padding:26px 30px;max-width:464px;font-family:'Sarabun',sans-serif;font-size:14px">
     <div style="text-align:center;font-size:19px;font-weight:700;margin-bottom:4px">ใบแจ้งยอดค่าเช่า (ย้ายออก)</div>
     <div style="text-align:center;font-size:12px;color:#888;margin-bottom:16px">สรุปยอดวันย้ายออก ${coDateFmt}</div>
     <div style="display:flex;justify-content:space-between;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid #eee">

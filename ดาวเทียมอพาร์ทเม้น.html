@@ -1763,14 +1763,56 @@ async function confirmIssueInv(){
   finally{hideLoad();}
 }
 async function printAllInv(){
-  // update status -> overdue ทุกห้องที่มีผู้เช่า
-  const roomsToUpdate=tenants.filter(t=>t.status!=='overdue').map(t=>t.room);
-  if(roomsToUpdate.length>0){
-    await _sb.from('tenants').update({status:'overdue'}).in('room',roomsToUpdate);
-    tenants.forEach(t=>{t.status='overdue';});
-    renderDash();
-  }
-  const month=document.getElementById('inv-month').value;const invDate=document.getElementById('inv-date').value;const mDate=document.getElementById('inv-mdate').value;const all=Array.from({length:21},(_,i)=>{const n=i+1;const t=tenants.find(x=>String(x.room)===String(n));const m=meters.find(x=>String(x.room)===String(n));return buildInvHTML(n,t||null,m||null,month,invDate,m?.currDate||mDate,!t);});const w=window.open('','_blank');w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>ใบแจ้งหนี้</title><style>body{margin:20px;font-family:'Sarabun',sans-serif}@media print{.np{display:none}.w{page-break-after:always}}</style></head><body><div class="np" style="margin-bottom:14px;text-align:center"><button onclick="window.print()" style="padding:7px 22px;background:#185FA5;color:#fff;border:none;border-radius:6px;cursor:pointer">พิมพ์ทุกห้อง</button></div>${all.map(h=>`<div class="w" style="margin-bottom:20px">${h}</div>`).join('')}</body></html>`);w.document.close();}
+  if(!confirm('ยืนยันออกใบแจ้งหนี้ทุกห้อง? ระบบจะบันทึกใบแจ้งหนี้และเปลี่ยนสถานะเป็นค้างชำระทุกห้อง'))return;
+  const monthName=document.getElementById('inv-month').value;
+  const invDate=document.getElementById('inv-date').value;
+  const mDate=document.getElementById('inv-mdate').value;
+  const MONTH_MAP={'มกราคม':'01','กุมภาพันธ์':'02','มีนาคม':'03','เมษายน':'04','พฤษภาคม':'05','มิถุนายน':'06','กรกฎาคม':'07','สิงหาคม':'08','กันยายน':'09','ตุลาคม':'10','พฤศจิกายน':'11','ธันวาคม':'12'};
+  const mo=MONTH_MAP[monthName]||String(new Date().getMonth()+1).padStart(2,'0');
+  const moNum=parseInt(mo);const now=new Date();let yr=now.getFullYear();
+  if(moNum>now.getMonth()+1)yr=yr-1;
+  const monthKey=yr+'_'+mo;
+  showLoad('กำลังออกใบแจ้งหนี้ทุกห้อง...');
+  try{
+    const meterData=await api({action:'getMeters',month:monthKey})||[];
+    const {data:existingInvoices}=await _sb.from('invoices').select('room').eq('month',monthKey);
+    const existingRooms=new Set((existingInvoices||[]).map(x=>String(x.room)));
+    const all=[];
+    let skipped=0;
+    for(let n=1;n<=21;n++){
+      const t=tenants.find(x=>String(x.room)===String(n));
+      const m=meterData.find(x=>String(x.room)===String(n));
+      const mDateRoom=m?.currDate||mDate;
+      // ถ้ามี invoice อยู่แล้ว ข้ามห้องนี้ไปเลย ไม่เขียนทับ (กันข้อมูล extras/checkoutDate หาย)
+      if(existingRooms.has(String(n))){
+        skipped++;
+        all.push(buildInvHTML(n,t||null,m||null,monthName,invDate,mDateRoom,!t));
+        continue;
+      }
+      all.push(buildInvHTML(n,t||null,m||null,monthName,invDate,mDateRoom,!t));
+      if(t){
+        const eu=Math.max(0,parseFloat(m?.elecCurr||0)-parseFloat(m?.elecPrev||0));
+        const wu=Math.max(0,parseFloat(m?.waterCurr||0)-parseFloat(m?.waterPrev||0));
+        const ec=Math.round(eu*ELEC*100)/100,wc=Math.round(wu*WATER*100)/100;
+        const total=RENT+ec+wc;
+        await _sb.from('invoices').insert({
+          room:n,month:monthKey,issued_date:invDate,
+          rent_amount:RENT,elec_amount:ec,water_amount:wc,
+          extras:JSON.stringify([]),total,status:'pending'
+        });
+      }
+    }
+    const roomsToUpdate=tenants.filter(t=>t.status!=='overdue').map(t=>t.room);
+    if(roomsToUpdate.length>0){
+      await _sb.from('tenants').update({status:'overdue'}).in('room',roomsToUpdate);
+      tenants.forEach(t=>{t.status='overdue';});
+      renderDash();
+    }
+    const w=window.open('','_blank');w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>ใบแจ้งหนี้</title><style>body{margin:20px;font-family:'Sarabun',sans-serif}@media print{.np{display:none}.w{page-break-after:always}}</style></head><body><div class="np" style="margin-bottom:14px;text-align:center"><button onclick="window.print()" style="padding:7px 22px;background:#185FA5;color:#fff;border:none;border-radius:6px;cursor:pointer">พิมพ์ทุกห้อง</button></div>${all.map(h=>`<div class="w" style="margin-bottom:20px">${h}</div>`).join('')}</body></html>`);w.document.close();
+    showToast(skipped>0?`✓ ออกใบแล้ว · ข้าม ${skipped} ห้องที่มีใบอยู่แล้ว`:'✓ ออกใบแจ้งหนี้ทุกห้องและบันทึกแล้ว');
+  }catch(e){showToast('ออกใบไม่สำเร็จ','err');}
+  finally{hideLoad();}
+}
 
 // CASHFLOW
 async function loadTx(){

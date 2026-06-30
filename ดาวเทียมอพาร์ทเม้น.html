@@ -1960,8 +1960,29 @@ async function renderOverdue(){
   const month=document.getElementById('ov-sel')?.value||'';
   const m2=await api({action:'getMeters',month},'กำลังโหลด...')||[];
   meters=m2;
-  const rows=tenants.map(t=>{const m=meters.find(x=>String(x.room)===String(t.room))||{};const eu=Math.max(0,parseFloat(m.elecCurr||0)-parseFloat(m.elecPrev||0));const wu=Math.max(0,parseFloat(m.waterCurr||0)-parseFloat(m.waterPrev||0));const total=RENT+Math.round(eu*ELEC)+Math.round(wu*WATER);return{...t,total,eu,wu,m};});
-  document.getElementById('ov-content').innerHTML=`<table class="tbl"><thead><tr><th style="width:40px">ห้อง</th><th>ชื่อ</th><th></th></tr></thead><tbody>${rows.map(t=>`<tr><td style="font-weight:600">${t.room}</td><td style="font-weight:500">${t.name}</td><td style="display:flex;gap:5px;justify-content:flex-end">${t.status==='overdue'?`<button class="od-pay-btn pb-ov" onclick="openPayModal('${t.room}')"><i class="ti ti-receipt" style="font-size:11px"></i> ค้างชำระ</button><button onclick="cancelOverdue('${t.room}')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:3px 8px;font-size:11px;cursor:pointer;color:var(--t2)" title="ยกเลิกการออกใบ"><i class="ti ti-x" style="font-size:10px"></i></button>`:`<button class="od-pay-btn pb-pd" onclick="viewReceipt('${t.room}')"><i class="ti ti-check" style="font-size:11px"></i> ชำระแล้ว</button>`}</td></tr>`).join('')}</tbody></table>`;
+  // ดึง invoices ของเดือนนี้จาก DB เพื่อตัดสินสถานะค้างชำระ (ไม่ใช้ tenants.status ที่เป็น global)
+  const {data:monthInvoices}=await _sb.from('invoices').select('*').eq('month',month);
+  const invMap={};
+  (monthInvoices||[]).forEach(inv=>{invMap[String(inv.room)]=inv;});
+  // รวมผู้เช่าปัจจุบัน + ผู้เช่าเก่าที่มี invoice ค้างของเดือนนี้แต่ย้ายออกไปแล้ว
+  const histRaw=await api({action:'getHistory'})||[];
+  const rows=[];
+  const seenRooms=new Set();
+  tenants.forEach(t=>{
+    seenRooms.add(String(t.room));
+    const inv=invMap[String(t.room)];
+    rows.push({room:t.room,name:t.name,isOverdue:!!inv&&inv.status==='pending',hasInvoice:!!inv});
+  });
+  // เพิ่มผู้เช่าเก่าที่มี invoice ค้างของเดือนนี้ (เช่น ย้ายออกแล้วแต่ยังไม่จ่ายเดือนนี้)
+  Object.keys(invMap).forEach(roomStr=>{
+    if(seenRooms.has(roomStr))return;
+    const inv=invMap[roomStr];
+    if(inv.status!=='pending')return;
+    const h=histRaw.find(x=>String(x.room)===roomStr);
+    rows.push({room:roomStr,name:(h?.name||'(ย้ายออกแล้ว)')+' (ย้ายออก)',isOverdue:true,hasInvoice:true});
+  });
+  rows.sort((a,b)=>(parseInt(a.room)||0)-(parseInt(b.room)||0));
+  document.getElementById('ov-content').innerHTML=`<table class="tbl"><thead><tr><th style="width:40px">ห้อง</th><th>ชื่อ</th><th></th></tr></thead><tbody>${rows.map(t=>`<tr><td style="font-weight:600">${parseInt(t.room)||t.room}</td><td style="font-weight:500">${t.name}</td><td style="display:flex;gap:5px;justify-content:flex-end">${t.isOverdue?`<button class="od-pay-btn pb-ov" onclick="openPayModal('${t.room}')"><i class="ti ti-receipt" style="font-size:11px"></i> ค้างชำระ</button><button onclick="cancelOverdue('${t.room}')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:3px 8px;font-size:11px;cursor:pointer;color:var(--t2)" title="ยกเลิกการออกใบ"><i class="ti ti-x" style="font-size:10px"></i></button>`:t.hasInvoice?`<button class="od-pay-btn pb-pd" onclick="viewReceipt('${t.room}')"><i class="ti ti-check" style="font-size:11px"></i> ชำระแล้ว</button>`:`<span style="font-size:11px;color:var(--t3)">ยังไม่ออกใบ</span>`}</td></tr>`).join('')||'<tr><td colspan="3" style="text-align:center;color:var(--t3);padding:20px">ไม่มีรายการ</td></tr>'}</tbody></table>`;
 }
 async function goPageThenPay(room){
   goPage('overdue');
@@ -1969,10 +1990,10 @@ async function goPageThenPay(room){
   openPayModal(room);
 }
 async function cancelOverdue(room){
-  if(!confirm(`ยืนยันยกเลิกการออกใบแจ้งหนี้ห้อง ${parseInt(room)}?`))return;
-  await _sb.from('tenants').update({status:'active'}).eq('room',room);
-  const idx=tenants.findIndex(x=>String(x.room)===String(room));
-  if(idx>-1)tenants[idx].status='active';
+  const month=document.getElementById('ov-sel')?.value||'';
+  if(!confirm(`ยืนยันยกเลิกการออกใบแจ้งหนี้ห้อง ${parseInt(room)} เดือนนี้?`))return;
+  // ลบ invoice ของเดือนนี้เท่านั้น (ไม่กระทบเดือนอื่น)
+  await _sb.from('invoices').delete().eq('room',room).eq('month',month);
   renderDash();
   renderOverdue();
   showToast(`ยกเลิกใบแจ้งหนี้ห้อง ${parseInt(room)} แล้ว`);

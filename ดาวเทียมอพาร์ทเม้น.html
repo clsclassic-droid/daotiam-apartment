@@ -1824,7 +1824,7 @@ async function printAllInv(){
     }
     showToast(skipped>0?`✓ ออกใบแล้ว · ข้าม ${skipped} ห้องที่มีใบอยู่แล้ว`:'✓ ออกใบแจ้งหนี้ทุกห้องและบันทึกแล้ว');
   }catch(e){showToast('ออกใบไม่สำเร็จ','err');}
-  finally{hideLoad();}
+  finally{apiCount=0;document.getElementById('api-overlay').classList.remove('show');}
 }
 
 // CASHFLOW

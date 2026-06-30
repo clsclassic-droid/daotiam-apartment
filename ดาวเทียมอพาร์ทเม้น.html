@@ -1778,18 +1778,22 @@ async function printAllInv(){
   showLoad('กำลังออกใบแจ้งหนี้ทุกห้อง...');
   try{
     const meterData=await api({action:'getMeters',month:monthKey})||[];
-    const {data:existingInvoices}=await _sb.from('invoices').select('room').eq('month',monthKey);
-    const existingRooms=new Set((existingInvoices||[]).map(x=>String(x.room)));
+    const {data:existingInvoices}=await _sb.from('invoices').select('*').eq('month',monthKey);
+    const existingMap={};
+    (existingInvoices||[]).forEach(inv=>{existingMap[String(inv.room)]=inv;});
     const all=[];
     let skipped=0;
     for(let n=1;n<=21;n++){
       const t=tenants.find(x=>String(x.room)===String(n));
       const m=meterData.find(x=>String(x.room)===String(n));
       const mDateRoom=m?.currDate||mDate;
-      // ถ้ามี invoice อยู่แล้ว ข้ามห้องนี้ไปเลย ไม่เขียนทับ (กันข้อมูล extras/checkoutDate หาย)
-      if(existingRooms.has(String(n))){
+      const existing=existingMap[String(n)];
+      // ถ้ามี invoice อยู่แล้ว ข้ามการเขียนทับ DB แต่ดึง extras เดิมมาแสดงในหน้าพิมพ์ให้ตรงกับของจริง
+      if(existing){
         skipped++;
-        all.push(buildInvHTML(n,t||null,m||null,monthName,invDate,mDateRoom,!t));
+        let existingExtras=[];
+        try{existingExtras=typeof existing.extras==='string'?JSON.parse(existing.extras):existing.extras||[];}catch(e){}
+        all.push(buildInvHTML(n,t||null,m||null,monthName,invDate,mDateRoom,!t,existingExtras));
         continue;
       }
       all.push(buildInvHTML(n,t||null,m||null,monthName,invDate,mDateRoom,!t));

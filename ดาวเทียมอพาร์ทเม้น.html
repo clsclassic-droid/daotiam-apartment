@@ -1075,8 +1075,16 @@ async function sbSaveHistory(d){
 async function sbGetSummary(){
   showLoad('กำลังคำนวณสรุป...');
   try{
-    const {data,error}=await _sb.from('transactions').select('month,type,amount');
-    if(error)throw error;
+    // ดึงข้อมูลทั้งหมดแบบแบ่งหน้า — Supabase จำกัดสูงสุด 1000 แถว/ครั้ง ถ้าไม่แบ่งหน้าข้อมูลใหม่ล่าสุดอาจตกหล่น
+    let data=[];
+    let from=0; const pageSize=1000;
+    while(true){
+      const {data:page,error}=await _sb.from('transactions').select('month,type,amount').range(from,from+pageSize-1);
+      if(error)throw error;
+      data=data.concat(page||[]);
+      if(!page||page.length<pageSize)break;
+      from+=pageSize;
+    }
     const incMonths=new Set(data.filter(t=>t.type?.endsWith('-in')).map(t=>t.month));
     const expMonths=new Set(data.filter(t=>t.type?.endsWith('-out')).map(t=>t.month));
     const totalInc=data.filter(t=>t.type?.endsWith('-in')).reduce((s,t)=>s+parseFloat(t.amount||0),0);

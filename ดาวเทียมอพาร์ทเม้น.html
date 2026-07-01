@@ -244,6 +244,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
   <button class="ni" onclick="goPage('tenant')"><i class="ti ti-users ni-i"></i> ผู้เช่า</button>
   <button class="ni" onclick="goPage('maintenance')"><i class="ti ti-tool ni-i"></i> ซ่อมบำรุง</button>
   <button class="ni" onclick="goPage('history')"><i class="ti ti-history ni-i"></i> ประวัติ</button>
+  <button class="ni" onclick="goPage('payment-history')"><i class="ti ti-receipt ni-i"></i> ประวัติชำระ</button>
   <div class="sb-sec">ระบบ</div>
   <button class="ni" onclick="goPage('settings')"><i class="ti ti-settings ni-i"></i> ตั้งค่า</button>
   <div class="sb-foot">
@@ -527,6 +528,29 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
       </table></div></div>
     </div>
 
+    <!-- PAYMENT HISTORY -->
+    <div class="page" id="page-payment-history">
+      <div class="card">
+        <div class="section-hd">
+          <div class="card-title" style="margin-bottom:0"><i class="ti ti-receipt" style="color:var(--green)"></i> ประวัติการชำระเงิน</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center">
+          <select id="ph-room" class="fc" style="width:auto;font-size:12px" onchange="loadPayHistory()">
+            <option value="">ทุกห้อง</option>
+          </select>
+          <select id="ph-year" class="fc" style="width:auto;font-size:12px" onchange="loadPayHistory()"></select>
+          <select id="ph-month" class="fc" style="width:auto;font-size:12px" onchange="loadPayHistory()">
+            <option value="">ทุกเดือน</option>
+          </select>
+          <span id="ph-summary" style="font-size:12px;color:var(--t2)"></span>
+        </div>
+        <div class="tbl-wrap"><table class="tbl">
+          <thead><tr><th>วันที่</th><th>เลขที่ใบเสร็จ</th><th class="c">ห้อง</th><th>ชื่อผู้เช่า</th><th class="r">ค่าเช่า</th><th class="r">ค่าไฟ</th><th class="r">ค่าน้ำ</th><th class="r">อื่นๆ</th><th class="r">รวม</th><th>ช่องทาง</th><th></th></tr></thead>
+          <tbody id="ph-body"></tbody>
+        </table></div>
+      </div>
+    </div>
+
     <!-- SETTINGS -->
     <div class="page" id="page-settings">
       <div class="card" style="max-width:480px">
@@ -619,6 +643,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
       <div class="more-item" onclick="goPage('tenant');closeMore()"><i class="ti ti-users" style="color:var(--green)"></i>ผู้เช่า</div>
       <div class="more-item" onclick="goPage('maintenance');closeMore()"><i class="ti ti-tool" style="color:var(--amber)"></i>ซ่อมบำรุง</div>
       <div class="more-item" onclick="goPage('history');closeMore()"><i class="ti ti-history" style="color:var(--t2)"></i>ประวัติ</div>
+      <div class="more-item" onclick="goPage('payment-history');closeMore()"><i class="ti ti-receipt" style="color:var(--green)"></i>ประวัติชำระ</div>
     </div>
   </div>
 </div>
@@ -1071,7 +1096,7 @@ async function apiPost(d, msg){
 }
 
 // NAV
-const PAGES={dashboard:['หน้าหลัก','ภาพรวมดาวเทียมอพาร์ทเม้น'],meter:['มิเตอร์น้ำ-ไฟ','บันทึกมิเตอร์ประจำเดือน'],'meter-history':['ประวัติมิเตอร์','ตรวจสอบการใช้น้ำ-ไฟย้อนหลัง'],invoice:['ใบแจ้งหนี้','ออกใบแจ้งยอดค่าเช่า'],cashflow:['กระแสเงินสด','รายรับ-รายจ่าย'],overdue:['ค้างชำระ','รายการที่ยังไม่ชำระ'],tenant:['ผู้เช่า','ข้อมูลผู้เช่าปัจจุบัน'],maintenance:['ซ่อมบำรุง','ตารางซ่อมบำรุงและล้างแอร์'],history:['ประวัติ','ประวัติผู้เช่าเก่า'],'settings':['ตั้งค่า','อัตราค่าบริการ']};
+const PAGES={dashboard:['หน้าหลัก','ภาพรวมดาวเทียมอพาร์ทเม้น'],'payment-history':['ประวัติการชำระเงิน','บันทึกใบเสร็จย้อนหลัง'],meter:['มิเตอร์น้ำ-ไฟ','บันทึกมิเตอร์ประจำเดือน'],'meter-history':['ประวัติมิเตอร์','ตรวจสอบการใช้น้ำ-ไฟย้อนหลัง'],invoice:['ใบแจ้งหนี้','ออกใบแจ้งยอดค่าเช่า'],cashflow:['กระแสเงินสด','รายรับ-รายจ่าย'],overdue:['ค้างชำระ','รายการที่ยังไม่ชำระ'],tenant:['ผู้เช่า','ข้อมูลผู้เช่าปัจจุบัน'],maintenance:['ซ่อมบำรุง','ตารางซ่อมบำรุงและล้างแอร์'],history:['ประวัติ','ประวัติผู้เช่าเก่า'],'settings':['ตั้งค่า','อัตราค่าบริการ']};
 function goPage(p){
   document.querySelectorAll('.page').forEach(e=>e.classList.remove('act'));
   document.querySelectorAll('.ni,.bn-item').forEach(e=>e.classList.remove('act'));
@@ -1091,6 +1116,7 @@ function goPage(p){
   else if(p==='maintenance')loadMaint();
   else if(p==='history')loadHist();
   else if(p==='settings')loadSettings();
+  else if(p==='payment-history')loadPayHistory();
 }
 let sbOpen=true;
 function toggleSidebar(){sbOpen=!sbOpen;document.getElementById('sidebar')?.classList.toggle('collapsed',!sbOpen);document.getElementById('sb-toggle').textContent=sbOpen?'◀':'▶';}
@@ -2704,6 +2730,68 @@ async function renderCfDash(){
   dashCharts['dash-line-chart']=new Chart(document.getElementById('dash-line-chart'),{type:'line',data:{labels,datasets:[{label:'คงเหลือ',data:balance,borderColor:'#378ADD',backgroundColor:'rgba(55,138,221,0.08)',fill:true,tension:0.4,pointRadius:3,pointBackgroundColor:'#378ADD'}]},options:{...chartOpts}});
   dashCharts['dash-donut-chart']=new Chart(document.getElementById('dash-donut-chart'),{type:'doughnut',data:{labels:expTypes.slice(0,6).map(k=>TX_L[k]||k),datasets:[{data:expTypes.slice(0,6).map(k=>Math.round(byType[k])),backgroundColor:donutColors2.slice(0,expTypes.length)}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},cutout:'60%'}});
   dashCharts['dash-profit-chart']=new Chart(document.getElementById('dash-profit-chart'),{type:'bar',data:{labels,datasets:[{label:'กำไร',data:profit,backgroundColor:profit.map(v=>v>=0?'#1D9E75':'#E24B4A'),borderRadius:3}]},options:{...chartOpts}});
+}
+
+// PAYMENT HISTORY
+async function loadPayHistory(){
+  const now=new Date(),cy=now.getFullYear();
+  // populate room dropdown
+  const roomSel=document.getElementById('ph-room');
+  if(roomSel&&roomSel.options.length<=1){
+    tenants.forEach(t=>{const o=document.createElement('option');o.value=t.room;o.textContent='ห้อง '+parseInt(t.room)+' — '+t.name;roomSel.appendChild(o);});
+  }
+  // populate year dropdown
+  const yrSel=document.getElementById('ph-year');
+  if(yrSel&&!yrSel.options.length){
+    for(let y=cy;y>=2022;y--){const o=document.createElement('option');o.value=String(y);o.textContent='ปี '+(y+543);if(y===cy)o.selected=true;yrSel.appendChild(o);}
+  }
+  // populate month dropdown
+  const moSel=document.getElementById('ph-month');
+  if(moSel&&moSel.options.length<=1){
+    const MTH_N=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+    MTH_N.forEach((m,i)=>{const o=document.createElement('option');o.value=String(i+1).padStart(2,'0');o.textContent=m;moSel.appendChild(o);});
+  }
+  const room=document.getElementById('ph-room')?.value||'';
+  const yr=document.getElementById('ph-year')?.value||String(cy);
+  const mo=document.getElementById('ph-month')?.value||'';
+  showLoad('กำลังโหลดประวัติ...');
+  try{
+    let q=_sb.from('receipts').select('*').order('date',{ascending:false}).order('created_at',{ascending:false});
+    if(room) q=q.eq('room',room);
+    // กรองตามปีและเดือน
+    if(yr&&mo) q=q.eq('month',yr+'_'+mo);
+    else if(yr) q=q.like('month',yr+'_%');
+    const {data}=await q;
+    const recs=data||[];
+    const totalAmt=recs.reduce((s,r)=>s+parseFloat(r.total||0),0);
+    document.getElementById('ph-summary').textContent=`${recs.length} รายการ · รวม ฿${fmtN(totalAmt)}`;
+    document.getElementById('ph-body').innerHTML=recs.map(r=>{
+      const extras=typeof r.extras==='string'?JSON.parse(r.extras):r.extras||[];
+      const extraTotal=extras.reduce((s,x)=>s+parseFloat(x.amount||0),0);
+      return`<tr>
+        <td style="font-size:11px;color:var(--t3)">${fmtDate(r.date)||'—'}</td>
+        <td style="font-size:11px;font-weight:600;color:var(--blue)">${r.receipt_no||'—'}</td>
+        <td class="c" style="font-weight:700">${parseInt(r.room)||r.room}</td>
+        <td style="font-size:12px">${r.tenant_name||'—'}</td>
+        <td class="r" style="font-size:12px">${fmt2(r.rent_amount||0)}</td>
+        <td class="r" style="font-size:12px">${fmt2(r.elec_amount||0)}</td>
+        <td class="r" style="font-size:12px">${fmt2(r.water_amount||0)}</td>
+        <td class="r" style="font-size:12px">${extraTotal>0?fmt2(extraTotal):'—'}</td>
+        <td class="r" style="font-weight:600;color:var(--green)">${fmt2(r.total||0)}</td>
+        <td style="font-size:11px;color:var(--t3)">${r.channel==='cash'?'เงินสด':'โอน'}</td>
+        <td><button class="btn btn-sm btn-icon" onclick="viewReceiptByNo('${r.room}','${r.month}')" title="ดูใบเสร็จ"><i class="ti ti-receipt" style="font-size:12px;color:var(--green)"></i></button></td>
+      </tr>`;
+    }).join('')||'<tr><td colspan="11" style="text-align:center;color:var(--t3);padding:20px">ไม่พบข้อมูล</td></tr>';
+  }catch(e){showToast('โหลดไม่สำเร็จ','err');}
+  finally{hideLoad();}
+}
+async function viewReceiptByNo(room,month){
+  // set ov-sel ชั่วคราวเพื่อให้ viewReceipt ดึงถูกเดือน
+  const ovSel=document.getElementById('ov-sel');
+  const prevVal=ovSel?.value||'';
+  if(ovSel) ovSel.value=month;
+  await viewReceipt(room);
+  if(ovSel) ovSel.value=prevVal;
 }
 
 // LOAD TX (updated)

@@ -1081,7 +1081,7 @@ async function sbGetSummary(){
     const expMonths=new Set(data.filter(t=>t.type?.endsWith('-out')).map(t=>t.month));
     const totalInc=data.filter(t=>t.type?.endsWith('-in')).reduce((s,t)=>s+parseFloat(t.amount||0),0);
     const totalExp=data.filter(t=>t.type?.endsWith('-out')).reduce((s,t)=>s+parseFloat(t.amount||0),0);
-    // MoM: เทียบ 2 เดือนล่าสุดที่มีข้อมูลจริง
+    // MoM: เทียบ 2 เดือนล่าสุดที่ "จบสมบูรณ์แล้ว" เท่านั้น (ไม่เอาเดือนปัจจุบันที่ยังไม่จบมาเทียบ)
     const byMonth={};
     data.forEach(t=>{
       if(!t.month)return;
@@ -1089,11 +1089,19 @@ async function sbGetSummary(){
       if(t.type?.endsWith('-in'))byMonth[t.month].inc+=parseFloat(t.amount||0);
       else if(t.type?.endsWith('-out'))byMonth[t.month].exp+=parseFloat(t.amount||0);
     });
-    const sortedMonths=Object.keys(byMonth).sort();
-    const lastM=sortedMonths[sortedMonths.length-1];
-    const prevM=sortedMonths[sortedMonths.length-2];
-    const curInc=lastM?byMonth[lastM].inc:0, curExp=lastM?byMonth[lastM].exp:0;
-    const prevInc=prevM?byMonth[prevM].inc:0, prevExp=prevM?byMonth[prevM].exp:0;
+    const shiftMonth=(key,n)=>{
+      let [y,m]=key.split('_').map(Number);
+      m+=n;
+      while(m<1){m+=12;y--;}
+      while(m>12){m-=12;y++;}
+      return y+'_'+String(m).padStart(2,'0');
+    };
+    const now2=new Date();
+    const curCalMonth=now2.getFullYear()+'_'+String(now2.getMonth()+1).padStart(2,'0');
+    const lastM=shiftMonth(curCalMonth,-1);   // เดือนก่อนหน้า (จบแล้วแน่นอน)
+    const prevM=shiftMonth(curCalMonth,-2);   // เดือนก่อนหน้านั้น
+    const curInc=byMonth[lastM]?.inc||0, curExp=byMonth[lastM]?.exp||0;
+    const prevInc=byMonth[prevM]?.inc||0, prevExp=byMonth[prevM]?.exp||0;
     const momInc=prevInc>0?Math.round((curInc-prevInc)/prevInc*100):null;
     const momExp=prevExp>0?Math.round((curExp-prevExp)/prevExp*100):null;
     return {
@@ -1510,9 +1518,7 @@ async function loadDashboard(){
     }
   }
   if(window._dashOverdueAmt===undefined){
-    const now=new Date();
-    const curMonthKey=now.getFullYear()+'_'+String(now.getMonth()+1).padStart(2,'0');
-    const {data:pendInv}=await _sb.from('invoices').select('total,status').eq('month',curMonthKey).eq('status','pending');
+    const {data:pendInv}=await _sb.from('invoices').select('total,status').eq('status','pending');
     window._dashOverdueAmt=(pendInv||[]).reduce((s,i)=>s+parseFloat(i.total||0),0);
   }
   renderDash();

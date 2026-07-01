@@ -3168,10 +3168,12 @@ async function initApp(){
   document.getElementById('tb-date').textContent=now.getDate()+' '+MTH[now.getMonth()]+' '+(now.getFullYear()+543);
   const d=now.getDate(),mo=now.getMonth()+1,yr=String(now.getFullYear()).slice(-2);
   document.getElementById('inv-date').value=String(d).padStart(2,'0')+'/'+String(mo).padStart(2,'0')+'/'+yr;
-  // คำนวณวันสุดท้ายของเดือนที่ออกใบจริงๆ (เดือนก่อนหน้าเดือนปัจจุบัน)
-  const _moNum=now.getMonth()+1; // เดือนปัจจุบัน
-  const _lastDay=new Date(now.getFullYear(),_moNum,0).getDate(); // วันสุดท้ายของเดือนปัจจุบัน
-  document.getElementById('inv-mdate').value=String(_lastDay).padStart(2,'0')+'/'+String(_moNum).padStart(2,'0')+'/'+yr;
+  // วันที่จดมิเตอร์ = วันที่ออกใบ - 1 วัน
+  const _yesterday=new Date(now);_yesterday.setDate(_yesterday.getDate()-1);
+  const _yd=String(_yesterday.getDate()).padStart(2,'0');
+  const _ym=String(_yesterday.getMonth()+1).padStart(2,'0');
+  const _yy=String(_yesterday.getFullYear()).slice(-2);
+  document.getElementById('inv-mdate').value=_yd+'/'+_ym+'/'+_yy;
   populateSels();
   await loadSettings();
   // load anthropic key from supabase settings

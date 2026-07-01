@@ -310,6 +310,30 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
           </div>
         </div>
       </div>
+      <div class="card" style="margin-bottom:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <div style="font-size:15px;font-weight:700;color:var(--text)">รายจ่ายย้อนหลัง 12 เดือน</div>
+        </div>
+        <div style="position:relative;height:200px">
+          <canvas id="expense-chart"></canvas>
+          <div id="exp-tooltip" style="display:none;position:absolute;background:#fff;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.12);border:1px solid var(--border);padding:9px 14px;pointer-events:none;transform:translate(-50%,-115%);text-align:center;min-width:110px;z-index:10">
+            <div id="exp-tip-month" style="font-size:11px;color:var(--t3);margin-bottom:2px;font-weight:500"></div>
+            <div id="exp-tip-val" style="font-size:17px;font-weight:800;color:var(--red)"></div>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <div style="font-size:15px;font-weight:700;color:var(--text)">กระแสเงินสดย้อนหลัง 12 เดือน</div>
+        </div>
+        <div style="position:relative;height:200px">
+          <canvas id="cf12-chart"></canvas>
+          <div id="cf12-tooltip" style="display:none;position:absolute;background:#fff;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.12);border:1px solid var(--border);padding:9px 14px;pointer-events:none;transform:translate(-50%,-115%);text-align:center;min-width:110px;z-index:10">
+            <div id="cf12-tip-month" style="font-size:11px;color:var(--t3);margin-bottom:2px;font-weight:500"></div>
+            <div id="cf12-tip-val" style="font-size:17px;font-weight:800;color:var(--gd)"></div>
+          </div>
+        </div>
+      </div>
       <div class="card">
         <div class="section-hd">
           <div class="card-title" style="margin-bottom:0"><i class="ti ti-chart-bar" style="color:var(--green)"></i> สรุปการเงิน</div>
@@ -319,7 +343,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
           </div>
         </div>
         <hr class="div">
-        <div class="g4" id="fin-cards" style="margin-bottom:14px"></div>
+        <div class="g3" id="fin-cards" style="margin-bottom:14px"></div>
         <div class="g2">
           <div id="fin-breakdown">
             <div class="fin-tab-row">
@@ -1208,7 +1232,13 @@ async function loadRevenueChart() {
   const monthly = results.map(txns =>
     (txns||[]).filter(t => INC_T.includes(t.type)).reduce((s,t) => s + parseFloat(t.amount||0), 0)
   );
+  const monthlyExp = results.map(txns =>
+    (txns||[]).filter(t => EXP_T.includes(t.type)).reduce((s,t) => s + parseFloat(t.amount||0), 0)
+  );
+  const monthlyNet = monthly.map((v,i) => v - monthlyExp[i]);
   renderRevenueChart(monthly, mxM);
+  renderExpenseChart(monthlyExp, mxM);
+  renderCashflowChart(monthlyNet, mxM);
 }
 
 function selectRevYear(y) {
@@ -1269,6 +1299,156 @@ function renderRevenueChart(monthly, mxM) {
             if (!dp || dp.raw === null) { tip.style.display = 'none'; return; }
             tipM.textContent = dp.label + ' ' + (parseInt(revYear)+543);
             tipV.textContent = '฿' + Math.round(dp.raw).toLocaleString('th-TH');
+            tip.style.display = 'block';
+            tip.style.left = context.tooltip.caretX + 'px';
+            tip.style.top = context.tooltip.caretY + 'px';
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          border: { display: false },
+          ticks: { font: { family: "'Sarabun', sans-serif", size: 11 }, color: '#9CA3AF' }
+        },
+        y: {
+          grid: { color: '#F5F5F5' },
+          border: { display: false },
+          ticks: {
+            font: { family: "'Sarabun', sans-serif", size: 11 },
+            color: '#9CA3AF',
+            callback: v => v === 0 ? '0' : (v/1000)+'K',
+            maxTicksLimit: 6,
+          }
+        }
+      },
+      interaction: { mode: 'index', intersect: false },
+    }
+  });
+}
+
+let expChart = null;
+function renderExpenseChart(monthly, mxM) {
+  const canvas = document.getElementById('expense-chart');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const MTH_L = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+
+  if (expChart) { expChart.destroy(); expChart = null; }
+
+  const grad = ctx.createLinearGradient(0, 0, 0, 200);
+  grad.addColorStop(0, 'rgba(226,75,74,0.18)');
+  grad.addColorStop(1, 'rgba(226,75,74,0.01)');
+
+  const data = monthly.map((v, i) => i < mxM ? v : null);
+
+  expChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: MTH_L,
+      datasets: [{
+        data,
+        borderColor: '#E24B4A',
+        backgroundColor: grad,
+        borderWidth: 2.5,
+        fill: true,
+        tension: 0.4,
+        pointRadius: data.map((v,i) => i < mxM ? 4 : 0),
+        pointBackgroundColor: '#E24B4A',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+        pointHoverRadius: 6,
+        pointHoverBackgroundColor: '#E24B4A',
+        pointHoverBorderColor: '#fff',
+        pointHoverBorderWidth: 2.5,
+        spanGaps: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          enabled: false,
+          external: (context) => {
+            const tip = document.getElementById('exp-tooltip');
+            const tipM = document.getElementById('exp-tip-month');
+            const tipV = document.getElementById('exp-tip-val');
+            if (!tip) return;
+            if (context.tooltip.opacity === 0) { tip.style.display = 'none'; return; }
+            const dp = context.tooltip.dataPoints?.[0];
+            if (!dp || dp.raw === null) { tip.style.display = 'none'; return; }
+            tipM.textContent = dp.label + ' ' + (parseInt(revYear)+543);
+            tipV.textContent = '฿' + Math.round(dp.raw).toLocaleString('th-TH');
+            tip.style.display = 'block';
+            tip.style.left = context.tooltip.caretX + 'px';
+            tip.style.top = context.tooltip.caretY + 'px';
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          border: { display: false },
+          ticks: { font: { family: "'Sarabun', sans-serif", size: 11 }, color: '#9CA3AF' }
+        },
+        y: {
+          grid: { color: '#F5F5F5' },
+          border: { display: false },
+          ticks: {
+            font: { family: "'Sarabun', sans-serif", size: 11 },
+            color: '#9CA3AF',
+            callback: v => v === 0 ? '0' : (v/1000)+'K',
+            maxTicksLimit: 6,
+          }
+        }
+      },
+      interaction: { mode: 'index', intersect: false },
+    }
+  });
+}
+
+let cf12Chart = null;
+function renderCashflowChart(monthly, mxM) {
+  const canvas = document.getElementById('cf12-chart');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const MTH_L = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+
+  if (cf12Chart) { cf12Chart.destroy(); cf12Chart = null; }
+
+  const data = monthly.map((v, i) => i < mxM ? v : null);
+
+  cf12Chart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: MTH_L,
+      datasets: [{
+        data,
+        backgroundColor: data.map(v => v === null ? 'transparent' : (v >= 0 ? '#1D9E75' : '#E24B4A')),
+        borderRadius: 4,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          enabled: false,
+          external: (context) => {
+            const tip = document.getElementById('cf12-tooltip');
+            const tipM = document.getElementById('cf12-tip-month');
+            const tipV = document.getElementById('cf12-tip-val');
+            if (!tip) return;
+            if (context.tooltip.opacity === 0) { tip.style.display = 'none'; return; }
+            const dp = context.tooltip.dataPoints?.[0];
+            if (!dp || dp.raw === null) { tip.style.display = 'none'; return; }
+            tipM.textContent = dp.label + ' ' + (parseInt(revYear)+543);
+            tipV.textContent = (dp.raw >= 0 ? '+' : '-') + '฿' + Math.round(Math.abs(dp.raw)).toLocaleString('th-TH');
+            tipV.style.color = dp.raw >= 0 ? 'var(--green)' : 'var(--red)';
             tip.style.display = 'block';
             tip.style.left = context.tooltip.caretX + 'px';
             tip.style.top = context.tooltip.caretY + 'px';
@@ -1360,8 +1540,7 @@ async function renderFinance(){
   document.getElementById('fin-cards').innerHTML=`
     <div class="stat" style="background:var(--gl)"><div class="stat-l" style="color:var(--gd)">รายรับรวม</div><div class="stat-v" style="color:var(--green)">฿${fmtN(tIn)}</div></div>
     <div class="stat" style="background:var(--rl)"><div class="stat-l" style="color:#791F1F">รายจ่ายรวม</div><div class="stat-v" style="color:var(--red)">฿${fmtN(tOut)}</div></div>
-    <div class="stat" style="background:${net>=0?'var(--gl)':'var(--rl)'}"><div class="stat-l" style="color:${net>=0?'var(--gd)':'#791F1F'}">กำไรสุทธิ</div><div class="stat-v" style="color:${net>=0?'var(--green)':'var(--red)'}">฿${fmtN(Math.abs(net))}</div></div>
-    <div class="stat" style="background:#F3F4F6"><div class="stat-l">รายการทั้งหมด</div><div class="stat-v">${txns.length}</div></div>`;
+    <div class="stat" style="background:${net>=0?'var(--gl)':'var(--rl)'}"><div class="stat-l" style="color:${net>=0?'var(--gd)':'#791F1F'}">กำไรสุทธิ</div><div class="stat-v" style="color:${net>=0?'var(--green)':'var(--red)'}">฿${fmtN(Math.abs(net))}</div></div>`;
   const mkRow=(tp,total,color)=>{const val=txns.filter(t=>t.type===tp).reduce((s,t)=>s+parseFloat(t.amount||0),0);const pct=total>0?Math.round(val/total*100):0;return`<div class="fin-row"><div class="fin-lbl">${TX_L[tp]||tp}</div><div class="fin-bar"><div class="fin-fill" style="width:${pct}%;background:${color}"></div></div><div class="fin-amt" style="color:${color}">฿${fmtN(val)}</div></div>`;};
   const spacer=`<div class="fin-row" style="visibility:hidden"><div class="fin-lbl">-</div><div class="fin-bar"></div><div class="fin-amt">-</div></div>`;
   const incRows=INC_T.map(tp=>mkRow(tp,tIn,"var(--green)")).join("");

@@ -809,14 +809,14 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
 </div></div>
 
 <div class="mo" id="mo-issue-inv"><div class="mo-box" style="max-width:520px">
-  <div class="mo-hd"><div class="mo-title"><i class="ti ti-file-invoice" style="color:var(--green)"></i> ออกใบแจ้งหนี้</div><button class="mo-close" onclick="closeMo('mo-issue-inv')">✕</button></div>
+  <div class="mo-hd"><div class="mo-title"><i class="ti ti-file-invoice" style="color:var(--green)"></i> ออกใบแจ้งหนี้</div><button class="mo-close" onclick="closeMo('mo-issue-inv'); renderDash()">✕</button></div>
   <div id="inv-modal-preview" style="margin-bottom:14px"></div>
   <div style="border-top:1px solid var(--border);padding-top:12px;margin-bottom:8px">
     <div style="font-size:12px;font-weight:500;color:var(--t2);margin-bottom:8px">รายการพิเศษเพิ่มเติม (ถ้ามี)</div>
     <div id="inv-extra-list"></div>
     <button onclick="addInvExtra()" style="background:none;border:1px dashed var(--border);border-radius:6px;width:100%;padding:6px;font-size:12px;color:var(--t2);cursor:pointer;margin-top:2px"><i class="ti ti-plus" style="font-size:11px"></i> เพิ่มรายการ</button>
   </div>
-  <div class="mo-actions"><button class="btn btn-sm" onclick="closeMo('mo-issue-inv')">ยกเลิก</button><button class="btn btn-green btn-sm" onclick="confirmIssueInv()"><i class="ti ti-check"></i> ยืนยันออกใบ</button></div>
+  <div class="mo-actions"><button class="btn btn-sm" onclick="closeMo('mo-issue-inv'); renderDash()">ยกเลิก</button><button class="btn btn-green btn-sm" onclick="confirmIssueInv()"><i class="ti ti-check"></i> ยืนยันออกใบ</button></div>
 </div></div>
 
 <div class="mo" id="mo-hist"><div class="mo-box">

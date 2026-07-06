@@ -419,8 +419,17 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
         <!-- LIST VIEW -->
         <div id="cf-list-view">
           <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px" id="tx-tabs"></div>
-          <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap">
             <select id="tx-sel" onchange="loadTx()" style="font-size:11px;padding:0 8px;height:28px;border:1px solid var(--border);border-radius:20px;background:#fff;color:var(--text)"></select>
+            <select id="tx-sort-sel" onchange="renderTxTbl()" style="font-size:11px;padding:0 8px;height:28px;border:1px solid var(--border);border-radius:20px;background:#fff;color:var(--text)">
+              <option value="date_desc">เรียง: วันที่ (ใหม่→เก่า)</option>
+              <option value="date_asc">เรียง: วันที่ (เก่า→ใหม่)</option>
+              <option value="room_asc">เรียง: ห้อง (น้อย→มาก)</option>
+              <option value="room_desc">เรียง: ห้อง (มาก→น้อย)</option>
+              <option value="amount_desc">เรียง: จำนวนเงิน (มาก→น้อย)</option>
+              <option value="amount_asc">เรียง: จำนวนเงิน (น้อย→มาก)</option>
+              <option value="type">เรียง: ประเภท</option>
+            </select>
           </div>
           <div style="font-size:12px;color:var(--t2);margin-bottom:10px" id="tx-summary"></div>
           <div class="tbl-wrap"><table class="tbl">
@@ -2173,7 +2182,24 @@ function renderTxTbl(){
   const balExtra=isAll?` &nbsp;|&nbsp; 💳 ธนาคาร <strong style="color:var(--blue)">฿${fmt2(bankBal)}</strong> · 💵 เงินสด <strong style="color:var(--amber)">฿${fmt2(cashBal)}</strong>`:'';
   const netBal=tIn-tOut+capNet-tAsset;
   document.getElementById('tx-summary').innerHTML=`รายรับ <strong style="color:var(--green)">฿${fmt2(tIn)}</strong> · รายจ่าย <strong style="color:var(--red)">฿${fmt2(tOut)}</strong> · เพิ่มทุนเข้า <strong style="color:#185FA5">฿${fmt2(tCapIn)}</strong> · ถอนทุนออก <strong style="color:#854F0B">฿${fmt2(tCapOut)}</strong> · ซื้อสินทรัพย์ถาวร <strong style="color:#6B4A1E">฿${fmt2(tAsset)}</strong> · คงเหลือ <strong style="color:${netBal>=0?'var(--green)':'var(--red)'}">฿${fmt2(netBal)}</strong>${balExtra}`;
-  document.getElementById('tx-body').innerHTML=transactions.map(t=>{const isCap=t.type==='capital-in'||t.type==='capital-out';const isAsset=ASSET_T.includes(t.type);const isCapIn=t.type==='capital-in';const isIn=isCap?isCapIn:t.type?.endsWith('-in');run+=(isIn?1:-1)*parseFloat(t.amount||0);const roomTxt=t.room?String(parseInt(t.room)||t.room):'—';const bdgStyle=isCap?`style="background:#E6F1FB;color:#185FA5;font-size:11px;padding:2px 7px;border-radius:4px;font-weight:500"`:isAsset?`style="background:#F3E8D9;color:#6B4A1E;font-size:11px;padding:2px 7px;border-radius:4px;font-weight:500"`:'class="bdg '+(isIn?'bg':'br')+'"';return`<tr><td style="font-size:11px;color:var(--t3)">${fmtDate(t.date)||'—'}</td><td>${t.desc||'—'}</td><td class="c" style="font-size:12px;font-weight:600">${roomTxt}</td><td><span ${bdgStyle}>${TX_L[t.type]||t.type}</span></td><td class="r" style="font-weight:500;color:${isCap?'var(--blue)':isAsset?'#6B4A1E':isIn?'var(--green)':'var(--red)'}">${isIn?'+':'-'}฿${fmt2(t.amount)}</td><td style="font-size:11px;color:var(--t3)">${t.channel==='bank'?'โอน':'เงินสด'}</td><td class="r" style="font-size:11px;color:${run>=0?'var(--green)':'var(--red)'}">฿${fmt2(run)}</td><td style="display:flex;gap:4px"><button class="btn btn-sm btn-icon" style="color:var(--blue)" onclick="editTx('${t.id}')"><i class="ti ti-edit" style="font-size:11px"></i></button><button class="btn btn-sm btn-icon" style="color:var(--t3)" onclick="delTx('${t.id}')"><i class="ti ti-trash" style="font-size:11px"></i></button></td></tr>`;}).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--t3);padding:20px">ยังไม่มีรายการ</td></tr>';
+  // คำนวณ "คงเหลือ" (running balance) จากลำดับวันที่จริงเสมอ (เก่า→ใหม่) ไม่ขึ้นกับลำดับที่แสดงผล
+  const chrono=[...transactions].sort((a,b)=>(a.date||'').localeCompare(b.date||'')||String(a.id).localeCompare(String(b.id)));
+  const balMap={};
+  chrono.forEach(t=>{const isCap=t.type==='capital-in'||t.type==='capital-out';const isCapIn=t.type==='capital-in';const isIn=isCap?isCapIn:t.type?.endsWith('-in');run+=(isIn?1:-1)*parseFloat(t.amount||0);balMap[t.id]=run;});
+  // เรียงลำดับสำหรับแสดงผลตามตัวเลือกที่บอสหนึ่งเลือก
+  const sortMode=document.getElementById('tx-sort-sel')?.value||'date_desc';
+  const TYPE_ORDER=['rent-in','elec-in','water-in','washer-in','other-in','elec-out','water-out','internet-out','repair-out','tax-out','other-out','rent-out','deposit-out','capital-in','capital-out','asset-out'];
+  const display=[...transactions].sort((a,b)=>{
+    if(sortMode==='date_asc')return(a.date||'').localeCompare(b.date||'');
+    if(sortMode==='date_desc')return(b.date||'').localeCompare(a.date||'');
+    if(sortMode==='room_asc')return(parseInt(a.room)||0)-(parseInt(b.room)||0);
+    if(sortMode==='room_desc')return(parseInt(b.room)||0)-(parseInt(a.room)||0);
+    if(sortMode==='amount_asc')return parseFloat(a.amount||0)-parseFloat(b.amount||0);
+    if(sortMode==='amount_desc')return parseFloat(b.amount||0)-parseFloat(a.amount||0);
+    if(sortMode==='type')return TYPE_ORDER.indexOf(a.type)-TYPE_ORDER.indexOf(b.type);
+    return 0;
+  });
+  document.getElementById('tx-body').innerHTML=display.map(t=>{const isCap=t.type==='capital-in'||t.type==='capital-out';const isAsset=ASSET_T.includes(t.type);const isCapIn=t.type==='capital-in';const isIn=isCap?isCapIn:t.type?.endsWith('-in');const runVal=balMap[t.id]??0;const roomTxt=t.room?String(parseInt(t.room)||t.room):'—';const bdgStyle=isCap?`style="background:#E6F1FB;color:#185FA5;font-size:11px;padding:2px 7px;border-radius:4px;font-weight:500"`:isAsset?`style="background:#F3E8D9;color:#6B4A1E;font-size:11px;padding:2px 7px;border-radius:4px;font-weight:500"`:'class="bdg '+(isIn?'bg':'br')+'"';return`<tr><td style="font-size:11px;color:var(--t3)">${fmtDate(t.date)||'—'}</td><td>${t.desc||'—'}</td><td class="c" style="font-size:12px;font-weight:600">${roomTxt}</td><td><span ${bdgStyle}>${TX_L[t.type]||t.type}</span></td><td class="r" style="font-weight:500;color:${isCap?'var(--blue)':isAsset?'#6B4A1E':isIn?'var(--green)':'var(--red)'}">${isIn?'+':'-'}฿${fmt2(t.amount)}</td><td style="font-size:11px;color:var(--t3)">${t.channel==='bank'?'โอน':'เงินสด'}</td><td class="r" style="font-size:11px;color:${runVal>=0?'var(--green)':'var(--red)'}">฿${fmt2(runVal)}</td><td style="display:flex;gap:4px"><button class="btn btn-sm btn-icon" style="color:var(--blue)" onclick="editTx('${t.id}')"><i class="ti ti-edit" style="font-size:11px"></i></button><button class="btn btn-sm btn-icon" style="color:var(--t3)" onclick="delTx('${t.id}')"><i class="ti ti-trash" style="font-size:11px"></i></button></td></tr>`;}).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--t3);padding:20px">ยังไม่มีรายการ</td></tr>';
 }
 function populateTxMonthSel(defaultMonth){
   const sel=document.getElementById('tx-month');if(!sel)return;

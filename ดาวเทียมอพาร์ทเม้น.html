@@ -537,7 +537,15 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
         <button class="btn btn-green btn-sm" onclick="openTenantModal()"><i class="ti ti-plus"></i> เพิ่มผู้เช่า</button>
       </div>
       <div class="card"><div class="tbl-wrap"><table class="tbl">
-        <thead><tr><th>ห้อง</th><th>ชื่อ-นามสกุล</th><th>วันเข้าพัก</th><th>พักมาแล้ว</th><th>ประกัน</th><th>สถานะ</th><th></th></tr></thead>
+        <thead><tr>
+          <th class="th-sort" onclick="sortTenantCol('room')" style="cursor:pointer;user-select:none">ห้อง<span id="tn-arw-room"></span></th>
+          <th class="th-sort" onclick="sortTenantCol('name')" style="cursor:pointer;user-select:none">ชื่อ-นามสกุล<span id="tn-arw-name"></span></th>
+          <th class="th-sort" onclick="sortTenantCol('checkin')" style="cursor:pointer;user-select:none">วันเข้าพัก<span id="tn-arw-checkin"></span></th>
+          <th class="th-sort" onclick="sortTenantCol('checkin')" style="cursor:pointer;user-select:none">พักมาแล้ว<span id="tn-arw-checkin2"></span></th>
+          <th class="th-sort" onclick="sortTenantCol('deposit')" style="cursor:pointer;user-select:none">ประกัน<span id="tn-arw-deposit"></span></th>
+          <th class="th-sort" onclick="sortTenantCol('status')" style="cursor:pointer;user-select:none">สถานะ<span id="tn-arw-status"></span></th>
+          <th></th>
+        </tr></thead>
         <tbody id="tenant-body"></tbody>
       </table></div></div>
     </div>
@@ -1816,8 +1824,31 @@ async function loadTenants(){
   tenants=await api({action:'getTenants'},'กำลังโหลดผู้เช่า...')||[];
   renderTenantTbl(tenants);populateInvRoom();
 }
+let tnSortCol='room', tnSortDir='asc';
+function sortTenantCol(col){
+  if(tnSortCol===col){tnSortDir=tnSortDir==='asc'?'desc':'asc';}
+  else{tnSortCol=col;tnSortDir=(col==='room'||col==='name'||col==='checkin'||col==='status')?'asc':'desc';}
+  renderTenantTbl(tenants.filter(t=>{const q=(document.getElementById('tenant-q')?.value||'').toLowerCase();return t.name?.toLowerCase().includes(q)||String(t.room).includes(q);}));
+}
 function renderTenantTbl(list){
   const sm={active:{c:'bg',l:'มีผู้เช่า'},overdue:{c:'br',l:'ค้างชำระ'}};
+  const col=tnSortCol||'room', dir=tnSortDir||'asc', mul=dir==='asc'?1:-1;
+  list=[...list].sort((a,b)=>{
+    let r=0;
+    if(col==='room')r=(parseInt(a.room)||0)-(parseInt(b.room)||0);
+    else if(col==='name')r=(a.name||'').localeCompare(b.name||'','th');
+    else if(col==='checkin')r=(a.checkin||'').localeCompare(b.checkin||'');
+    else if(col==='deposit')r=(parseFloat(a.deposit||3500))-(parseFloat(b.deposit||3500));
+    else if(col==='status')r=(a.status||'').localeCompare(b.status||'');
+    return r*mul;
+  });
+  ['room','name','deposit','status'].forEach(c=>{
+    const el=document.getElementById('tn-arw-'+c);if(!el)return;
+    el.textContent=c===col?(dir==='asc'?' ▲':' ▼'):'';
+  });
+  const checkinArw=col==='checkin'?(dir==='asc'?' ▲':' ▼'):'';
+  const ca1=document.getElementById('tn-arw-checkin');if(ca1)ca1.textContent=checkinArw;
+  const ca2=document.getElementById('tn-arw-checkin2');if(ca2)ca2.textContent=checkinArw;
   document.getElementById('tenant-body').innerHTML=list.map(t=>{
     const s=sm[t.status]||{c:'bgray',l:t.status};
     return`<tr><td style="font-weight:700;font-size:15px;text-align:center">${parseInt(t.room)}</td><td style="font-weight:500">${t.name}</td><td style="font-size:11px;color:var(--t3)">${fmtDate(t.checkin)}</td><td style="font-size:11px;color:var(--t3)">${calcStay(t.checkin)}</td><td>฿${fmtN(t.deposit||3500)}</td><td><span class="bdg ${s.c}">${s.l}</span></td><td style="display:flex;gap:4px"><button class="btn btn-sm btn-icon" onclick="editTenant('${t.room}')"><i class="ti ti-edit" style="font-size:12px"></i></button><button class="btn btn-sm" style="font-size:11px;color:var(--red);border-color:var(--red);padding:3px 7px" onclick="openCoModal('${t.room}')"><i class="ti ti-door-exit" style="font-size:11px"></i> ย้ายออก</button></td></tr>`;

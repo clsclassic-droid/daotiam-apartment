@@ -739,6 +739,9 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
       <optgroup label="ทุน">
         <option value="capital-in">เพิ่มทุนเข้า</option><option value="capital-out">ถอนทุนออก</option>
       </optgroup>
+      <optgroup label="สินทรัพย์">
+        <option value="asset-out">ซื้อสินทรัพย์ถาวร</option>
+      </optgroup>
     </select></div>
     <div class="fg"><label>รายการ</label><input type="text" id="tx-desc" class="fc"></div>
     <div class="fg"><label>ห้อง (ถ้ามี)</label><input type="text" id="tx-room" class="fc"></div>
@@ -886,7 +889,8 @@ const MTH=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.
 const INC_T=['rent-in','elec-in','water-in','washer-in','other-in'];
 const EXP_T=['elec-out','water-out','internet-out','repair-out','tax-out','other-out','rent-out','deposit-out'];
 const CAP_T=['capital-in','capital-out'];
-const TX_L={'rent-in':'ค่าเช่าห้อง','elec-in':'ค่าไฟ(เก็บ)','water-in':'ค่าน้ำ(เก็บ)','washer-in':'ตู้ซักผ้าหยอดเหรียญ','other-in':'รายรับอื่นๆ','elec-out':'ค่าไฟ(จ่าย)','water-out':'ค่าน้ำ(จ่าย)','internet-out':'อินเตอร์เน็ต','repair-out':'ซ่อมบำรุง','tax-out':'ภาษี','other-out':'รายจ่ายอื่นๆ','capital-in':'เพิ่มทุนเข้า','capital-out':'ถอนทุนออก','rent-out':'คืนค่าเช่าล่วงหน้า','deposit-out':'คืนเงินประกัน'};
+const ASSET_T=['asset-out'];
+const TX_L={'rent-in':'ค่าเช่าห้อง','elec-in':'ค่าไฟ(เก็บ)','water-in':'ค่าน้ำ(เก็บ)','washer-in':'ตู้ซักผ้าหยอดเหรียญ','other-in':'รายรับอื่นๆ','elec-out':'ค่าไฟ(จ่าย)','water-out':'ค่าน้ำ(จ่าย)','internet-out':'อินเตอร์เน็ต','repair-out':'ซ่อมบำรุง','tax-out':'ภาษี','other-out':'รายจ่ายอื่นๆ','capital-in':'เพิ่มทุนเข้า','capital-out':'ถอนทุนออก','rent-out':'คืนค่าเช่าล่วงหน้า','deposit-out':'คืนเงินประกัน','asset-out':'ซื้อสินทรัพย์ถาวร'};
 
 // STATE
 let tenants=[],meters=[],transactions=[],maintData=[];
@@ -2156,18 +2160,20 @@ function renderTxTbl(){
   const tOut=transactions.filter(t=>EXP_T.includes(t.type)).reduce((s,t)=>s+parseFloat(t.amount||0),0);
   const tCapIn=transactions.filter(t=>t.type==='capital-in').reduce((s,t)=>s+parseFloat(t.amount||0),0);
   const tCapOut=transactions.filter(t=>t.type==='capital-out').reduce((s,t)=>s+parseFloat(t.amount||0),0);
+  const tAsset=transactions.filter(t=>ASSET_T.includes(t.type)).reduce((s,t)=>s+parseFloat(t.amount||0),0);
   let run=0;
   const bankIn=transactions.filter(t=>(INC_T.includes(t.type)||t.type==='capital-in')&&t.channel==='bank').reduce((s,t)=>s+parseFloat(t.amount||0),0);
-  const bankOut=transactions.filter(t=>(EXP_T.includes(t.type)||t.type==='capital-out')&&t.channel==='bank').reduce((s,t)=>s+parseFloat(t.amount||0),0);
+  const bankOut=transactions.filter(t=>(EXP_T.includes(t.type)||t.type==='capital-out'||ASSET_T.includes(t.type))&&t.channel==='bank').reduce((s,t)=>s+parseFloat(t.amount||0),0);
   const cashIn=transactions.filter(t=>(INC_T.includes(t.type)||t.type==='capital-in')&&t.channel==='cash').reduce((s,t)=>s+parseFloat(t.amount||0),0);
-  const cashOut=transactions.filter(t=>(EXP_T.includes(t.type)||t.type==='capital-out')&&t.channel==='cash').reduce((s,t)=>s+parseFloat(t.amount||0),0);
+  const cashOut=transactions.filter(t=>(EXP_T.includes(t.type)||t.type==='capital-out'||ASSET_T.includes(t.type))&&t.channel==='cash').reduce((s,t)=>s+parseFloat(t.amount||0),0);
   const bankBal=bankIn-bankOut, cashBal=cashIn-cashOut;
   const txSel=document.getElementById('tx-sel')?.value||'';
   const isAll=txSel==='all'||txSel.startsWith('year_')||txSel==='';
   const capNet=tCapIn-tCapOut;
   const balExtra=isAll?` &nbsp;|&nbsp; 💳 ธนาคาร <strong style="color:var(--blue)">฿${fmt2(bankBal)}</strong> · 💵 เงินสด <strong style="color:var(--amber)">฿${fmt2(cashBal)}</strong>`:'';
-  document.getElementById('tx-summary').innerHTML=`รายรับ <strong style="color:var(--green)">฿${fmt2(tIn)}</strong> · รายจ่าย <strong style="color:var(--red)">฿${fmt2(tOut)}</strong> · เพิ่มทุนเข้า <strong style="color:#185FA5">฿${fmt2(tCapIn)}</strong> · ถอนทุนออก <strong style="color:#854F0B">฿${fmt2(tCapOut)}</strong> · คงเหลือ <strong style="color:${tIn-tOut+capNet>=0?'var(--green)':'var(--red)'}">฿${fmt2(tIn-tOut+capNet)}</strong>${balExtra}`;
-  document.getElementById('tx-body').innerHTML=transactions.map(t=>{const isCap=t.type==='capital-in'||t.type==='capital-out';const isCapIn=t.type==='capital-in';const isIn=isCap?isCapIn:t.type?.endsWith('-in');run+=(isIn?1:-1)*parseFloat(t.amount||0);const roomTxt=t.room?String(parseInt(t.room)||t.room):'—';const bdgClass=isCap?'':'bdg '+(isIn?'bg':'br');const bdgStyle=isCap?`style="background:#E6F1FB;color:#185FA5;font-size:11px;padding:2px 7px;border-radius:4px;font-weight:500"`:'class="bdg '+(isIn?'bg':'br')+'"';return`<tr><td style="font-size:11px;color:var(--t3)">${fmtDate(t.date)||'—'}</td><td>${t.desc||'—'}</td><td class="c" style="font-size:12px;font-weight:600">${roomTxt}</td><td><span ${bdgStyle}>${TX_L[t.type]||t.type}</span></td><td class="r" style="font-weight:500;color:${isCap?'var(--blue)':isIn?'var(--green)':'var(--red)'}">${isIn?'+':'-'}฿${fmt2(t.amount)}</td><td style="font-size:11px;color:var(--t3)">${t.channel==='bank'?'โอน':'เงินสด'}</td><td class="r" style="font-size:11px;color:${run>=0?'var(--green)':'var(--red)'}">฿${fmt2(run)}</td><td style="display:flex;gap:4px"><button class="btn btn-sm btn-icon" style="color:var(--blue)" onclick="editTx('${t.id}')"><i class="ti ti-edit" style="font-size:11px"></i></button><button class="btn btn-sm btn-icon" style="color:var(--t3)" onclick="delTx('${t.id}')"><i class="ti ti-trash" style="font-size:11px"></i></button></td></tr>`;}).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--t3);padding:20px">ยังไม่มีรายการ</td></tr>';
+  const netBal=tIn-tOut+capNet-tAsset;
+  document.getElementById('tx-summary').innerHTML=`รายรับ <strong style="color:var(--green)">฿${fmt2(tIn)}</strong> · รายจ่าย <strong style="color:var(--red)">฿${fmt2(tOut)}</strong> · เพิ่มทุนเข้า <strong style="color:#185FA5">฿${fmt2(tCapIn)}</strong> · ถอนทุนออก <strong style="color:#854F0B">฿${fmt2(tCapOut)}</strong> · ซื้อสินทรัพย์ถาวร <strong style="color:#6B4A1E">฿${fmt2(tAsset)}</strong> · คงเหลือ <strong style="color:${netBal>=0?'var(--green)':'var(--red)'}">฿${fmt2(netBal)}</strong>${balExtra}`;
+  document.getElementById('tx-body').innerHTML=transactions.map(t=>{const isCap=t.type==='capital-in'||t.type==='capital-out';const isAsset=ASSET_T.includes(t.type);const isCapIn=t.type==='capital-in';const isIn=isCap?isCapIn:t.type?.endsWith('-in');run+=(isIn?1:-1)*parseFloat(t.amount||0);const roomTxt=t.room?String(parseInt(t.room)||t.room):'—';const bdgStyle=isCap?`style="background:#E6F1FB;color:#185FA5;font-size:11px;padding:2px 7px;border-radius:4px;font-weight:500"`:isAsset?`style="background:#F3E8D9;color:#6B4A1E;font-size:11px;padding:2px 7px;border-radius:4px;font-weight:500"`:'class="bdg '+(isIn?'bg':'br')+'"';return`<tr><td style="font-size:11px;color:var(--t3)">${fmtDate(t.date)||'—'}</td><td>${t.desc||'—'}</td><td class="c" style="font-size:12px;font-weight:600">${roomTxt}</td><td><span ${bdgStyle}>${TX_L[t.type]||t.type}</span></td><td class="r" style="font-weight:500;color:${isCap?'var(--blue)':isAsset?'#6B4A1E':isIn?'var(--green)':'var(--red)'}">${isIn?'+':'-'}฿${fmt2(t.amount)}</td><td style="font-size:11px;color:var(--t3)">${t.channel==='bank'?'โอน':'เงินสด'}</td><td class="r" style="font-size:11px;color:${run>=0?'var(--green)':'var(--red)'}">฿${fmt2(run)}</td><td style="display:flex;gap:4px"><button class="btn btn-sm btn-icon" style="color:var(--blue)" onclick="editTx('${t.id}')"><i class="ti ti-edit" style="font-size:11px"></i></button><button class="btn btn-sm btn-icon" style="color:var(--t3)" onclick="delTx('${t.id}')"><i class="ti ti-trash" style="font-size:11px"></i></button></td></tr>`;}).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--t3);padding:20px">ยังไม่มีรายการ</td></tr>';
 }
 function populateTxMonthSel(defaultMonth){
   const sel=document.getElementById('tx-month');if(!sel)return;

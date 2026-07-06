@@ -3049,9 +3049,9 @@ let pnlYear=String(new Date().getFullYear()), pnlView='yearly';
 function buildPnlYearTabs(){
   const tabs=document.getElementById('pnl-year-tabs');if(!tabs)return;
   const cy=new Date().getFullYear();
-  const years=[];for(let y=cy;y>=2022;y--)years.push(String(y));
+  const years=['all'];for(let y=cy;y>=2022;y--)years.push(String(y));
   tabs.innerHTML=years.map(y=>{
-    const lbl='ปี '+(parseInt(y)+543);
+    const lbl=y==='all'?'ทั้งหมด':'ปี '+(parseInt(y)+543);
     const active=pnlYear===y;
     return`<button onclick="selectPnlYear('${y}')" style="font-size:11px;padding:0 12px;height:28px;border:0.5px solid ${active?'var(--green)':'var(--border)'};border-radius:999px;cursor:pointer;background:${active?'var(--green)':'#fff'};color:${active?'#fff':'var(--t2)'};white-space:nowrap;">${lbl}</button>`;
   }).join('');
@@ -3059,6 +3059,7 @@ function buildPnlYearTabs(){
 }
 function populatePnlMonthSel(){
   const sel=document.getElementById('pnl-month-sel');if(!sel)return;
+  if(pnlYear==='all'){sel.innerHTML='';sel.style.display='none';return;}
   const now=new Date(),cy=now.getFullYear();
   const yr=pnlYear;
   const maxM=parseInt(yr)===cy?now.getMonth()+1:12;
@@ -3068,6 +3069,7 @@ function populatePnlMonthSel(){
     opts+=`<option value="${key}">${MTH[m-1]} ${parseInt(yr)+543}</option>`;
   }
   sel.innerHTML=opts;
+  sel.style.display=pnlView==='monthly'?'':'none';
 }
 function selectPnlYear(y){
   pnlYear=y;buildPnlYearTabs();
@@ -3079,7 +3081,7 @@ function switchPnlView(v){
   document.getElementById('pnl-view-monthly').style.cssText='font-size:11px;'+(v==='monthly'?'background:var(--green);border-color:var(--green);color:#fff':'');
   document.getElementById('pnl-yearly-view').style.display=v==='yearly'?'block':'none';
   document.getElementById('pnl-monthly-view').style.display=v==='monthly'?'block':'none';
-  document.getElementById('pnl-month-sel').style.display=v==='monthly'?'':'none';
+  document.getElementById('pnl-month-sel').style.display=(v==='monthly'&&pnlYear!=='all')?'':'none';
   if(v==='yearly')loadPnlYearly();else loadPnlMonthly();
 }
 async function loadPnl(){
@@ -3087,6 +3089,33 @@ async function loadPnl(){
   if(pnlView==='yearly')loadPnlYearly();else loadPnlMonthly();
 }
 async function loadPnlYearly(){
+  if(pnlYear==='all'){
+    const cy=new Date().getFullYear();
+    const years=[];for(let y=2022;y<=cy;y++)years.push(y);
+    const allP=[];
+    years.forEach(y=>{
+      const maxM=y===cy?new Date().getMonth()+1:12;
+      for(let m=1;m<=maxM;m++)allP.push(api({action:'getTransactions',month:y+'_'+String(m).padStart(2,'0')}));
+    });
+    const res=await Promise.all(allP);
+    let idx=0,totalInc=0,totalExp=0;
+    const rows=years.map(y=>{
+      const maxM=y===cy?new Date().getMonth()+1:12;
+      let inc=0,exp=0;
+      for(let m=1;m<=maxM;m++){
+        const txns=res[idx++]||[];
+        inc+=(txns||[]).filter(t=>INC_T.includes(t.type)).reduce((s,t)=>s+parseFloat(t.amount||0),0);
+        exp+=(txns||[]).filter(t=>EXP_T.includes(t.type)).reduce((s,t)=>s+parseFloat(t.amount||0),0);
+      }
+      totalInc+=inc;totalExp+=exp;
+      const net=inc-exp;
+      return `<tr><td>ปี ${y+543}</td><td class="r" style="color:var(--green)">฿${fmt2(inc)}</td><td class="r" style="color:var(--red)">฿${fmt2(exp)}</td><td class="r" style="font-weight:600;color:${net>=0?'var(--green)':'var(--red)'}">฿${fmt2(net)}</td></tr>`;
+    }).join('');
+    document.getElementById('pnl-yearly-body').innerHTML=rows||'<tr><td colspan="4" style="text-align:center;color:var(--t3);padding:20px">ยังไม่มีข้อมูล</td></tr>';
+    const totalNet=totalInc-totalExp;
+    document.getElementById('pnl-yearly-foot').innerHTML=`<tr style="background:#f9f9f9;font-weight:700"><td>รวมทั้งหมด</td><td class="r" style="color:var(--green)">฿${fmt2(totalInc)}</td><td class="r" style="color:var(--red)">฿${fmt2(totalExp)}</td><td class="r" style="color:${totalNet>=0?'var(--green)':'var(--red)'}">฿${fmt2(totalNet)}</td></tr>`;
+    return;
+  }
   const yr=pnlYear;
   const now=new Date(),cy=now.getFullYear();
   const maxM=parseInt(yr)===cy?now.getMonth()+1:12;
@@ -3105,6 +3134,11 @@ async function loadPnlYearly(){
   document.getElementById('pnl-yearly-foot').innerHTML=`<tr style="background:#f9f9f9;font-weight:700"><td>รวม</td><td class="r" style="color:var(--green)">฿${fmt2(totalInc)}</td><td class="r" style="color:var(--red)">฿${fmt2(totalExp)}</td><td class="r" style="color:${totalNet>=0?'var(--green)':'var(--red)'}">฿${fmt2(totalNet)}</td></tr>`;
 }
 async function loadPnlMonthly(){
+  if(pnlYear==='all'){
+    document.getElementById('pnl-monthly-summary').innerHTML='<span style="color:var(--t3)">กรุณาเลือกปีใดปีหนึ่งก่อน เพื่อดูรายละเอียดรายเดือน</span>';
+    document.getElementById('pnl-monthly-body').innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--t3);padding:20px">เลือกปีด้านบนก่อนครับ</td></tr>';
+    return;
+  }
   const month=document.getElementById('pnl-month-sel')?.value;if(!month)return;
   const txns=await api({action:'getTransactions',month},'กำลังโหลด...')||[];
   const inc=txns.filter(t=>INC_T.includes(t.type)).reduce((s,t)=>s+parseFloat(t.amount||0),0);

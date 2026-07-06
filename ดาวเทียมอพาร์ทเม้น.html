@@ -650,7 +650,16 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
             </div>
           </div>
           <div class="tbl-wrap"><table class="tbl">
-            <thead><tr><th>ห้อง</th><th>ชื่อ</th><th class="r">ไฟ (หน่วย)</th><th class="r">เทียบเดือนก่อน</th><th class="r">น้ำ (หน่วย)</th><th class="r">เทียบเดือนก่อน</th><th class="r">ค่าไฟ+น้ำ</th><th class="r">เทียบเดือนก่อน</th></tr></thead>
+            <thead><tr>
+              <th class="th-sort" onclick="sortMhCol('room')" style="cursor:pointer;user-select:none">ห้อง<span id="mh-arw-room"></span></th>
+              <th class="th-sort" onclick="sortMhCol('name')" style="cursor:pointer;user-select:none">ชื่อ<span id="mh-arw-name"></span></th>
+              <th class="r th-sort" onclick="sortMhCol('eu')" style="cursor:pointer;user-select:none">ไฟ (หน่วย)<span id="mh-arw-eu"></span></th>
+              <th class="r th-sort" onclick="sortMhCol('dE')" style="cursor:pointer;user-select:none">เทียบเดือนก่อน<span id="mh-arw-dE"></span></th>
+              <th class="r th-sort" onclick="sortMhCol('wu')" style="cursor:pointer;user-select:none">น้ำ (หน่วย)<span id="mh-arw-wu"></span></th>
+              <th class="r th-sort" onclick="sortMhCol('dW')" style="cursor:pointer;user-select:none">เทียบเดือนก่อน<span id="mh-arw-dW"></span></th>
+              <th class="r th-sort" onclick="sortMhCol('cost')" style="cursor:pointer;user-select:none">ค่าไฟ+น้ำ<span id="mh-arw-cost"></span></th>
+              <th class="r th-sort" onclick="sortMhCol('dC')" style="cursor:pointer;user-select:none">เทียบเดือนก่อน<span id="mh-arw-dC"></span></th>
+            </tr></thead>
             <tbody id="mh-month-body"></tbody>
           </table></div>
         </div>
@@ -3233,6 +3242,12 @@ function populateMhMonthSel(){
     sel.appendChild(o);
   }
 }
+let mhSortCol='room', mhSortDir='asc';
+function sortMhCol(col){
+  if(mhSortCol===col){mhSortDir=mhSortDir==='asc'?'desc':'asc';}
+  else{mhSortCol=col;mhSortDir=(col==='room'||col==='name')?'asc':'desc';}
+  renderMhMonth();
+}
 async function renderMhMonth(){
   const month=document.getElementById('mh-month-sel')?.value;if(!month)return;
   // load current and previous month
@@ -3283,9 +3298,24 @@ async function renderMhMonth(){
     if(v<0)return`<span style="display:inline-flex;align-items:center;gap:2px;font-size:10px;padding:1px 6px;border-radius:8px;background:#E1F5EE;color:#0F6E56"><i class="ti ti-trending-down" style="font-size:9px"></i>${v}${u}</span>`;
     return`<span style="font-size:10px;color:var(--t3)">—</span>`;
   };
-  const rows=roomData.map(({t,eu,wu,pEu,pWu})=>{
+  const rowsData=roomData.map(({t,eu,wu,pEu,pWu})=>{
     const cost=Math.round(eu*ELEC+wu*WATER);const prevCost=Math.round(pEu*ELEC+pWu*WATER);
     const dE=Math.round(eu-pEu);const dW=Math.round(wu-pWu);const dC=cost-prevCost;
+    return{t,eu,wu,dE,dW,cost,dC};
+  });
+  const mhCol=mhSortCol||'room', mhDir=mhSortDir||'asc', mhMul=mhDir==='asc'?1:-1;
+  rowsData.sort((a,b)=>{
+    let r=0;
+    if(mhCol==='room')r=(parseInt(a.t.room)||0)-(parseInt(b.t.room)||0);
+    else if(mhCol==='name')r=(a.t.name||'').localeCompare(b.t.name||'','th');
+    else r=(a[mhCol]||0)-(b[mhCol]||0);
+    return r*mhMul;
+  });
+  ['room','name','eu','dE','wu','dW','cost','dC'].forEach(c=>{
+    const el=document.getElementById('mh-arw-'+c);if(!el)return;
+    el.textContent=c===mhCol?(mhDir==='asc'?' ▲':' ▼'):'';
+  });
+  const rows=rowsData.map(({t,eu,wu,dE,dW,cost,dC})=>{
     const eBadge=eu>0?`<span style="background:#fff8e6;color:#d97706;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px">${Math.round(eu)}</span>`:`<span style="background:#f5f5f5;color:#bbb;font-size:10px;padding:2px 8px;border-radius:10px">—</span>`;
     const wBadge=wu>0?`<span style="background:#e8f4ff;color:#3b6fd4;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px">${Math.round(wu)}</span>`:`<span style="background:#f5f5f5;color:#bbb;font-size:10px;padding:2px 8px;border-radius:10px">—</span>`;
     return`<tr><td style="font-weight:600">${parseInt(t.room)}</td><td style="font-size:12px;color:var(--t2)">${t.name}</td><td style="text-align:right">${eBadge}</td><td style="text-align:right">${tbBadge(dE)}</td><td style="text-align:right">${wBadge}</td><td style="text-align:right">${tbBadge(dW)}</td><td style="text-align:right;font-size:11px;font-weight:500">${cost>0?'฿'+fmtN(cost):'—'}</td><td style="text-align:right">${tbBadge(dC,' ฿')}</td></tr>`;

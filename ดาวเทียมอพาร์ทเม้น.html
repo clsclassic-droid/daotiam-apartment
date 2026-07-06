@@ -239,6 +239,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
   <button class="ni" onclick="goPage('invoice')"><i class="ti ti-file-invoice ni-i"></i> ใบแจ้งหนี้<span class="ni-badge" id="bdg-inv">0</span></button>
   <div class="sb-sec">การเงิน</div>
   <button class="ni" onclick="goPage('cashflow')"><i class="ti ti-cash ni-i"></i> กระแสเงินสด</button>
+  <button class="ni" onclick="goPage('pnl')"><i class="ti ti-report-money ni-i"></i> กำไร-ขาดทุน</button>
   <button class="ni" onclick="goPage('overdue')"><i class="ti ti-receipt-off ni-i"></i> ค้างชำระ<span class="ni-badge" id="bdg-ov">0</span></button>
   <div class="sb-sec">ข้อมูล (ประวัติ)</div>
   <button class="ni" onclick="goPage('tenant')"><i class="ti ti-users ni-i"></i> ผู้เช่า</button>
@@ -476,6 +477,39 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
       </div>
     </div>
 
+    <!-- PNL (กำไร-ขาดทุนตามรอบบิล) -->
+    <div class="page" id="page-pnl">
+      <div class="card">
+        <div class="section-hd">
+          <div class="card-title" style="margin-bottom:0"><i class="ti ti-report-money"></i> กำไร-ขาดทุนตามรอบบิล</div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <button class="btn btn-sm" id="pnl-view-yearly" onclick="switchPnlView('yearly')" style="font-size:11px;background:var(--green);border-color:var(--green);color:#fff"><i class="ti ti-table"></i> ตารางรายปี</button>
+            <button class="btn btn-sm" id="pnl-view-monthly" onclick="switchPnlView('monthly')" style="font-size:11px"><i class="ti ti-list"></i> รายเดือน</button>
+          </div>
+        </div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px" id="pnl-year-tabs"></div>
+        <select id="pnl-month-sel" onchange="loadPnlMonthly()" style="display:none;font-size:11px;padding:0 8px;height:28px;border:1px solid var(--border);border-radius:20px;background:#fff;color:var(--text);margin-bottom:10px"></select>
+
+        <!-- YEARLY VIEW -->
+        <div id="pnl-yearly-view">
+          <div class="tbl-wrap"><table class="tbl">
+            <thead><tr><th>เดือน (รอบบิล)</th><th class="r">รายรับ</th><th class="r">รายจ่าย</th><th class="r">กำไร-ขาดทุน</th></tr></thead>
+            <tbody id="pnl-yearly-body"></tbody>
+            <tfoot id="pnl-yearly-foot"></tfoot>
+          </table></div>
+        </div>
+
+        <!-- MONTHLY VIEW -->
+        <div id="pnl-monthly-view" style="display:none">
+          <div style="font-size:12px;color:var(--t2);margin-bottom:10px" id="pnl-monthly-summary"></div>
+          <div class="tbl-wrap"><table class="tbl">
+            <thead><tr><th>วันที่</th><th>รายการ</th><th class="c">ห้อง</th><th>ประเภท</th><th class="r">จำนวน</th><th>ช่องทาง</th></tr></thead>
+            <tbody id="pnl-monthly-body"></tbody>
+          </table></div>
+        </div>
+      </div>
+    </div>
+
     <!-- OVERDUE -->
     <div class="page" id="page-overdue">
       <div class="card">
@@ -689,7 +723,8 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
 <div class="mo" id="mo-tx"><div class="mo-box">
   <div class="mo-hd"><div class="mo-title">เพิ่มรายการรับ-จ่าย</div><button class="mo-close" onclick="closeMo('mo-tx')">✕</button></div>
   <div class="fr2">
-    <div class="fg"><label>วันที่</label><input type="date" id="tx-date" class="fc"></div>
+    <div class="fg"><label>วันที่ (วันที่จ่ายจริง)</label><input type="date" id="tx-date" class="fc"></div>
+    <div class="fg"><label>เดือนรอบบัญชี</label><select id="tx-month" class="fc"></select></div>
     <div class="fg"><label>ประเภท</label><select id="tx-type" class="fc">
       <optgroup label="รายรับ">
         <option value="rent-in">ค่าเช่าห้อง</option><option value="elec-in">ค่าไฟ (เก็บ)</option>
@@ -924,6 +959,36 @@ async function sbSaveMeters(month, metersData){
   finally{hideLoad();}
 }
 
+// Helper: getTransactionsByDate (กรองตาม "date" = วันที่จ่ายจริง สำหรับหน้ากระแสเงินสด)
+async function sbGetTransactionsByDate(period){
+  showLoad('กำลังโหลดรายการ...');
+  try{
+    let likePattern=null;
+    if(period && period!=='all' && !period.startsWith('year_')){
+      const [y,m]=period.split('_');
+      likePattern=y+'-'+m+'%';
+    } else if(period && period.startsWith('year_')){
+      const yr=period.replace('year_','');
+      likePattern=yr+'-%';
+    }
+    let data=[]; let from=0; const pageSize=1000;
+    while(true){
+      let q=_sb.from('transactions').select('*').order('date',{ascending:true}).range(from,from+pageSize-1);
+      if(likePattern) q=q.like('date',likePattern);
+      const {data:page,error}=await q;
+      if(error)throw error;
+      data=data.concat(page||[]);
+      if(!page||page.length<pageSize)break;
+      from+=pageSize;
+    }
+    return data.map(t=>({
+      id:t.id, date:t.date||'', month:t.month||'', type:t.type||'',
+      desc:t.description||'', room:t.room||'', amount:t.amount||0,
+      channel:t.channel||'cash', note:t.note||''
+    }));
+  }catch(e){showToast('โหลดรายการไม่สำเร็จ','err');return [];}
+  finally{hideLoad();}
+}
 // Helper: getTransactions
 async function sbGetTransactions(month){
   showLoad('กำลังโหลดรายการ...');
@@ -1126,6 +1191,7 @@ async function api(p, msg){
   if(action==='getTenants') return sbGetTenants();
   if(action==='getMeters') return sbGetMeters(p.month);
   if(action==='getTransactions') return sbGetTransactions(p.month||'all');
+  if(action==='getTransactionsByDate') return sbGetTransactionsByDate(p.period||'all');
   if(action==='getRepairs') return sbGetRepairs();
   if(action==='getHistory') return sbGetHistory();
   if(action==='getSummary') return sbGetSummary();
@@ -1148,7 +1214,7 @@ async function apiPost(d, msg){
 }
 
 // NAV
-const PAGES={dashboard:['หน้าหลัก','ภาพรวมดาวเทียมอพาร์ทเม้น'],'payment-history':['ประวัติการชำระเงิน','บันทึกใบเสร็จย้อนหลัง'],meter:['มิเตอร์น้ำ-ไฟ','บันทึกมิเตอร์ประจำเดือน'],'meter-history':['ประวัติมิเตอร์','ตรวจสอบการใช้น้ำ-ไฟย้อนหลัง'],invoice:['ใบแจ้งหนี้','ออกใบแจ้งยอดค่าเช่า'],cashflow:['กระแสเงินสด','รายรับ-รายจ่าย'],overdue:['ค้างชำระ','รายการที่ยังไม่ชำระ'],tenant:['ผู้เช่า','ข้อมูลผู้เช่าปัจจุบัน'],maintenance:['ซ่อมบำรุง','ตารางซ่อมบำรุงและล้างแอร์'],history:['ประวัติ','ประวัติผู้เช่าเก่า'],'settings':['ตั้งค่า','อัตราค่าบริการ']};
+const PAGES={dashboard:['หน้าหลัก','ภาพรวมดาวเทียมอพาร์ทเม้น'],'payment-history':['ประวัติการชำระเงิน','บันทึกใบเสร็จย้อนหลัง'],meter:['มิเตอร์น้ำ-ไฟ','บันทึกมิเตอร์ประจำเดือน'],'meter-history':['ประวัติมิเตอร์','ตรวจสอบการใช้น้ำ-ไฟย้อนหลัง'],invoice:['ใบแจ้งหนี้','ออกใบแจ้งยอดค่าเช่า'],cashflow:['กระแสเงินสด','รายรับ-รายจ่าย (ตามวันที่จ่ายจริง)'],pnl:['กำไร-ขาดทุน','สรุปกำไร-ขาดทุนตามรอบบิล'],overdue:['ค้างชำระ','รายการที่ยังไม่ชำระ'],tenant:['ผู้เช่า','ข้อมูลผู้เช่าปัจจุบัน'],maintenance:['ซ่อมบำรุง','ตารางซ่อมบำรุงและล้างแอร์'],history:['ประวัติ','ประวัติผู้เช่าเก่า'],'settings':['ตั้งค่า','อัตราค่าบริการ']};
 function goPage(p){
   document.querySelectorAll('.page').forEach(e=>e.classList.remove('act'));
   document.querySelectorAll('.ni,.bn-item').forEach(e=>e.classList.remove('act'));
@@ -1162,6 +1228,7 @@ function goPage(p){
   else if(p==='meter')loadMeters();
   else if(p==='invoice'){populateInvRoom();const _im=document.getElementById('inv-month');if(_im){const _mn=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];_im.value=_mn[new Date().getMonth()];}const _ip=document.getElementById('inv-preview');if(_ip)_ip.innerHTML='';}
   else if(p==='cashflow'){buildTxTabs();loadTx();}
+  else if(p==='pnl'){loadPnl();}
   else if(p==='meter-history'){loadMeterHistory();}
   else if(p==='overdue')renderOverdue();
   else if(p==='tenant')loadTenants();
@@ -2102,10 +2169,30 @@ function renderTxTbl(){
   document.getElementById('tx-summary').innerHTML=`รายรับ <strong style="color:var(--green)">฿${fmt2(tIn)}</strong> · รายจ่าย <strong style="color:var(--red)">฿${fmt2(tOut)}</strong> · เพิ่มทุนเข้า <strong style="color:#185FA5">฿${fmt2(tCapIn)}</strong> · ถอนทุนออก <strong style="color:#854F0B">฿${fmt2(tCapOut)}</strong> · คงเหลือ <strong style="color:${tIn-tOut+capNet>=0?'var(--green)':'var(--red)'}">฿${fmt2(tIn-tOut+capNet)}</strong>${balExtra}`;
   document.getElementById('tx-body').innerHTML=transactions.map(t=>{const isCap=t.type==='capital-in'||t.type==='capital-out';const isCapIn=t.type==='capital-in';const isIn=isCap?isCapIn:t.type?.endsWith('-in');run+=(isIn?1:-1)*parseFloat(t.amount||0);const roomTxt=t.room?String(parseInt(t.room)||t.room):'—';const bdgClass=isCap?'':'bdg '+(isIn?'bg':'br');const bdgStyle=isCap?`style="background:#E6F1FB;color:#185FA5;font-size:11px;padding:2px 7px;border-radius:4px;font-weight:500"`:'class="bdg '+(isIn?'bg':'br')+'"';return`<tr><td style="font-size:11px;color:var(--t3)">${fmtDate(t.date)||'—'}</td><td>${t.desc||'—'}</td><td class="c" style="font-size:12px;font-weight:600">${roomTxt}</td><td><span ${bdgStyle}>${TX_L[t.type]||t.type}</span></td><td class="r" style="font-weight:500;color:${isCap?'var(--blue)':isIn?'var(--green)':'var(--red)'}">${isIn?'+':'-'}฿${fmt2(t.amount)}</td><td style="font-size:11px;color:var(--t3)">${t.channel==='bank'?'โอน':'เงินสด'}</td><td class="r" style="font-size:11px;color:${run>=0?'var(--green)':'var(--red)'}">฿${fmt2(run)}</td><td style="display:flex;gap:4px"><button class="btn btn-sm btn-icon" style="color:var(--blue)" onclick="editTx('${t.id}')"><i class="ti ti-edit" style="font-size:11px"></i></button><button class="btn btn-sm btn-icon" style="color:var(--t3)" onclick="delTx('${t.id}')"><i class="ti ti-trash" style="font-size:11px"></i></button></td></tr>`;}).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--t3);padding:20px">ยังไม่มีรายการ</td></tr>';
 }
-function openTxModal(){document.getElementById('tx-date').value=new Date().toISOString().split('T')[0];openMo('mo-tx');}
+function populateTxMonthSel(defaultMonth){
+  const sel=document.getElementById('tx-month');if(!sel)return;
+  const now=new Date(),cy=now.getFullYear();
+  const cur=now.getFullYear()+'_'+String(now.getMonth()+1).padStart(2,'0');
+  let opts='';
+  for(let y=cy;y>=2022;y--){
+    const mxM=y===cy?now.getMonth()+1:12;
+    for(let m=mxM;m>=1;m--){
+      const k=y+'_'+String(m).padStart(2,'0');
+      opts+=`<option value="${k}">${MTH[m-1]} ${y+543}</option>`;
+    }
+  }
+  sel.innerHTML=opts;
+  sel.value=defaultMonth||cur;
+}
+function openTxModal(){
+  document.getElementById('tx-date').value=new Date().toISOString().split('T')[0];
+  const txSelVal=document.getElementById('tx-sel')?.value||'';
+  const defaultMonth=(txSelVal&&txSelVal!=='all'&&!txSelVal.startsWith('year_'))?txSelVal:null;
+  populateTxMonthSel(defaultMonth);
+  openMo('mo-tx');
+}
 async function saveTx(){
-  let month=document.getElementById('tx-sel').value;
-  if(!month||month==='all'||month.startsWith('year_')){const now=new Date();month=now.getFullYear()+'_'+String(now.getMonth()+1).padStart(2,'0');}
+  const month=document.getElementById('tx-month').value;
   const d={date:document.getElementById('tx-date').value,type:document.getElementById('tx-type').value,desc:document.getElementById('tx-desc').value,room:document.getElementById('tx-room').value,amount:document.getElementById('tx-amount').value,channel:document.getElementById('tx-channel').value,note:document.getElementById('tx-note').value,month};
   if(!d.desc||!d.amount){showToast('กรุณากรอกรายการและจำนวน','err');return;}
   const editId=document.getElementById('mo-tx').dataset.editId;
@@ -2123,6 +2210,7 @@ async function delTx(id){if(!confirm('ยืนยันลบรายการ
 function editTx(id){
   const t=transactions.find(x=>String(x.id)===String(id));if(!t)return;
   document.getElementById('tx-date').value=t.date?t.date.split(' ')[0]:'';
+  populateTxMonthSel(t.month);
   document.getElementById('tx-type').value=t.type||'rent-in';
   document.getElementById('tx-desc').value=t.desc||'';
   document.getElementById('tx-room').value=t.room?parseInt(t.room)||t.room:'';
@@ -2951,22 +3039,83 @@ async function viewReceiptByNo(room,month){
 
 // LOAD TX (updated)
 async function loadTxNew(){
-  const now=new Date(),cy=now.getFullYear();
-  let txns=[];
   const selVal=txYear==='all'?'all':(document.getElementById('tx-sel')?.value||'year_'+txYear);
-  if(selVal==='all'||selVal.startsWith('year_')){
-    // โหลดทั้งปี (หรือทั้งหมด)
-    const yr=selVal==='all'?null:selVal.replace('year_','');
-    const allP=[];
-    const fromY=yr?parseInt(yr):2022;
-    const toY=yr?parseInt(yr):cy;
-    for(let y=fromY;y<=toY;y++){const mxM=y===cy?now.getMonth()+1:12;for(let m=1;m<=mxM;m++)allP.push(api({action:'getTransactions',month:y+'_'+String(m).padStart(2,'0')}));}
-    const res=await Promise.all(allP);txns=res.flat().filter(Boolean);
-  } else {
-    // โหลดเฉพาะเดือนที่เลือก
-    txns=await api({action:'getTransactions',month:selVal},'กำลังโหลดรายการ...')||[];
+  transactions=await api({action:'getTransactionsByDate',period:selVal},'กำลังโหลดรายการ...')||[];
+  renderTxTbl();
+}
+
+// PNL (กำไร-ขาดทุนตามรอบบิล) — อิงคอลัมน์ month (รอบบัญชี) ต่างจากกระแสเงินสดที่อิง date
+let pnlYear=String(new Date().getFullYear()), pnlView='yearly';
+function buildPnlYearTabs(){
+  const tabs=document.getElementById('pnl-year-tabs');if(!tabs)return;
+  const cy=new Date().getFullYear();
+  const years=[];for(let y=cy;y>=2022;y--)years.push(String(y));
+  tabs.innerHTML=years.map(y=>{
+    const lbl='ปี '+(parseInt(y)+543);
+    const active=pnlYear===y;
+    return`<button onclick="selectPnlYear('${y}')" style="font-size:11px;padding:0 12px;height:28px;border:0.5px solid ${active?'var(--green)':'var(--border)'};border-radius:999px;cursor:pointer;background:${active?'var(--green)':'#fff'};color:${active?'#fff':'var(--t2)'};white-space:nowrap;">${lbl}</button>`;
+  }).join('');
+  populatePnlMonthSel();
+}
+function populatePnlMonthSel(){
+  const sel=document.getElementById('pnl-month-sel');if(!sel)return;
+  const now=new Date(),cy=now.getFullYear();
+  const yr=pnlYear;
+  const maxM=parseInt(yr)===cy?now.getMonth()+1:12;
+  let opts='';
+  for(let m=maxM;m>=1;m--){
+    const key=yr+'_'+String(m).padStart(2,'0');
+    opts+=`<option value="${key}">${MTH[m-1]} ${parseInt(yr)+543}</option>`;
   }
-  transactions=txns;renderTxTbl();
+  sel.innerHTML=opts;
+}
+function selectPnlYear(y){
+  pnlYear=y;buildPnlYearTabs();
+  if(pnlView==='yearly')loadPnlYearly();else loadPnlMonthly();
+}
+function switchPnlView(v){
+  pnlView=v;
+  document.getElementById('pnl-view-yearly').style.cssText='font-size:11px;'+(v==='yearly'?'background:var(--green);border-color:var(--green);color:#fff':'');
+  document.getElementById('pnl-view-monthly').style.cssText='font-size:11px;'+(v==='monthly'?'background:var(--green);border-color:var(--green);color:#fff':'');
+  document.getElementById('pnl-yearly-view').style.display=v==='yearly'?'block':'none';
+  document.getElementById('pnl-monthly-view').style.display=v==='monthly'?'block':'none';
+  document.getElementById('pnl-month-sel').style.display=v==='monthly'?'':'none';
+  if(v==='yearly')loadPnlYearly();else loadPnlMonthly();
+}
+async function loadPnl(){
+  buildPnlYearTabs();
+  if(pnlView==='yearly')loadPnlYearly();else loadPnlMonthly();
+}
+async function loadPnlYearly(){
+  const yr=pnlYear;
+  const now=new Date(),cy=now.getFullYear();
+  const maxM=parseInt(yr)===cy?now.getMonth()+1:12;
+  const allP=[];for(let m=1;m<=maxM;m++)allP.push(api({action:'getTransactions',month:yr+'_'+String(m).padStart(2,'0')}));
+  const res=await Promise.all(allP);
+  let totalInc=0,totalExp=0;
+  const rows=res.map((txns,i)=>{
+    const inc=(txns||[]).filter(t=>INC_T.includes(t.type)).reduce((s,t)=>s+parseFloat(t.amount||0),0);
+    const exp=(txns||[]).filter(t=>EXP_T.includes(t.type)).reduce((s,t)=>s+parseFloat(t.amount||0),0);
+    totalInc+=inc;totalExp+=exp;
+    const net=inc-exp;
+    return `<tr><td>${MTH[i]} ${parseInt(yr)+543}</td><td class="r" style="color:var(--green)">฿${fmt2(inc)}</td><td class="r" style="color:var(--red)">฿${fmt2(exp)}</td><td class="r" style="font-weight:600;color:${net>=0?'var(--green)':'var(--red)'}">฿${fmt2(net)}</td></tr>`;
+  }).join('');
+  document.getElementById('pnl-yearly-body').innerHTML=rows||'<tr><td colspan="4" style="text-align:center;color:var(--t3);padding:20px">ยังไม่มีข้อมูล</td></tr>';
+  const totalNet=totalInc-totalExp;
+  document.getElementById('pnl-yearly-foot').innerHTML=`<tr style="background:#f9f9f9;font-weight:700"><td>รวม</td><td class="r" style="color:var(--green)">฿${fmt2(totalInc)}</td><td class="r" style="color:var(--red)">฿${fmt2(totalExp)}</td><td class="r" style="color:${totalNet>=0?'var(--green)':'var(--red)'}">฿${fmt2(totalNet)}</td></tr>`;
+}
+async function loadPnlMonthly(){
+  const month=document.getElementById('pnl-month-sel')?.value;if(!month)return;
+  const txns=await api({action:'getTransactions',month},'กำลังโหลด...')||[];
+  const inc=txns.filter(t=>INC_T.includes(t.type)).reduce((s,t)=>s+parseFloat(t.amount||0),0);
+  const exp=txns.filter(t=>EXP_T.includes(t.type)).reduce((s,t)=>s+parseFloat(t.amount||0),0);
+  const net=inc-exp;
+  document.getElementById('pnl-monthly-summary').innerHTML=`รายรับ <strong style="color:var(--green)">฿${fmt2(inc)}</strong> · รายจ่าย <strong style="color:var(--red)">฿${fmt2(exp)}</strong> · กำไร-ขาดทุน <strong style="color:${net>=0?'var(--green)':'var(--red)'}">฿${fmt2(net)}</strong>`;
+  document.getElementById('pnl-monthly-body').innerHTML=txns.map(t=>{
+    const isIn=t.type?.endsWith('-in');
+    const roomTxt=t.room?String(parseInt(t.room)||t.room):'—';
+    return `<tr><td style="font-size:11px;color:var(--t3)">${fmtDate(t.date)||'—'}</td><td>${t.desc||'—'}</td><td class="c" style="font-size:12px;font-weight:600">${roomTxt}</td><td><span class="bdg ${isIn?'bg':'br'}">${TX_L[t.type]||t.type}</span></td><td class="r" style="font-weight:500;color:${isIn?'var(--green)':'var(--red)'}">${isIn?'+':'-'}฿${fmt2(t.amount)}</td><td style="font-size:11px;color:var(--t3)">${t.channel==='bank'?'โอน':'เงินสด'}</td></tr>`;
+  }).join('')||'<tr><td colspan="6" style="text-align:center;color:var(--t3);padding:20px">ยังไม่มีรายการ</td></tr>';
 }
 
 // METER HISTORY

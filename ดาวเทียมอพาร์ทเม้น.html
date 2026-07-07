@@ -45,6 +45,9 @@ input,select,textarea{font-family:'Sarabun',sans-serif}
 .topbar{background:#fff;border-bottom:1px solid var(--border);height:52px;padding:0 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:10px}
 .tb-toggle{width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;color:var(--t2)}
 .tb-toggle:hover{background:#f3f4f6}
+.tb-hamburger{display:none;width:32px;height:32px;border-radius:6px;border:1px solid var(--border);background:#fff;align-items:center;justify-content:center;cursor:pointer;font-size:17px;color:var(--t2)}
+.sidebar-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:999}
+.sidebar-backdrop.open{display:block}
 .tb-left{display:flex;align-items:center;gap:8px}
 .tb-title{font-size:15px;font-weight:600}
 .tb-sub{font-size:11px;color:var(--t3);margin-top:1px}
@@ -190,8 +193,11 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
   .more-overlay,.mo,.toast,.api-loading-overlay{display:none!important}
 }
 @media(max-width:768px){
-  .sidebar{display:flex !important;width:auto;white-space:nowrap}
-  .sidebar.collapsed{display:none !important;width:0 !important}
+  .sidebar{position:fixed !important;top:0;left:0;height:100vh;height:100dvh;width:260px;max-width:80vw;display:flex !important;white-space:nowrap;transform:translateX(-100%);transition:transform .25s ease;z-index:1000}
+  .sidebar.collapsed{width:260px !important;min-width:0 !important;overflow:visible !important;transform:translateX(-100%)}
+  .sidebar.mobile-open{transform:translateX(0) !important}
+  .tb-toggle{display:none !important}
+  .tb-hamburger{display:flex !important}
   .bottom-nav{display:none !important}
   .topbar{height:46px;padding:0 10px}
   .stats{grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:10px}
@@ -227,6 +233,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
 </div>
 
 <div class="app">
+<div class="sidebar-backdrop" id="sidebar-backdrop" onclick="closeMobileSidebar()"></div>
 <aside class="sidebar" id="sidebar">
   <div class="sb-logo">
     <div class="brand">ดาวเทียม<span>อพาร์ทเม้น</span></div>
@@ -260,6 +267,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
   <div class="topbar">
     <div class="tb-left">
       <button class="tb-toggle" onclick="toggleSidebar()" id="sb-toggle">◀</button>
+      <button class="tb-hamburger" onclick="toggleMobileSidebar()" id="tb-hamburger">☰</button>
       <div><div class="tb-title" id="tb-title">หน้าหลัก</div><div class="tb-sub" id="tb-sub">ภาพรวมดาวเทียมอพาร์ทเม้น</div></div>
     </div>
     <div style="display:flex;align-items:center;gap:12px;">
@@ -1287,6 +1295,7 @@ async function apiPost(d, msg){
 // NAV
 const PAGES={dashboard:['หน้าหลัก','ภาพรวมดาวเทียมอพาร์ทเม้น'],'payment-history':['ประวัติการชำระเงิน','บันทึกใบเสร็จย้อนหลัง'],meter:['มิเตอร์น้ำ-ไฟ','บันทึกมิเตอร์ประจำเดือน'],'meter-history':['ประวัติมิเตอร์','ตรวจสอบการใช้น้ำ-ไฟย้อนหลัง'],invoice:['ใบแจ้งหนี้','ออกใบแจ้งยอดค่าเช่า'],cashflow:['กระแสเงินสด','รายรับ-รายจ่าย (ตามวันที่จ่ายจริง)'],pnl:['กำไร-ขาดทุน','สรุปกำไร-ขาดทุนตามรอบบิล'],overdue:['ค้างชำระ','รายการที่ยังไม่ชำระ'],tenant:['ผู้เช่า','ข้อมูลผู้เช่าปัจจุบัน'],maintenance:['ซ่อมบำรุง','ตารางซ่อมบำรุงและล้างแอร์'],history:['ประวัติ','ประวัติผู้เช่าเก่า'],'settings':['ตั้งค่า','อัตราค่าบริการ']};
 function goPage(p){
+  closeMobileSidebar();
   document.querySelectorAll('.page').forEach(e=>e.classList.remove('act'));
   document.querySelectorAll('.ni,.bn-item').forEach(e=>e.classList.remove('act'));
   document.getElementById('page-'+p)?.classList.add('act');
@@ -1310,6 +1319,14 @@ function goPage(p){
 }
 let sbOpen=true;
 function toggleSidebar(){sbOpen=!sbOpen;document.getElementById('sidebar')?.classList.toggle('collapsed',!sbOpen);document.getElementById('sb-toggle').textContent=sbOpen?'◀':'▶';}
+function toggleMobileSidebar(){
+  document.getElementById('sidebar')?.classList.toggle('mobile-open');
+  document.getElementById('sidebar-backdrop')?.classList.toggle('open');
+}
+function closeMobileSidebar(){
+  document.getElementById('sidebar')?.classList.remove('mobile-open');
+  document.getElementById('sidebar-backdrop')?.classList.remove('open');
+}
 function openMore(){document.getElementById('more-overlay').classList.add('open');}
 function closeMore(){document.getElementById('more-overlay').classList.remove('open');}
 

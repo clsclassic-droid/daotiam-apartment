@@ -608,7 +608,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
           <span id="ph-summary" style="font-size:12px;color:var(--t2)"></span>
         </div>
         <div class="tbl-wrap"><table class="tbl">
-          <thead><tr><th>วันที่</th><th>เลขที่ใบเสร็จ</th><th class="c">ห้อง</th><th>ชื่อผู้เช่า</th><th class="r">ค่าเช่า</th><th class="r">ค่าไฟ</th><th class="r">ค่าน้ำ</th><th class="r">อื่นๆ</th><th class="r">รวม</th><th>ช่องทาง</th><th></th></tr></thead>
+          <thead><tr><th class="th-sort" onclick="sortPayCol('date')" style="cursor:pointer;user-select:none">วันที่<span id="ph-arw-date"></span></th><th class="th-sort" onclick="sortPayCol('rcnum')" style="cursor:pointer;user-select:none">เลขที่ใบเสร็จ<span id="ph-arw-rcnum"></span></th><th class="c th-sort" onclick="sortPayCol('room')" style="cursor:pointer;user-select:none">ห้อง<span id="ph-arw-room"></span></th><th class="th-sort" onclick="sortPayCol('name')" style="cursor:pointer;user-select:none">ชื่อผู้เช่า<span id="ph-arw-name"></span></th><th class="r th-sort" onclick="sortPayCol('rent')" style="cursor:pointer;user-select:none">ค่าเช่า<span id="ph-arw-rent"></span></th><th class="r th-sort" onclick="sortPayCol('elec')" style="cursor:pointer;user-select:none">ค่าไฟ<span id="ph-arw-elec"></span></th><th class="r th-sort" onclick="sortPayCol('water')" style="cursor:pointer;user-select:none">ค่าน้ำ<span id="ph-arw-water"></span></th><th class="r th-sort" onclick="sortPayCol('other')" style="cursor:pointer;user-select:none">อื่นๆ<span id="ph-arw-other"></span></th><th class="r th-sort" onclick="sortPayCol('total')" style="cursor:pointer;user-select:none">รวม<span id="ph-arw-total"></span></th><th class="th-sort" onclick="sortPayCol('channel')" style="cursor:pointer;user-select:none">ช่องทาง<span id="ph-arw-channel"></span></th><th></th></tr></thead>
           <tbody id="ph-body"></tbody>
         </table></div>
       </div>
@@ -3090,28 +3090,69 @@ async function loadPayHistory(){
     else if(yr) q=q.like('month',yr+'_%');
     const {data}=await q;
     const recs=data||[];
-    const totalAmt=recs.reduce((s,r)=>s+parseFloat(r.total||0),0);
-    document.getElementById('ph-summary').textContent=`${recs.length} รายการ · รวม ฿${fmtN(totalAmt)}`;
-    document.getElementById('ph-body').innerHTML=recs.map(r=>{
+    window._paymentData=recs.map(r=>{
       const extras=typeof r.extras==='string'?JSON.parse(r.extras):r.extras||[];
       const extraTotal=extras.reduce((s,x)=>s+parseFloat(x.amount||0),0);
-      return`<tr>
-        <td style="font-size:11px;color:var(--t3)">${fmtDate(r.date)||'—'}</td>
-        <td style="font-size:11px;font-weight:600;color:var(--blue)">${r.receipt_no||'—'}</td>
-        <td class="c" style="font-weight:700">${parseInt(r.room)||r.room}</td>
-        <td style="font-size:12px">${r.tenant_name||'—'}</td>
-        <td class="r" style="font-size:12px">${fmt2(r.rent_amount||0)}</td>
-        <td class="r" style="font-size:12px">${fmt2(r.elec_amount||0)}</td>
-        <td class="r" style="font-size:12px">${fmt2(r.water_amount||0)}</td>
-        <td class="r" style="font-size:12px">${extraTotal>0?fmt2(extraTotal):'—'}</td>
-        <td class="r" style="font-weight:600;color:var(--green)">${fmt2(r.total||0)}</td>
-        <td style="font-size:11px;color:var(--t3)">${r.channel==='cash'?'เงินสด':'โอน'}</td>
-        <td><button class="btn btn-sm btn-icon" onclick="viewReceiptByNo('${r.room}','${r.month}')" title="ดูใบเสร็จ"><i class="ti ti-receipt" style="font-size:12px;color:var(--green)"></i></button></td>
-      </tr>`;
-    }).join('')||'<tr><td colspan="11" style="text-align:center;color:var(--t3);padding:20px">ไม่พบข้อมูล</td></tr>';
+      return{
+        id:r.id,
+        date:fmtDate(r.date)||'',
+        rcnum:r.receipt_no||'',
+        room:parseInt(r.room)||r.room,
+        name:r.tenant_name||'',
+        rent:r.rent_amount||0,
+        elec:r.elec_amount||0,
+        water:r.water_amount||0,
+        other:extraTotal,
+        total:r.total||0,
+        channel:r.channel==='cash'?'เงินสด':'โอน',
+        origRoom:r.room,
+        origMonth:r.month
+      };
+    });
+    const totalAmt=recs.reduce((s,r)=>s+parseFloat(r.total||0),0);
+    document.getElementById('ph-summary').textContent=`${recs.length} รายการ · รวม ฿${fmtN(totalAmt)}`;
+    renderPaymentHistoryTable();
   }catch(e){showToast('โหลดไม่สำเร็จ','err');}
   finally{hideLoad();}
 }
+function renderPaymentHistoryTable(){
+  const data=window._paymentData||[];
+  const cols=['date','rcnum','room','name','rent','elec','water','other','total','channel'];
+  cols.forEach(c=>{const el=document.getElementById('ph-arw-'+c);if(el)el.textContent='';});
+  const arr=document.getElementById('ph-arw-'+paymentSortCol);
+  if(arr)arr.textContent=paymentSortDir==='asc'?' ▲':' ▼';
+  
+  let sorted=data.slice();
+  sorted.sort((a,b)=>{
+    let aVal=a[paymentSortCol];
+    let bVal=b[paymentSortCol];
+    if(['room','rent','elec','water','other','total'].includes(paymentSortCol)){
+      aVal=parseFloat(aVal)||0;
+      bVal=parseFloat(bVal)||0;
+    }else{
+      aVal=String(aVal).toLowerCase();
+      bVal=String(bVal).toLowerCase();
+    }
+    if(aVal<bVal)return paymentSortDir==='asc'?-1:1;
+    if(aVal>bVal)return paymentSortDir==='asc'?1:-1;
+    return 0;
+  });
+  
+  document.getElementById('ph-body').innerHTML=sorted.map(r=>`<tr>
+    <td style="font-size:11px;color:var(--t3)">${r.date||'—'}</td>
+    <td style="font-size:11px;font-weight:600;color:var(--blue)">${r.rcnum||'—'}</td>
+    <td class="c" style="font-weight:700">${r.room}</td>
+    <td style="font-size:12px">${r.name||'—'}</td>
+    <td class="r" style="font-size:12px">${fmt2(parseFloat(r.rent)||0)}</td>
+    <td class="r" style="font-size:12px">${fmt2(parseFloat(r.elec)||0)}</td>
+    <td class="r" style="font-size:12px">${fmt2(parseFloat(r.water)||0)}</td>
+    <td class="r" style="font-size:12px">${parseFloat(r.other)>0?fmt2(parseFloat(r.other||0)):'—'}</td>
+    <td class="r" style="font-weight:600;color:var(--green)">${fmt2(parseFloat(r.total||0))}</td>
+    <td style="font-size:11px;color:var(--t3)">${r.channel||'—'}</td>
+    <td><button class="btn btn-sm btn-icon" onclick="viewReceiptByNo('${r.origRoom}','${r.origMonth}')" title="ดูใบเสร็จ"><i class="ti ti-receipt" style="font-size:12px;color:var(--green)"></i></button></td>
+  </tr>`).join('')||'<tr><td colspan="11" style="text-align:center;color:var(--t3);padding:20px">ไม่พบข้อมูล</td></tr>';
+}
+
 async function viewReceiptByNo(room,month){
   // set ov-sel ชั่วคราวเพื่อให้ viewReceipt ดึงถูกเดือน
   const ovSel=document.getElementById('ov-sel');
@@ -3272,6 +3313,12 @@ function populateMhMonthSel(){
     if(parseInt(mhYear)===cy&&m===now.getMonth()+1)o.selected=true;
     sel.appendChild(o);
   }
+}
+let paymentSortCol='date', paymentSortDir='desc';
+function sortPayCol(col){
+  if(paymentSortCol===col){paymentSortDir=paymentSortDir==='asc'?'desc':'asc';}
+  else{paymentSortCol=col;paymentSortDir=(col==='date'||col==='rcnum')?'desc':'asc';}
+  renderPaymentHistoryTable();
 }
 let mhSortCol='room', mhSortDir='asc';
 function sortMhCol(col){

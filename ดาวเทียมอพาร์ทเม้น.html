@@ -929,7 +929,21 @@ let apiCount=0;
 const fmt2=n=>parseFloat(n||0).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});
 const fmtN=n=>Math.round(n||0).toLocaleString('th-TH');
 const fmtN1=n=>parseFloat(n||0).toLocaleString('th-TH',{minimumFractionDigits:1,maximumFractionDigits:1});
-function fmtDate(v){if(!v)return'';if(typeof v==='string'){if(v.includes('T')||v.match(/^\d{4}-\d{2}-\d{2}/)){const d=new Date(v.replace(' ','T'));return`${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getFullYear()).slice(-2)}`;}}return v;}
+function fmtDate(v){if(!v)return'';if(typeof v==='string'){if(v.includes('T')||v.match(/^\d{4}-\d{2}-\d{2}/)){const d=new Date(v.replace(' ','T'));return`${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;}if(v.match(/^\d{1,2}\/\d{1,2}\/\d{2,4}$/)){const parts=v.split('/');const yy=parseInt(parts[2]);const fullY=yy<100?(yy<70?2000+yy:1900+yy):yy;return`${parts[0].padStart(2,'0')}/${parts[1].padStart(2,'0')}/${fullY}`;}}return v;}
+function parseCheckinDate(v){
+  if(!v)return null;
+  if(typeof v!=='string')return null;
+  if(v.includes('T')||v.match(/^\d{4}-\d{2}-\d{2}/)){
+    const d=new Date(v.replace(' ','T'));
+    return isNaN(d.getTime())?null:d;
+  }
+  const parts=v.split('/');
+  if(parts.length<3)return null;
+  const yy=parseInt(parts[2]);
+  const fullY=yy<100?(yy<70?2000+yy:1900+yy):yy;
+  const d=new Date(fullY,parseInt(parts[1])-1,parseInt(parts[0]));
+  return isNaN(d.getTime())?null:d;
+}
 function calcStay(checkin){if(!checkin)return'—';const parts=checkin.split('/');if(parts.length<3)return'—';const y=parseInt(parts[2])<100?2000+parseInt(parts[2]):parseInt(parts[2]);const start=new Date(y,parseInt(parts[1])-1,parseInt(parts[0]));const now=new Date();let yrs=now.getFullYear()-start.getFullYear();let mos=now.getMonth()-start.getMonth();let days=now.getDate()-start.getDate();if(days<0){mos--;const prev=new Date(now.getFullYear(),now.getMonth(),0);days+=prev.getDate();}if(mos<0){yrs--;mos+=12;}let r='';if(yrs>0)r+=yrs+' ปี ';if(mos>0)r+=mos+' เดือน ';r+=days+' วัน';return r.trim();}
 function showToast(msg,t='ok'){const el=document.getElementById('toast');el.innerHTML=`<i class="ti ti-${t==='ok'?'check':'alert-circle'}" style="color:${t==='ok'?'#1D9E75':'#E24B4A'}"></i>${msg}`;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2800);}
 function closeMo(id){document.getElementById(id)?.classList.remove('open');if(id==='mo-tx'){delete document.getElementById('mo-tx').dataset.editId;const t=document.querySelector('#mo-tx .mo-title');if(t)t.textContent='เพิ่มรายการรับ-จ่าย';}if(id==='mo-maint'){delete document.getElementById('mo-maint').dataset.editId;const t=document.querySelector('#mo-maint .mo-title');if(t)t.textContent='เพิ่มรายการซ่อมบำรุง';mntSelRooms=new Set();renderMntRooms();}}
@@ -1837,7 +1851,7 @@ function renderTenantTbl(list){
     let r=0;
     if(col==='room')r=(parseInt(a.room)||0)-(parseInt(b.room)||0);
     else if(col==='name')r=(a.name||'').localeCompare(b.name||'','th');
-    else if(col==='checkin')r=(a.checkin||'').localeCompare(b.checkin||'');
+    else if(col==='checkin'){const da=parseCheckinDate(a.checkin);const db=parseCheckinDate(b.checkin);const ta=da?da.getTime():0;const tb=db?db.getTime():0;r=ta-tb;}
     else if(col==='deposit')r=(parseFloat(a.deposit||3500))-(parseFloat(b.deposit||3500));
     else if(col==='status')r=(a.status||'').localeCompare(b.status||'');
     return r*mul;

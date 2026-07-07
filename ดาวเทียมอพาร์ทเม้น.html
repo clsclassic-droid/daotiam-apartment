@@ -541,7 +541,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
           <th class="th-sort" onclick="sortTenantCol('room')" style="cursor:pointer;user-select:none">ห้อง<span id="tn-arw-room"></span></th>
           <th class="th-sort" onclick="sortTenantCol('name')" style="cursor:pointer;user-select:none">ชื่อ-นามสกุล<span id="tn-arw-name"></span></th>
           <th class="th-sort" onclick="sortTenantCol('checkin')" style="cursor:pointer;user-select:none">วันเข้าพัก<span id="tn-arw-checkin"></span></th>
-          <th class="th-sort" onclick="sortTenantCol('checkin')" style="cursor:pointer;user-select:none">พักมาแล้ว<span id="tn-arw-checkin2"></span></th>
+          <th class="th-sort" onclick="sortTenantCol('duration')" style="cursor:pointer;user-select:none">พักมาแล้ว<span id="tn-arw-duration"></span></th>
           <th class="th-sort" onclick="sortTenantCol('deposit')" style="cursor:pointer;user-select:none">ประกัน<span id="tn-arw-deposit"></span></th>
           <th class="th-sort" onclick="sortTenantCol('status')" style="cursor:pointer;user-select:none">สถานะ<span id="tn-arw-status"></span></th>
           <th></th>
@@ -944,7 +944,24 @@ function parseCheckinDate(v){
   const d=new Date(fullY,parseInt(parts[1])-1,parseInt(parts[0]));
   return isNaN(d.getTime())?null:d;
 }
-function calcStay(checkin){if(!checkin)return'—';const parts=checkin.split('/');if(parts.length<3)return'—';const y=parseInt(parts[2])<100?2000+parseInt(parts[2]):parseInt(parts[2]);const start=new Date(y,parseInt(parts[1])-1,parseInt(parts[0]));const now=new Date();let yrs=now.getFullYear()-start.getFullYear();let mos=now.getMonth()-start.getMonth();let days=now.getDate()-start.getDate();if(days<0){mos--;const prev=new Date(now.getFullYear(),now.getMonth(),0);days+=prev.getDate();}if(mos<0){yrs--;mos+=12;}let r='';if(yrs>0)r+=yrs+' ปี ';if(mos>0)r+=mos+' เดือน ';r+=days+' วัน';return r.trim();}
+function calcStay(checkin){
+  const start=parseCheckinDate(checkin);
+  if(!start)return'—';
+  const now=new Date();
+  let yrs=now.getFullYear()-start.getFullYear();
+  let mos=now.getMonth()-start.getMonth();
+  let days=now.getDate()-start.getDate();
+  if(days<0){mos--;const prev=new Date(now.getFullYear(),now.getMonth(),0);days+=prev.getDate();}
+  if(mos<0){yrs--;mos+=12;}
+  let r='';if(yrs>0)r+=yrs+' ปี ';if(mos>0)r+=mos+' เดือน ';r+=days+' วัน';
+  return r.trim();
+}
+function calcStayDays(checkin){
+  const start=parseCheckinDate(checkin);
+  if(!start)return -1;
+  const now=new Date();
+  return Math.floor((now.getTime()-start.getTime())/86400000);
+}
 function showToast(msg,t='ok'){const el=document.getElementById('toast');el.innerHTML=`<i class="ti ti-${t==='ok'?'check':'alert-circle'}" style="color:${t==='ok'?'#1D9E75':'#E24B4A'}"></i>${msg}`;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2800);}
 function closeMo(id){document.getElementById(id)?.classList.remove('open');if(id==='mo-tx'){delete document.getElementById('mo-tx').dataset.editId;const t=document.querySelector('#mo-tx .mo-title');if(t)t.textContent='เพิ่มรายการรับ-จ่าย';}if(id==='mo-maint'){delete document.getElementById('mo-maint').dataset.editId;const t=document.querySelector('#mo-maint .mo-title');if(t)t.textContent='เพิ่มรายการซ่อมบำรุง';mntSelRooms=new Set();renderMntRooms();}}
 function openMo(id){document.getElementById(id)?.classList.add('open');}
@@ -1852,6 +1869,7 @@ function renderTenantTbl(list){
     if(col==='room')r=(parseInt(a.room)||0)-(parseInt(b.room)||0);
     else if(col==='name')r=(a.name||'').localeCompare(b.name||'','th');
     else if(col==='checkin'){const da=parseCheckinDate(a.checkin);const db=parseCheckinDate(b.checkin);const ta=da?da.getTime():0;const tb=db?db.getTime():0;r=ta-tb;}
+    else if(col==='duration')r=calcStayDays(a.checkin)-calcStayDays(b.checkin);
     else if(col==='deposit')r=(parseFloat(a.deposit||3500))-(parseFloat(b.deposit||3500));
     else if(col==='status')r=(a.status||'').localeCompare(b.status||'');
     return r*mul;
@@ -1860,9 +1878,8 @@ function renderTenantTbl(list){
     const el=document.getElementById('tn-arw-'+c);if(!el)return;
     el.textContent=c===col?(dir==='asc'?' ▲':' ▼'):'';
   });
-  const checkinArw=col==='checkin'?(dir==='asc'?' ▲':' ▼'):'';
-  const ca1=document.getElementById('tn-arw-checkin');if(ca1)ca1.textContent=checkinArw;
-  const ca2=document.getElementById('tn-arw-checkin2');if(ca2)ca2.textContent=checkinArw;
+  const ca1=document.getElementById('tn-arw-checkin');if(ca1)ca1.textContent=col==='checkin'?(dir==='asc'?' ▲':' ▼'):'';
+  const ca2=document.getElementById('tn-arw-duration');if(ca2)ca2.textContent=col==='duration'?(dir==='asc'?' ▲':' ▼'):'';
   document.getElementById('tenant-body').innerHTML=list.map(t=>{
     const s=sm[t.status]||{c:'bgray',l:t.status};
     return`<tr><td style="font-weight:700;font-size:15px;text-align:center">${parseInt(t.room)}</td><td style="font-weight:500">${t.name}</td><td style="font-size:11px;color:var(--t3)">${fmtDate(t.checkin)}</td><td style="font-size:11px;color:var(--t3)">${calcStay(t.checkin)}</td><td>฿${fmtN(t.deposit||3500)}</td><td><span class="bdg ${s.c}">${s.l}</span></td><td style="display:flex;gap:4px"><button class="btn btn-sm btn-icon" onclick="editTenant('${t.room}')"><i class="ti ti-edit" style="font-size:12px"></i></button><button class="btn btn-sm" style="font-size:11px;color:var(--red);border-color:var(--red);padding:3px 7px" onclick="openCoModal('${t.room}')"><i class="ti ti-door-exit" style="font-size:11px"></i> ย้ายออก</button></td></tr>`;

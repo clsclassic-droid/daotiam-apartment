@@ -925,6 +925,15 @@ const EXP_T=['elec-out','water-out','internet-out','repair-out','tax-out','other
 const CAP_T=['capital-in','capital-out'];
 const ASSET_T=['asset-out'];
 const TX_L={'rent-in':'ค่าเช่าห้อง','elec-in':'ค่าไฟ(เก็บ)','water-in':'ค่าน้ำ(เก็บ)','washer-in':'ตู้ซักผ้าหยอดเหรียญ','other-in':'รายรับอื่นๆ','elec-out':'ค่าไฟ(จ่าย)','water-out':'ค่าน้ำ(จ่าย)','internet-out':'อินเตอร์เน็ต','repair-out':'ซ่อมบำรุง','tax-out':'ภาษี','other-out':'รายจ่ายอื่นๆ','capital-in':'เพิ่มทุนเข้า','capital-out':'ถอนทุนออก','rent-out':'คืนค่าเช่าล่วงหน้า','deposit-out':'คืนเงินประกัน','asset-out':'ซื้อสินทรัพย์ถาวร'};
+// ตัดเลขห้องที่ซ้ำกับคอลัมน์ "ห้อง" ออกจากข้อความรายการ (รองรับทั้งข้อมูลเก่าและใหม่)
+function cleanTxDesc(desc,room){
+  if(!desc)return desc||'';
+  if(!room)return desc;
+  const r=String(parseInt(room)||room);
+  // ตัดรูปแบบ "...ห้อง 7" หรือ "...ห้อง7" ที่ท้ายข้อความ (มีหรือไม่มีช่องว่างก่อนคำว่า ห้อง)
+  const re=new RegExp('\\s*ห้อง\\s*'+r+'\\s*$');
+  return desc.replace(re,'').trim()||desc;
+}
 
 // STATE
 let tenants=[],meters=[],transactions=[],maintData=[];
@@ -2303,7 +2312,7 @@ function renderTxTbl(){
     const el=document.getElementById('th-arw-'+c);if(!el)return;
     el.textContent=c===col?(dir==='asc'?' ▲':' ▼'):'';
   });
-  document.getElementById('tx-body').innerHTML=display.map(t=>{const isCap=t.type==='capital-in'||t.type==='capital-out';const isAsset=ASSET_T.includes(t.type);const isCapIn=t.type==='capital-in';const isIn=isCap?isCapIn:t.type?.endsWith('-in');const runVal=balMap[t.id]??0;const roomTxt=t.room?String(parseInt(t.room)||t.room):'—';const bdgStyle=isCap?`style="background:#E6F1FB;color:#185FA5;font-size:11px;padding:2px 7px;border-radius:4px;font-weight:500"`:isAsset?`style="background:#F3E8D9;color:#6B4A1E;font-size:11px;padding:2px 7px;border-radius:4px;font-weight:500"`:'class="bdg '+(isIn?'bg':'br')+'"';return`<tr><td style="font-size:11px;color:var(--t3)">${fmtDate(t.date)||'—'}</td><td>${t.desc||'—'}</td><td class="c" style="font-size:12px;font-weight:600">${roomTxt}</td><td><span ${bdgStyle}>${TX_L[t.type]||t.type}</span></td><td class="r" style="font-weight:500;color:${isCap?'var(--blue)':isAsset?'#6B4A1E':isIn?'var(--green)':'var(--red)'}">${isIn?'+':'-'}฿${fmt2(t.amount)}</td><td style="font-size:11px;color:var(--t3)">${t.channel==='bank'?'โอน':'เงินสด'}</td><td class="r" style="font-size:11px;color:${runVal>=0?'var(--green)':'var(--red)'}">฿${fmt2(runVal)}</td><td style="display:flex;gap:4px"><button class="btn btn-sm btn-icon" style="color:var(--blue)" onclick="editTx('${t.id}')"><i class="ti ti-edit" style="font-size:11px"></i></button><button class="btn btn-sm btn-icon" style="color:var(--t3)" onclick="delTx('${t.id}')"><i class="ti ti-trash" style="font-size:11px"></i></button></td></tr>`;}).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--t3);padding:20px">ยังไม่มีรายการ</td></tr>';
+  document.getElementById('tx-body').innerHTML=display.map(t=>{const isCap=t.type==='capital-in'||t.type==='capital-out';const isAsset=ASSET_T.includes(t.type);const isCapIn=t.type==='capital-in';const isIn=isCap?isCapIn:t.type?.endsWith('-in');const runVal=balMap[t.id]??0;const roomTxt=t.room?String(parseInt(t.room)||t.room):'—';const bdgStyle=isCap?`style="background:#E6F1FB;color:#185FA5;font-size:11px;padding:2px 7px;border-radius:4px;font-weight:500"`:isAsset?`style="background:#F3E8D9;color:#6B4A1E;font-size:11px;padding:2px 7px;border-radius:4px;font-weight:500"`:'class="bdg '+(isIn?'bg':'br')+'"';return`<tr><td style="font-size:11px;color:var(--t3)">${fmtDate(t.date)||'—'}</td><td>${cleanTxDesc(t.desc,t.room)||'—'}</td><td class="c" style="font-size:12px;font-weight:600">${roomTxt}</td><td><span ${bdgStyle}>${TX_L[t.type]||t.type}</span></td><td class="r" style="font-weight:500;color:${isCap?'var(--blue)':isAsset?'#6B4A1E':isIn?'var(--green)':'var(--red)'}">${isIn?'+':'-'}฿${fmt2(t.amount)}</td><td style="font-size:11px;color:var(--t3)">${t.channel==='bank'?'โอน':'เงินสด'}</td><td class="r" style="font-size:11px;color:${runVal>=0?'var(--green)':'var(--red)'}">฿${fmt2(runVal)}</td><td style="display:flex;gap:4px"><button class="btn btn-sm btn-icon" style="color:var(--blue)" onclick="editTx('${t.id}')"><i class="ti ti-edit" style="font-size:11px"></i></button><button class="btn btn-sm btn-icon" style="color:var(--t3)" onclick="delTx('${t.id}')"><i class="ti ti-trash" style="font-size:11px"></i></button></td></tr>`;}).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--t3);padding:20px">ยังไม่มีรายการ</td></tr>';
 }
 let txSortCol='date', txSortDir='desc';
 function sortTxCol(col){
@@ -2536,10 +2545,10 @@ async function confirmPay(){
   try{
     // สร้าง transaction rows ตามปกติก่อน
     const baseRows=[
-      {date:today,type:'rent-in',description:'ค่าเช่าห้อง '+payCurrentRoom,room:payCurrentRoom,amount:rentAmt,channel:ch,note:'',month},
-      {date:today,type:'elec-in',description:'ค่าไฟห้อง '+payCurrentRoom,room:payCurrentRoom,amount:payData.ec,channel:ch,note:'',month},
-      {date:today,type:'water-in',description:'ค่าน้ำห้อง '+payCurrentRoom,room:payCurrentRoom,amount:payData.wc,channel:ch,note:'',month},
-      ...extras.map(x=>({date:today,type:'other-in',description:x.desc||'อื่นๆ ห้อง '+payCurrentRoom,room:payCurrentRoom,amount:x.amount,channel:ch,note:'',month}))
+      {date:today,type:'rent-in',description:'ค่าเช่าห้อง',room:payCurrentRoom,amount:rentAmt,channel:ch,note:'',month},
+      {date:today,type:'elec-in',description:'ค่าไฟ',room:payCurrentRoom,amount:payData.ec,channel:ch,note:'',month},
+      {date:today,type:'water-in',description:'ค่าน้ำ',room:payCurrentRoom,amount:payData.wc,channel:ch,note:'',month},
+      ...extras.map(x=>({date:today,type:'other-in',description:x.desc||'อื่นๆ',room:payCurrentRoom,amount:x.amount,channel:ch,note:'',month}))
     ];
     // ถ้ามี diff (±1 บาท) ให้ปรับรายการสุดท้าย
     const txRows=[...baseRows];
@@ -2710,8 +2719,8 @@ async function confirmCo(){
     elecStart:cd.elecPrev,elecEnd:cd.elecPrev,elecUsed:0,waterStart:cd.waterPrev,waterEnd:cd.waterPrev,waterUsed:0},'กำลังบันทึกประวัติ...');
   // บันทึก transactions คืนเงิน
   const txRows=[];
-  if(cd.rentAdv>0) txRows.push({date:today,type:'rent-out',description:'คืนค่าเช่าล่วงหน้า ห้อง '+coRoom,room:coRoom,amount:cd.rentAdv,channel:'bank',note:'',month:coMonth});
-  if(cd.depRet>0) txRows.push({date:today,type:'deposit-out',description:'คืนเงินประกัน ห้อง '+coRoom,room:coRoom,amount:cd.depRet,channel:'bank',note:'',month:coMonth});
+  if(cd.rentAdv>0) txRows.push({date:today,type:'rent-out',description:'คืนค่าเช่าล่วงหน้า',room:coRoom,amount:cd.rentAdv,channel:'bank',note:'',month:coMonth});
+  if(cd.depRet>0) txRows.push({date:today,type:'deposit-out',description:'คืนเงินประกัน',room:coRoom,amount:cd.depRet,channel:'bank',note:'',month:coMonth});
   if(txRows.length>0) await _sb.from('transactions').insert(txRows);
   await apiPost({action:'deleteTenant',room:coRoom},'กำลังย้ายออก...');
   closeMo('mo-checkout');await loadTenants();
@@ -3331,7 +3340,7 @@ async function loadPnlMonthly(){
   document.getElementById('pnl-monthly-body').innerHTML=txns.map(t=>{
     const isIn=t.type?.endsWith('-in');
     const roomTxt=t.room?String(parseInt(t.room)||t.room):'—';
-    return `<tr><td style="font-size:11px;color:var(--t3)">${fmtDate(t.date)||'—'}</td><td>${t.desc||'—'}</td><td class="c" style="font-size:12px;font-weight:600">${roomTxt}</td><td><span class="bdg ${isIn?'bg':'br'}">${TX_L[t.type]||t.type}</span></td><td class="r" style="font-weight:500;color:${isIn?'var(--green)':'var(--red)'}">${isIn?'+':'-'}฿${fmt2(t.amount)}</td><td style="font-size:11px;color:var(--t3)">${t.channel==='bank'?'โอน':'เงินสด'}</td></tr>`;
+    return `<tr><td style="font-size:11px;color:var(--t3)">${fmtDate(t.date)||'—'}</td><td>${cleanTxDesc(t.desc,t.room)||'—'}</td><td class="c" style="font-size:12px;font-weight:600">${roomTxt}</td><td><span class="bdg ${isIn?'bg':'br'}">${TX_L[t.type]||t.type}</span></td><td class="r" style="font-weight:500;color:${isIn?'var(--green)':'var(--red)'}">${isIn?'+':'-'}฿${fmt2(t.amount)}</td><td style="font-size:11px;color:var(--t3)">${t.channel==='bank'?'โอน':'เงินสด'}</td></tr>`;
   }).join('')||'<tr><td colspan="6" style="text-align:center;color:var(--t3);padding:20px">ยังไม่มีรายการ</td></tr>';
 }
 

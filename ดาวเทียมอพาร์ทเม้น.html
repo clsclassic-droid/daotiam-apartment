@@ -260,6 +260,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
   <div class="sb-sec">การเงิน</div>
   <button class="ni" onclick="goPage('cashflow')"><i class="ti ti-cash ni-i"></i> กระแสเงินสด</button>
   <button class="ni" onclick="goPage('pnl')"><i class="ti ti-report-money ni-i"></i> กำไร-ขาดทุน</button>
+  <button class="ni" onclick="goPage('balancesheet')"><i class="ti ti-building ni-i"></i> งบดุล</button>
   <button class="ni" onclick="goPage('overdue')"><i class="ti ti-receipt-off ni-i"></i> ค้างชำระ<span class="ni-badge" id="bdg-ov">0</span></button>
   <div class="sb-sec">ข้อมูล (ประวัติ)</div>
   <button class="ni" onclick="goPage('tenant')"><i class="ti ti-users ni-i"></i> ผู้เช่า</button>
@@ -534,6 +535,22 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
       </div>
     </div>
 
+    <!-- BALANCE SHEET -->
+    <div class="page" id="page-balancesheet">
+      <div class="card">
+        <div class="section-hd">
+          <div class="card-title" style="margin-bottom:0"><i class="ti ti-building"></i> งบดุล</div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <input type="date" id="bs-date" onchange="loadBalanceSheet()" style="font-size:12px;padding:6px 10px;border:1px solid var(--border);border-radius:7px">
+          </div>
+        </div>
+        <div style="margin-bottom:14px;font-size:12px;color:var(--t2)" id="bs-info"></div>
+        <div class="tbl-wrap"><table class="tbl" id="bs-table">
+          <tbody></tbody>
+        </table></div>
+      </div>
+    </div>
+
     <!-- OVERDUE -->
     <div class="page" id="page-overdue">
       <div class="card">
@@ -631,8 +648,10 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
 
     <!-- SETTINGS -->
     <div class="page" id="page-settings">
-      <div class="card" style="max-width:480px">
-        <div class="card-title"><i class="ti ti-settings"></i> ตั้งค่าอัตราค่าบริการ</div>
+      <div class="card" style="margin-bottom:14px">
+        <div class="section-hd">
+          <div class="card-title" style="margin-bottom:0"><i class="ti ti-settings"></i> ตั้งค่าอัตราค่าบริการ</div>
+        </div>
         <table class="tbl" style="margin-bottom:16px">
           <tbody>
             <tr><td>ค่าเช่า (บาท/เดือน)</td><td class="r"><input type="number" id="cfg-rent" class="fc" style="width:120px;text-align:right" value="3500"></td></tr>
@@ -643,6 +662,17 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
         </table>
         <button class="btn btn-green btn-sm" onclick="saveSettings()"><i class="ti ti-device-floppy"></i> บันทึกตั้งค่า</button>
         <div id="cfg-msg" style="font-size:12px;color:var(--green);margin-top:8px;display:none">✓ บันทึกแล้ว</div>
+      </div>
+
+      <div class="card">
+        <div class="section-hd">
+          <div class="card-title" style="margin-bottom:0"><i class="ti ti-building"></i> จัดการสินทรัพย์ถาวร</div>
+          <button class="btn btn-green btn-sm" onclick="openAssetModal()"><i class="ti ti-plus"></i> เพิ่มสินทรัพย์</button>
+        </div>
+        <div class="tbl-wrap"><table class="tbl">
+          <thead><tr><th>ชื่อสินทรัพย์</th><th>วันที่ซื้อ</th><th class="r">มูลค่า</th><th class="r">อัตราเสื่อม (%/ปี)</th><th>หมายเหตุ</th><th></th></tr></thead>
+          <tbody id="asset-body"></tbody>
+        </table></div>
       </div>
     </div>
 
@@ -887,6 +917,20 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
   </div>
   <div class="fg"><label>ห้องที่ทำ (คลิกเลือก)</label><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-top:5px" id="mnt-rooms"></div></div>
   <div class="mo-actions"><button class="btn btn-sm" onclick="closeMo('mo-maint')">ยกเลิก</button><button class="btn btn-green btn-sm" onclick="saveMaint()"><i class="ti ti-check"></i> บันทึก</button></div>
+</div></div>
+
+<div class="mo" id="mo-asset"><div class="mo-box">
+  <div class="mo-hd"><div class="mo-title"><i class="ti ti-building"></i> จัดการสินทรัพย์</div><button class="mo-close" onclick="closeMo('mo-asset')">✕</button></div>
+  <div class="fr2">
+    <div class="fg"><label>ชื่อสินทรัพย์ *</label><input type="text" id="asset-name" class="fc" placeholder="เช่น อาคาร, เฟอร์นิเจอร์, ที่ดิน"></div>
+    <div class="fg"><label>วันที่ซื้อ</label><input type="date" id="asset-date" class="fc"></div>
+  </div>
+  <div class="fr2">
+    <div class="fg"><label>มูลค่า (บาท) *</label><input type="number" id="asset-value" class="fc" min="0"></div>
+    <div class="fg"><label>อัตราเสื่อม (%/ปี)</label><input type="number" id="asset-depr" class="fc" min="0" max="100" step="0.1" value="5"></div>
+  </div>
+  <div class="fg"><label>หมายเหตุ</label><input type="text" id="asset-note" class="fc"></div>
+  <div class="mo-actions"><button class="btn btn-sm" onclick="closeMo('mo-asset')">ยกเลิก</button><button class="btn btn-green btn-sm" onclick="saveAsset()"><i class="ti ti-check"></i> บันทึก</button></div>
 </div></div>
 
 <div class="toast" id="toast"></div>
@@ -1198,6 +1242,46 @@ async function sbGetHistory(){
   finally{hideLoad();}
 }
 
+// Helper: getAssets
+async function sbGetAssets(){
+  showLoad('กำลังโหลดสินทรัพย์...');
+  try{
+    const {data,error}=await _sb.from('assets').select('*').order('purchase_date',{ascending:true});
+    if(error)throw error;
+    return data.map(a=>({
+      id:a.id, name:a.asset_name||'', date:a.purchase_date||'',
+      value:a.purchase_value||0, depr:a.depreciation_rate||0, note:a.note||''
+    }));
+  }catch(e){showToast('โหลดสินทรัพย์ไม่สำเร็จ','err');return [];}
+  finally{hideLoad();}
+}
+
+// Helper: saveAsset
+async function sbSaveAsset(d){
+  showLoad('กำลังบันทึก...');
+  try{
+    const {error}=await _sb.from('assets').insert({
+      asset_name:d.name, purchase_date:d.date||null,
+      purchase_value:parseFloat(d.value)||0, depreciation_rate:parseFloat(d.depr)||0,
+      note:d.note||''
+    });
+    if(error)throw error;
+    return {success:true};
+  }catch(e){showToast('บันทึกไม่สำเร็จ','err');return null;}
+  finally{hideLoad();}
+}
+
+// Helper: deleteAsset
+async function sbDeleteAsset(id){
+  showLoad('กำลังลบ...');
+  try{
+    const {error}=await _sb.from('assets').delete().eq('id',id);
+    if(error)throw error;
+    return {success:true};
+  }catch(e){showToast('ลบไม่สำเร็จ','err');return null;}
+  finally{hideLoad();}
+}
+
 // Helper: saveHistory
 async function sbSaveHistory(d){
   showLoad('กำลังบันทึก...');
@@ -1315,7 +1399,7 @@ async function apiPost(d, msg){
 }
 
 // NAV
-const PAGES={dashboard:['หน้าหลัก','ภาพรวมดาวเทียมอพาร์ทเม้น'],'payment-history':['ประวัติการชำระเงิน','บันทึกใบเสร็จย้อนหลัง'],meter:['มิเตอร์น้ำ-ไฟ','บันทึกมิเตอร์ประจำเดือน'],'meter-history':['ประวัติมิเตอร์','ตรวจสอบการใช้น้ำ-ไฟย้อนหลัง'],invoice:['ใบแจ้งหนี้','ออกใบแจ้งยอดค่าเช่า'],cashflow:['กระแสเงินสด','รายรับ-รายจ่าย (ตามวันที่จ่ายจริง)'],pnl:['กำไร-ขาดทุน','สรุปกำไร-ขาดทุนตามรอบบิล'],overdue:['ค้างชำระ','รายการที่ยังไม่ชำระ'],tenant:['ผู้เช่า','ข้อมูลผู้เช่าปัจจุบัน'],maintenance:['ซ่อมบำรุง','ตารางซ่อมบำรุงและล้างแอร์'],history:['ประวัติ','ประวัติผู้เช่าเก่า'],'settings':['ตั้งค่า','อัตราค่าบริการ']};
+const PAGES={dashboard:['หน้าหลัก','ภาพรวมดาวเทียมอพาร์ทเม้น'],'payment-history':['ประวัติการชำระเงิน','บันทึกใบเสร็จย้อนหลัง'],meter:['มิเตอร์น้ำ-ไฟ','บันทึกมิเตอร์ประจำเดือน'],'meter-history':['ประวัติมิเตอร์','ตรวจสอบการใช้น้ำ-ไฟย้อนหลัง'],invoice:['ใบแจ้งหนี้','ออกใบแจ้งยอดค่าเช่า'],cashflow:['กระแสเงินสด','รายรับ-รายจ่าย (ตามวันที่จ่ายจริง)'],pnl:['กำไร-ขาดทุน','สรุปกำไร-ขาดทุนตามรอบบิล'],balancesheet:['งบดุล','สินทรัพย์ หนี้สิน ส่วนของเจ้าของ'],overdue:['ค้างชำระ','รายการที่ยังไม่ชำระ'],tenant:['ผู้เช่า','ข้อมูลผู้เช่าปัจจุบัน'],maintenance:['ซ่อมบำรุง','ตารางซ่อมบำรุงและล้างแอร์'],history:['ประวัติ','ประวัติผู้เช่าเก่า'],'settings':['ตั้งค่า','อัตราค่าบริการ']};
 function goPage(p){
   closeMobileSidebar();
   document.querySelectorAll('.page').forEach(e=>e.classList.remove('act'));
@@ -1331,12 +1415,13 @@ function goPage(p){
   else if(p==='invoice'){populateInvRoom();const _im=document.getElementById('inv-month');if(_im){const _mn=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];_im.value=_mn[new Date().getMonth()];}const _ip=document.getElementById('inv-preview');if(_ip)_ip.innerHTML='';}
   else if(p==='cashflow'){buildTxTabs();loadTx();}
   else if(p==='pnl'){loadPnl();}
+  else if(p==='balancesheet'){initBalanceSheet();}
   else if(p==='meter-history'){loadMeterHistory();}
   else if(p==='overdue')renderOverdue();
   else if(p==='tenant')loadTenants();
   else if(p==='maintenance')loadMaint();
   else if(p==='history')loadHist();
-  else if(p==='settings')loadSettings();
+  else if(p==='settings'){loadSettings();loadAssets();}
   else if(p==='payment-history')loadPayHistory();
 }
 let sbOpen=true;
@@ -1407,6 +1492,169 @@ function populateFinSel(){
   });
 }
 function setFinView(v){finView=v;buildFinTabs();renderFinance();}
+
+// ===== ASSETS & BALANCE SHEET =====
+let assets=[];
+async function loadAssets(){
+  showLoad('กำลังโหลดสินทรัพย์...');
+  try{
+    assets=await sbGetAssets();
+    renderAssetTable();
+  }finally{hideLoad();}
+}
+function renderAssetTable(){
+  const body=document.getElementById('asset-body');if(!body)return;
+  body.innerHTML=assets.map(a=>`<tr>
+    <td>${a.name||'—'}</td>
+    <td>${thShort(a.date)}</td>
+    <td class="r">${(a.value||0).toLocaleString('th-TH')}</td>
+    <td class="r">${(a.depr||0).toFixed(1)}%</td>
+    <td>${a.note||'—'}</td>
+    <td style="text-align:center;cursor:pointer" onclick="deleteAsset(${a.id})"><i class="ti ti-trash" style="color:var(--red);font-size:15px"></i></td>
+  </tr>`).join('');
+}
+function openAssetModal(){
+  closeMo('mo-asset');
+  setTimeout(()=>{
+    document.getElementById('asset-name').value='';
+    document.getElementById('asset-date').value='';
+    document.getElementById('asset-value').value='';
+    document.getElementById('asset-depr').value='5';
+    document.getElementById('asset-note').value='';
+    openMo('mo-asset');
+  },50);
+}
+async function saveAsset(){
+  const name=document.getElementById('asset-name').value.trim();
+  const value=parseFloat(document.getElementById('asset-value').value||0);
+  if(!name||value<=0){showToast('กรุณากรอกชื่อและมูลค่า','err');return;}
+  const ok=await sbSaveAsset({
+    name, 
+    date:document.getElementById('asset-date').value||null,
+    value,
+    depr:parseFloat(document.getElementById('asset-depr').value||0),
+    note:document.getElementById('asset-note').value
+  });
+  if(ok){closeMo('mo-asset');await loadAssets();showToast('✓ บันทึกแล้ว');}
+}
+async function deleteAsset(id){
+  if(!confirm('ลบสินทรัพย์นี้ใช่ไหม?'))return;
+  const ok=await sbDeleteAsset(id);
+  if(ok){await loadAssets();showToast('✓ ลบแล้ว');}
+}
+
+// Balance Sheet Functions
+const INITIAL_CAPITAL=7005000; // ทุนเริ่มต้น
+async function initBalanceSheet(){
+  const bsd=document.getElementById('bs-date');
+  if(bsd&&!bsd.value){
+    const now=new Date();
+    bsd.value=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+  }
+  await loadBalanceSheet();
+}
+async function loadBalanceSheet(){
+  showLoad('กำลังคำนวณงบดุล...');
+  try{
+    const dateStr=document.getElementById('bs-date')?.value;
+    if(!dateStr){showToast('กรุณาเลือกวันที่','err');return;}
+    const date=new Date(dateStr);
+    assets=await sbGetAssets();
+    
+    // คำนวณ Fixed Assets สุทธิ
+    let landValue=0, buildingValue=0, furnValue=0;
+    let buildingDepr=0, furnDepr=0;
+    for(const a of assets){
+      const purchaseDate=a.date?new Date(a.date):null;
+      const monthsOwned=purchaseDate?Math.floor((date-purchaseDate)/(1000*60*60*24*30.44)):0;
+      const deprMonthly=(a.value*a.depr)/100/12;
+      const deprAccum=Math.max(0, deprMonthly*monthsOwned);
+      
+      if(a.name.toLowerCase().includes('ที่ดิน')){
+        landValue+=a.value;
+      }else if(a.name.toLowerCase().includes('อาคาร')||a.name.toLowerCase().includes('ค่าเกี่ยวเนื่อง')){
+        buildingValue+=a.value;
+        buildingDepr+=deprAccum;
+      }else{
+        furnValue+=a.value;
+        furnDepr+=deprAccum;
+      }
+    }
+    
+    // ดึง Current Assets
+    const allTx=await sbGetTransactionsByDate('all');
+    const deposits=allTx.filter(t=>t.type==='capital-in'||t.type==='capital-out').reduce((s,t)=>s+(t.type==='capital-in'?t.amount:-t.amount),0);
+    const totalIncomes=allTx.filter(t=>INC_T.includes(t.type)).reduce((s,t)=>s+t.amount,0);
+    const totalExpenses=allTx.filter(t=>EXP_T.includes(t.type)).reduce((s,t)=>s+t.amount,0);
+    const totalAssets=allTx.filter(t=>ASSET_T.includes(t.type)).reduce((s,t)=>s+t.amount,0);
+    const cashBalance=deposits+totalIncomes-totalExpenses-totalAssets;
+    
+    // ดึง Liabilities & Equity
+    const tenants=await sbGetTenants();
+    const deposits_held=tenants.reduce((s,t)=>s+parseFloat(t.deposit||3500),0);
+    const advanceRent=allTx.filter(t=>t.type==='rent-in'&&t.desc?.toLowerCase().includes('ล่วงหน้า')).reduce((s,t)=>s+t.amount,0);
+    
+    // คำนวณ Accumulated Profit
+    const profit=totalIncomes-totalExpenses;
+    
+    // สร้างตาราง Balance Sheet
+    renderBalanceSheetTable({
+      landValue, buildingValue, furnValue, buildingDepr, furnDepr, cashBalance,
+      deposits_held, advanceRent, profit, date: dateStr
+    });
+  }finally{hideLoad();}
+}
+function renderBalanceSheetTable(data){
+  const table=document.getElementById('bs-table');if(!table)return;
+  const {landValue, buildingValue, furnValue, buildingDepr, furnDepr, cashBalance, deposits_held, advanceRent, profit, date}=data;
+  
+  const currentAssetsTotal=Math.max(0, cashBalance);
+  const buildingNet=Math.max(0, buildingValue-buildingDepr);
+  const furnNet=Math.max(0, furnValue-furnDepr);
+  const fixedAssetsTotal=landValue+buildingNet+furnNet;
+  const totalAssets=currentAssetsTotal+fixedAssetsTotal;
+  const totalLiabilities=deposits_held+advanceRent;
+  const totalEquity=INITIAL_CAPITAL+profit;
+  const totalLiabEquity=totalLiabilities+totalEquity;
+  
+  const fmt=(n)=>Math.round(n).toLocaleString('th-TH');
+  const html=`<tbody>
+    <tr style="background:#f5f5f5;font-weight:700"><td colspan="3" style="padding:10px 9px">สินทรัพย์ (Assets)</td></tr>
+    <tr style="background:#fafafa"><td style="padding-left:20px">สินทรัพย์หมุนเวียน</td><td colspan="2"></td></tr>
+    <tr><td style="padding-left:32px">เงินสดในธนาคาร</td><td colspan="2" class="r" style="color:var(--green);font-weight:600">${fmt(Math.max(0,cashBalance))}</td></tr>
+    <tr style="border-bottom:2px solid var(--border)"><td style="padding-left:20px;font-weight:600">รวมสินทรัพย์หมุนเวียน</td><td colspan="2" class="r" style="font-weight:600">${fmt(currentAssetsTotal)}</td></tr>
+    <tr style="background:#fafafa"><td style="padding-left:20px">สินทรัพย์ไม่หมุนเวียน</td><td colspan="2"></td></tr>
+    <tr><td style="padding-left:32px">ที่ดิน</td><td colspan="2" class="r">${fmt(landValue)}</td></tr>
+    <tr><td style="padding-left:32px">อาคาร</td><td style="text-align:right;padding-right:20px;color:var(--t3)">${fmt(buildingValue)}</td><td></td></tr>
+    <tr><td style="padding-left:32px;color:var(--t3)">ลบ: ค่าเสื่อมสะสม</td><td style="text-align:right;padding-right:20px;color:var(--t3)">(${fmt(buildingDepr)})</td><td></td></tr>
+    <tr><td style="padding-left:32px">= อาคาร (สุทธิ)</td><td colspan="2" class="r">${fmt(buildingNet)}</td></tr>
+    <tr><td style="padding-left:32px">เฟอร์นิเจอร์/อุปกรณ์</td><td style="text-align:right;padding-right:20px;color:var(--t3)">${fmt(furnValue)}</td><td></td></tr>
+    <tr><td style="padding-left:32px;color:var(--t3)">ลบ: ค่าเสื่อมสะสม</td><td style="text-align:right;padding-right:20px;color:var(--t3)">(${fmt(furnDepr)})</td><td></td></tr>
+    <tr style="border-bottom:2px solid var(--border)"><td style="padding-left:32px">= เฟอร์นิเจอร์/อุปกรณ์ (สุทธิ)</td><td colspan="2" class="r">${fmt(furnNet)}</td></tr>
+    <tr style="border-bottom:2px solid var(--border)"><td style="padding-left:20px;font-weight:600">รวมสินทรัพย์ไม่หมุนเวียน</td><td colspan="2" class="r" style="font-weight:600">${fmt(fixedAssetsTotal)}</td></tr>
+    <tr style="font-weight:700;background:var(--gl)"><td>รวมสินทรัพย์ทั้งสิ้น</td><td colspan="2" class="r" style="color:var(--green)">${fmt(totalAssets)}</td></tr>
+    <tr style="height:10px;background:transparent;border:none"><td colspan="3"></td></tr>
+    <tr style="background:#f5f5f5;font-weight:700"><td colspan="3" style="padding:10px 9px">หนี้สิน + ส่วนของเจ้าของ (Liab. + Equity)</td></tr>
+    <tr style="background:#fafafa"><td style="padding-left:20px">หนี้สั้นระยะ</td><td colspan="2"></td></tr>
+    <tr><td style="padding-left:32px">เงินประกันผู้เช่า</td><td colspan="2" class="r">${fmt(deposits_held)}</td></tr>
+    <tr style="border-bottom:2px solid var(--border)"><td style="padding-left:32px">ค่าเช่าล่วงหน้า</td><td colspan="2" class="r">${fmt(advanceRent)}</td></tr>
+    <tr style="border-bottom:2px solid var(--border)"><td style="padding-left:20px;font-weight:600">รวมหนี้สิน</td><td colspan="2" class="r" style="font-weight:600">${fmt(totalLiabilities)}</td></tr>
+    <tr style="background:#fafafa"><td style="padding-left:20px">ส่วนของเจ้าของ</td><td colspan="2"></td></tr>
+    <tr><td style="padding-left:32px">ทุนเริ่มต้น</td><td colspan="2" class="r">${fmt(INITIAL_CAPITAL)}</td></tr>
+    <tr style="border-bottom:2px solid var(--border)"><td style="padding-left:32px">กำไรสะสม</td><td colspan="2" class="r" style="color:${profit>=0?'var(--green)':'var(--red)'}">${fmt(profit)}</td></tr>
+    <tr style="border-bottom:2px solid var(--border)"><td style="padding-left:20px;font-weight:600">รวมส่วนของเจ้าของ</td><td colspan="2" class="r" style="font-weight:600">${fmt(totalEquity)}</td></tr>
+    <tr style="font-weight:700;background:var(--gl)"><td>รวมหนี้สิน + ส่วนของเจ้าของ</td><td colspan="2" class="r" style="color:${totalAssets===totalLiabEquity?'var(--green)':'var(--red)'}">${fmt(totalLiabEquity)}</td></tr>
+    <tr><td colspan="3" style="padding:12px 9px;font-size:11px;color:var(--t3)">✓ ตรวจสอบ: สินทรัพย์ = หนี้สิน + ส่วนของเจ้าของ ${Math.abs(totalAssets-totalLiabEquity)<1?'✓':'⚠'}</td></tr>
+  </tbody>`;
+  table.innerHTML=html;
+  const info=document.getElementById('bs-info');if(info)info.textContent='ณ วันที่ '+fmtDate(date);
+}
+function fmtDate(d){
+  if(!d)return'—';
+  const dt=new Date(d);
+  if(isNaN(dt.getTime()))return d;
+  return dt.getDate()+' '+MTH[dt.getMonth()]+' '+(dt.getFullYear()+543);
+}
 
 // DASHBOARD
 // REVENUE-EXPENSE CHART (รวม)
@@ -3706,6 +3954,8 @@ async function initApp(){
   const _ym=String(_yesterday.getMonth()+1).padStart(2,'0');
   const _yy=String(_yesterday.getFullYear()).slice(-2);
   document.getElementById('inv-mdate').value=_yd+'/'+_ym+'/'+_yy;
+  // Balance Sheet วันที่ = วันนี้
+  const bsd=document.getElementById('bs-date');if(bsd)bsd.value=now.getFullYear()+'-'+String(mo).padStart(2,'0')+'-'+String(d).padStart(2,'0');
   populateSels();
   await loadSettings();
   // load anthropic key from supabase settings

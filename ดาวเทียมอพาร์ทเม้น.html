@@ -307,27 +307,21 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
         </div>
       </div>
       <div class="card" style="margin-bottom:14px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-          <div style="font-size:15px;font-weight:700;color:var(--text)">รายรับย้อนหลัง 12 เดือน</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+          <div style="font-size:15px;font-weight:700;color:var(--text)">รายรับ-รายจ่าย ย้อนหลัง</div>
           <div style="display:flex;gap:5px;flex-wrap:wrap" id="rev-year-tabs"></div>
         </div>
-        <div style="position:relative;height:200px">
-          <canvas id="revenue-chart"></canvas>
-          <div id="rev-tooltip" style="display:none;position:absolute;background:#fff;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.12);border:1px solid var(--border);padding:9px 14px;pointer-events:none;transform:translate(-50%,-115%);text-align:center;min-width:110px;z-index:10">
-            <div id="rev-tip-month" style="font-size:11px;color:var(--t3);margin-bottom:2px;font-weight:500"></div>
-            <div id="rev-tip-val" style="font-size:17px;font-weight:800;color:var(--green)"></div>
-          </div>
+        <div style="display:flex;gap:14px;margin-bottom:12px;font-size:12px">
+          <div style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:50%;background:#1D9E75;display:inline-block"></span>รายรับ</div>
+          <div style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:50%;background:#E24B4A;display:inline-block"></span>รายจ่าย</div>
         </div>
-      </div>
-      <div class="card" style="margin-bottom:14px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-          <div style="font-size:15px;font-weight:700;color:var(--text)">รายจ่ายย้อนหลัง 12 เดือน</div>
-        </div>
-        <div style="position:relative;height:200px">
-          <canvas id="expense-chart"></canvas>
-          <div id="exp-tooltip" style="display:none;position:absolute;background:#fff;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.12);border:1px solid var(--border);padding:9px 14px;pointer-events:none;transform:translate(-50%,-115%);text-align:center;min-width:110px;z-index:10">
-            <div id="exp-tip-month" style="font-size:11px;color:var(--t3);margin-bottom:2px;font-weight:500"></div>
-            <div id="exp-tip-val" style="font-size:17px;font-weight:800;color:var(--red)"></div>
+        <div style="position:relative;height:220px">
+          <canvas id="rev-exp-chart"></canvas>
+          <div id="rev-exp-tooltip" style="display:none;position:absolute;background:#fff;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.12);border:1px solid var(--border);padding:9px 14px;pointer-events:none;transform:translate(-50%,-115%);text-align:center;min-width:140px;z-index:10">
+            <div id="rev-exp-tip-month" style="font-size:11px;color:var(--t3);margin-bottom:5px;font-weight:500"></div>
+            <div style="display:flex;justify-content:space-between;gap:12px;font-size:13px;margin-bottom:2px"><span style="color:var(--t3)">รายรับ</span><span id="rev-exp-tip-inc" style="font-weight:700;color:var(--green)"></span></div>
+            <div style="display:flex;justify-content:space-between;gap:12px;font-size:13px;margin-bottom:2px"><span style="color:var(--t3)">รายจ่าย</span><span id="rev-exp-tip-exp" style="font-weight:700;color:var(--red)"></span></div>
+            <div style="display:flex;justify-content:space-between;gap:12px;font-size:13px;border-top:1px solid var(--border);margin-top:3px;padding-top:3px"><span style="color:var(--t3)">กำไร</span><span id="rev-exp-tip-profit" style="font-weight:700"></span></div>
           </div>
         </div>
       </div>
@@ -1396,41 +1390,53 @@ function populateFinSel(){
 function setFinView(v){finView=v;buildFinTabs();renderFinance();}
 
 // DASHBOARD
-// REVENUE CHART
-let revChart = null;
+// REVENUE-EXPENSE CHART (รวม)
+let revExpChart = null;
 let revYear = String(new Date().getFullYear());
+const REV_START_YEAR = 2022;
 
 async function loadRevenueChart() {
   const now = new Date(), cy = now.getFullYear();
-  // build year tabs
+  const MTH_L = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  // build year tabs (ทั้งหมด + รายปี)
   const tabs = document.getElementById('rev-year-tabs');
   if (!tabs) return;
-  const years = []; for (let y = cy; y >= 2022; y--) years.push(String(y));
-  tabs.innerHTML = years.map(y => {
+  const years = []; for (let y = cy; y >= REV_START_YEAR; y--) years.push(String(y));
+  const actAll = revYear === 'all';
+  const allBtn = `<button onclick="selectRevYear('all')" style="font-size:11px;padding:0 12px;height:28px;border:0.5px solid ${actAll?'var(--green)':'var(--border)'};border-radius:999px;cursor:pointer;background:${actAll?'var(--green)':'#fff'};color:${actAll?'#fff':'var(--t2)'};white-space:nowrap;font-family:'Sarabun',sans-serif">ทั้งหมด</button>`;
+  tabs.innerHTML = allBtn + years.map(y => {
     const lbl = 'ปี ' + (parseInt(y) + 543);
     const act = revYear === y;
     return `<button onclick="selectRevYear('${y}')" style="font-size:11px;padding:0 12px;height:28px;border:0.5px solid ${act?'var(--green)':'var(--border)'};border-radius:999px;cursor:pointer;background:${act?'var(--green)':'#fff'};color:${act?'#fff':'var(--t2)'};white-space:nowrap;font-family:'Sarabun',sans-serif">${lbl}</button>`;
   }).join('');
-  // load transactions for selected year
-  const yr = revYear;
-  const mxM = parseInt(yr) === cy ? now.getMonth() + 1 : 12;
+
+  // สร้างรายชื่อเดือนที่ต้องดึงข้อมูล
+  let monthKeys = [];
+  if (revYear === 'all') {
+    for (let y = REV_START_YEAR; y <= cy; y++) {
+      const maxM = y === cy ? now.getMonth() + 1 : 12;
+      for (let m = 1; m <= maxM; m++) {
+        monthKeys.push({y, m, label: MTH_L[m-1] + String(y+543).slice(-2)});
+      }
+    }
+  } else {
+    const yr = parseInt(revYear);
+    const maxM = yr === cy ? now.getMonth() + 1 : 12;
+    for (let m = 1; m <= maxM; m++) {
+      monthKeys.push({y: yr, m, label: MTH_L[m-1]});
+    }
+  }
+
   const results = await Promise.all(
-    Array.from({length: 12}, (_, i) => {
-      const m = i + 1;
-      if (m > mxM) return Promise.resolve([]);
-      return api({action:'getTransactions', month: yr + '_' + String(m).padStart(2,'0')});
-    })
+    monthKeys.map(mk => api({action:'getTransactions', month: mk.y + '_' + String(mk.m).padStart(2,'0')}))
   );
-  const monthly = results.map(txns =>
-    (txns||[]).filter(t => INC_T.includes(t.type)).reduce((s,t) => s + parseFloat(t.amount||0), 0)
-  );
-  const monthlyExp = results.map(txns =>
-    (txns||[]).filter(t => EXP_T.includes(t.type)).reduce((s,t) => s + parseFloat(t.amount||0), 0)
-  );
-  const monthlyNet = monthly.map((v,i) => v - monthlyExp[i]);
-  renderRevenueChart(monthly, mxM);
-  renderExpenseChart(monthlyExp, mxM);
-  renderCashflowChart(monthlyNet, mxM);
+  const monthlyInc = results.map(txns => (txns||[]).filter(t => INC_T.includes(t.type)).reduce((s,t) => s + parseFloat(t.amount||0), 0));
+  const monthlyExp = results.map(txns => (txns||[]).filter(t => EXP_T.includes(t.type)).reduce((s,t) => s + parseFloat(t.amount||0), 0));
+  const monthlyNet = monthlyInc.map((v,i) => v - monthlyExp[i]);
+  const labels = monthKeys.map(mk => mk.label);
+
+  renderRevenueExpenseChart(monthlyInc, monthlyExp, labels);
+  renderCashflowChart(monthlyNet, labels);
 }
 
 function selectRevYear(y) {
@@ -1438,123 +1444,57 @@ function selectRevYear(y) {
   loadRevenueChart();
 }
 
-function renderRevenueChart(monthly, mxM) {
-  const canvas = document.getElementById('revenue-chart');
+function renderRevenueExpenseChart(monthlyInc, monthlyExp, labels) {
+  const canvas = document.getElementById('rev-exp-chart');
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
-  const MTH_L = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 
-  if (revChart) { revChart.destroy(); revChart = null; }
+  if (revExpChart) { revExpChart.destroy(); revExpChart = null; }
 
-  const grad = ctx.createLinearGradient(0, 0, 0, 200);
-  grad.addColorStop(0, 'rgba(29,158,117,0.18)');
-  grad.addColorStop(1, 'rgba(29,158,117,0.01)');
+  const gradInc = ctx.createLinearGradient(0, 0, 0, 220);
+  gradInc.addColorStop(0, 'rgba(29,158,117,0.15)');
+  gradInc.addColorStop(1, 'rgba(29,158,117,0.01)');
 
-  const data = monthly.map((v, i) => i < mxM ? v : null);
-
-  revChart = new Chart(ctx, {
+  revExpChart = new Chart(ctx, {
     type: 'line',
     data: {
-      labels: MTH_L,
-      datasets: [{
-        data,
-        borderColor: '#1D9E75',
-        backgroundColor: grad,
-        borderWidth: 2.5,
-        fill: true,
-        tension: 0.4,
-        pointRadius: data.map((v,i) => i < mxM ? 4 : 0),
-        pointBackgroundColor: '#1D9E75',
-        pointBorderColor: '#fff',
-        pointBorderWidth: 2,
-        pointHoverRadius: 6,
-        pointHoverBackgroundColor: '#1D9E75',
-        pointHoverBorderColor: '#fff',
-        pointHoverBorderWidth: 2.5,
-        spanGaps: false,
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          enabled: false,
-          external: (context) => {
-            const tip = document.getElementById('rev-tooltip');
-            const tipM = document.getElementById('rev-tip-month');
-            const tipV = document.getElementById('rev-tip-val');
-            if (!tip) return;
-            if (context.tooltip.opacity === 0) { tip.style.display = 'none'; return; }
-            const dp = context.tooltip.dataPoints?.[0];
-            if (!dp || dp.raw === null) { tip.style.display = 'none'; return; }
-            tipM.textContent = dp.label + ' ' + (parseInt(revYear)+543);
-            tipV.textContent = '฿' + Math.round(dp.raw).toLocaleString('th-TH');
-            tip.style.display = 'block';
-            tip.style.left = context.tooltip.caretX + 'px';
-            tip.style.top = context.tooltip.caretY + 'px';
-          }
-        }
-      },
-      scales: {
-        x: {
-          grid: { display: false },
-          border: { display: false },
-          ticks: { font: { family: "'Sarabun', sans-serif", size: 11 }, color: '#9CA3AF' }
+      labels,
+      datasets: [
+        {
+          label: 'รายรับ',
+          data: monthlyInc,
+          borderColor: '#1D9E75',
+          backgroundColor: gradInc,
+          borderWidth: 2.5,
+          fill: true,
+          tension: 0.4,
+          pointRadius: monthlyInc.length > 24 ? 0 : 4,
+          pointBackgroundColor: '#1D9E75',
+          pointBorderColor: '#fff',
+          pointBorderWidth: 2,
+          pointHoverRadius: 6,
+          pointHoverBackgroundColor: '#1D9E75',
+          pointHoverBorderColor: '#fff',
+          pointHoverBorderWidth: 2.5,
         },
-        y: {
-          grid: { color: '#F5F5F5' },
-          border: { display: false },
-          ticks: {
-            font: { family: "'Sarabun', sans-serif", size: 11 },
-            color: '#9CA3AF',
-            callback: v => v === 0 ? '0' : (v/1000)+'K',
-            maxTicksLimit: 6,
-          }
+        {
+          label: 'รายจ่าย',
+          data: monthlyExp,
+          borderColor: '#E24B4A',
+          backgroundColor: 'rgba(226,75,74,0.03)',
+          borderWidth: 2.5,
+          fill: false,
+          tension: 0.4,
+          pointRadius: monthlyExp.length > 24 ? 0 : 4,
+          pointBackgroundColor: '#E24B4A',
+          pointBorderColor: '#fff',
+          pointBorderWidth: 2,
+          pointHoverRadius: 6,
+          pointHoverBackgroundColor: '#E24B4A',
+          pointHoverBorderColor: '#fff',
+          pointHoverBorderWidth: 2.5,
         }
-      },
-      interaction: { mode: 'index', intersect: false },
-    }
-  });
-}
-
-let expChart = null;
-function renderExpenseChart(monthly, mxM) {
-  const canvas = document.getElementById('expense-chart');
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  const MTH_L = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
-
-  if (expChart) { expChart.destroy(); expChart = null; }
-
-  const grad = ctx.createLinearGradient(0, 0, 0, 200);
-  grad.addColorStop(0, 'rgba(226,75,74,0.18)');
-  grad.addColorStop(1, 'rgba(226,75,74,0.01)');
-
-  const data = monthly.map((v, i) => i < mxM ? v : null);
-
-  expChart = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: MTH_L,
-      datasets: [{
-        data,
-        borderColor: '#E24B4A',
-        backgroundColor: grad,
-        borderWidth: 2.5,
-        fill: true,
-        tension: 0.4,
-        pointRadius: data.map((v,i) => i < mxM ? 4 : 0),
-        pointBackgroundColor: '#E24B4A',
-        pointBorderColor: '#fff',
-        pointBorderWidth: 2,
-        pointHoverRadius: 6,
-        pointHoverBackgroundColor: '#E24B4A',
-        pointHoverBorderColor: '#fff',
-        pointHoverBorderWidth: 2.5,
-        spanGaps: false,
-      }]
+      ]
     },
     options: {
       responsive: true,
@@ -1564,15 +1504,24 @@ function renderExpenseChart(monthly, mxM) {
         tooltip: {
           enabled: false,
           external: (context) => {
-            const tip = document.getElementById('exp-tooltip');
-            const tipM = document.getElementById('exp-tip-month');
-            const tipV = document.getElementById('exp-tip-val');
+            const tip = document.getElementById('rev-exp-tooltip');
+            const tipM = document.getElementById('rev-exp-tip-month');
+            const tipInc = document.getElementById('rev-exp-tip-inc');
+            const tipExp = document.getElementById('rev-exp-tip-exp');
+            const tipProfit = document.getElementById('rev-exp-tip-profit');
             if (!tip) return;
             if (context.tooltip.opacity === 0) { tip.style.display = 'none'; return; }
-            const dp = context.tooltip.dataPoints?.[0];
-            if (!dp || dp.raw === null) { tip.style.display = 'none'; return; }
-            tipM.textContent = dp.label + ' ' + (parseInt(revYear)+543);
-            tipV.textContent = '฿' + Math.round(dp.raw).toLocaleString('th-TH');
+            const dps = context.tooltip.dataPoints;
+            if (!dps || !dps.length) { tip.style.display = 'none'; return; }
+            const idx = dps[0].dataIndex;
+            const incV = monthlyInc[idx] ?? 0, expV = monthlyExp[idx] ?? 0;
+            const lbl = labels[idx];
+            tipM.textContent = revYear === 'all' ? lbl : (lbl + ' ' + (parseInt(revYear)+543));
+            tipInc.textContent = '฿' + Math.round(incV).toLocaleString('th-TH');
+            tipExp.textContent = '฿' + Math.round(expV).toLocaleString('th-TH');
+            const profit = incV - expV;
+            tipProfit.textContent = (profit >= 0 ? '+' : '-') + '฿' + Math.round(Math.abs(profit)).toLocaleString('th-TH');
+            tipProfit.style.color = profit >= 0 ? 'var(--green)' : 'var(--red)';
             tip.style.display = 'block';
             tip.style.left = context.tooltip.caretX + 'px';
             tip.style.top = context.tooltip.caretY + 'px';
@@ -1583,7 +1532,7 @@ function renderExpenseChart(monthly, mxM) {
         x: {
           grid: { display: false },
           border: { display: false },
-          ticks: { font: { family: "'Sarabun', sans-serif", size: 11 }, color: '#9CA3AF' }
+          ticks: { font: { family: "'Sarabun', sans-serif", size: 11 }, color: '#9CA3AF', autoSkip: true, maxTicksLimit: 12, maxRotation: 45 }
         },
         y: {
           grid: { color: '#F5F5F5' },
@@ -1602,20 +1551,19 @@ function renderExpenseChart(monthly, mxM) {
 }
 
 let cf12Chart = null;
-function renderCashflowChart(monthly, mxM) {
+function renderCashflowChart(monthly, labels) {
   const canvas = document.getElementById('cf12-chart');
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
-  const MTH_L = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 
   if (cf12Chart) { cf12Chart.destroy(); cf12Chart = null; }
 
-  const data = monthly.map((v, i) => i < mxM ? v : null);
+  const data = monthly;
 
   cf12Chart = new Chart(ctx, {
     type: 'bar',
     data: {
-      labels: MTH_L,
+      labels,
       datasets: [{
         data,
         backgroundColor: data.map(v => v === null ? 'transparent' : (v >= 0 ? '#1D9E75' : '#E24B4A')),
@@ -1638,7 +1586,7 @@ function renderCashflowChart(monthly, mxM) {
             if (context.tooltip.opacity === 0) { tip.style.display = 'none'; return; }
             const dp = context.tooltip.dataPoints?.[0];
             if (!dp || dp.raw === null) { tip.style.display = 'none'; return; }
-            tipM.textContent = dp.label + ' ' + (parseInt(revYear)+543);
+            tipM.textContent = revYear === 'all' ? dp.label : (dp.label + ' ' + (parseInt(revYear)+543));
             tipV.textContent = (dp.raw >= 0 ? '+' : '-') + '฿' + Math.round(Math.abs(dp.raw)).toLocaleString('th-TH');
             tipV.style.color = dp.raw >= 0 ? 'var(--green)' : 'var(--red)';
             tip.style.display = 'block';
@@ -1651,7 +1599,7 @@ function renderCashflowChart(monthly, mxM) {
         x: {
           grid: { display: false },
           border: { display: false },
-          ticks: { font: { family: "'Sarabun', sans-serif", size: 11 }, color: '#9CA3AF' }
+          ticks: { font: { family: "'Sarabun', sans-serif", size: 11 }, color: '#9CA3AF', autoSkip: true, maxTicksLimit: 12, maxRotation: 45 }
         },
         y: {
           grid: { color: '#F5F5F5' },

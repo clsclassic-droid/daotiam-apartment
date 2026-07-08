@@ -125,10 +125,11 @@ input,select,textarea{font-family:'Sarabun',sans-serif}
 .mrc-dates{display:grid;grid-template-columns:1fr 1fr;gap:5px;background:#f8f9fa;border-radius:6px;padding:7px;margin-bottom:8px;min-width:0}
 .mrc-dates>div{min-width:0}
 .mrc-dl{font-size:9px;font-weight:600;margin-bottom:2px}
-.mrc-dv{font-size:11px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border:1px solid var(--border);border-radius:4px;padding:3px 5px;background:#fff;cursor:pointer}
-.mrc-dv:active{background:#f0fdf6;border-color:var(--green)}
+.dt-wrap{position:relative;min-width:0}
+.mrc-dv{font-size:11px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border:1px solid var(--border);border-radius:4px;padding:3px 5px;background:#fff}
 .mrc.editing .mrc-dv{border-color:var(--green);box-shadow:0 0 0 1px rgba(29,158,117,.15)}
-.dt-hidden{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.mrc-di.dt-overlay{position:absolute;inset:0;width:100%;height:100%;opacity:0;pointer-events:none;border:none;background:transparent;font-size:11px;padding:0}
+.mrc.editing .mrc-di.dt-overlay{pointer-events:auto;cursor:pointer}
 .mrc-dl.prev{color:#854F0B}.mrc-dl.curr{color:var(--gd)}
 .mrc-di{width:100%;min-width:0;font-size:11px;padding:2px 1px;border:1px solid var(--border);border-radius:4px;background:#fff;color:var(--text)}
 .mrc-in{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:5px;min-width:0}
@@ -1756,8 +1757,8 @@ function renderMeterGrid(){
       </div>
       <div class="mrc-name" style="margin-bottom:9px">${t.name||'—'}</div>
       <div class="mrc-dates">
-        <div><div class="mrc-dl prev">ก่อนหน้า</div><div class="mrc-dv" id="pdv-${t.room}" onclick="openMeterDatePicker(${t.room},'pd')">${thShort(m.prevDate)}</div><input type="date" id="pd-${t.room}" value="${m.prevDate||''}" class="mrc-di dt-hidden" onchange="onMeterDateChange(${t.room},'pd')" disabled></div>
-        <div><div class="mrc-dl curr">ล่าสุด</div><div class="mrc-dv" id="cdv-${t.room}" onclick="openMeterDatePicker(${t.room},'cd')">${thShort(m.currDate||today)}</div><input type="date" id="cd-${t.room}" value="${m.currDate||today}" class="mrc-di dt-hidden" onchange="onMeterDateChange(${t.room},'cd')" disabled></div>
+        <div class="dt-wrap"><div class="mrc-dl prev">ก่อนหน้า</div><div class="mrc-dv" id="pdv-${t.room}">${thShort(m.prevDate)}</div><input type="date" id="pd-${t.room}" value="${m.prevDate||''}" class="mrc-di dt-overlay" onchange="onMeterDateChange(${t.room},'pd')" disabled></div>
+        <div class="dt-wrap"><div class="mrc-dl curr">ล่าสุด</div><div class="mrc-dv" id="cdv-${t.room}">${thShort(m.currDate||today)}</div><input type="date" id="cd-${t.room}" value="${m.currDate||today}" class="mrc-di dt-overlay" onchange="onMeterDateChange(${t.room},'cd')" disabled></div>
       </div>
       <div class="mrc-in">
         <div class="mib e"><label>⚡ ไฟ เก่า</label><input type="number" id="ep-${t.room}" value="${m.elecPrev||''}" placeholder="0" oninput="calcMC(${t.room})" disabled></div>
@@ -1796,14 +1797,6 @@ function toggleMeterEdit(room){
   }
 }
 // แตะข้อความวันที่ → เปิดปฏิทินของเครื่อง (เฉพาะตอนอยู่ในโหมดแก้ไขเท่านั้น)
-function openMeterDatePicker(room,kind){
-  const card=document.getElementById('mrc-'+room);
-  if(!card||!card.classList.contains('editing'))return; // ยังไม่ได้กด "แก้ไข" ไม่ต้องเปิดปฏิทิน
-  const input=document.getElementById(kind+'-'+room);
-  if(!input)return;
-  if(input.showPicker){ try{ input.showPicker(); }catch(e){ input.focus(); } }
-  else { input.focus(); input.click(); }
-}
 // เมื่อเลือกวันที่ใหม่จากปฏิทินของเครื่องแล้ว อัปเดตข้อความให้ตรงกัน
 function onMeterDateChange(room,kind){
   const input=document.getElementById(kind+'-'+room);

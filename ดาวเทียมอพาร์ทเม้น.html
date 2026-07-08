@@ -122,11 +122,12 @@ input,select,textarea{font-family:'Sarabun',sans-serif}
 .mrc{background:#fff;border-radius:var(--r);border:1px solid var(--border);padding:12px 14px;min-width:0}
 .mrc-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px}
 .mrc-num{font-size:13px;font-weight:700;white-space:nowrap;display:block}.mrc-name{font-size:11px;color:var(--t2);font-weight:500;display:block;margin-top:3px}
-.mrc-dates{display:grid;grid-template-columns:1fr;gap:5px;background:#f8f9fa;border-radius:6px;padding:7px;margin-bottom:8px;min-width:0}
-.mrc-dates>div{min-width:0;display:flex;align-items:center;justify-content:space-between;gap:8px}
-.mrc-dl{font-size:9px;font-weight:600;margin-bottom:0;white-space:nowrap;flex-shrink:0}
+.mrc-dates{display:grid;grid-template-columns:1fr 1fr;gap:5px;background:#f8f9fa;border-radius:6px;padding:7px;margin-bottom:8px;min-width:0}
+.mrc-dates>div{min-width:0}
+.mrc-dl{font-size:9px;font-weight:600;margin-bottom:2px}
+.mrc-dv{font-size:11px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mrc-dl.prev{color:#854F0B}.mrc-dl.curr{color:var(--gd)}
-.mrc-di{flex:1;min-width:0;font-size:11px;padding:3px 5px;border:1px solid var(--border);border-radius:4px;background:#fff;color:var(--text)}
+.mrc-di{width:100%;min-width:0;font-size:11px;padding:3px 5px;border:1px solid var(--border);border-radius:4px;background:#fff;color:var(--text)}
 .mrc-in{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:5px;min-width:0}
 .mrc-in>div{min-width:0}
 .mib{border-radius:6px;padding:6px 8px;min-width:0}
@@ -919,6 +920,12 @@ const SUPABASE_URL = 'https://uokxrijfhezojnasnzps.supabase.co';
 const SUPABASE_KEY = 'sb_publishable__zegOiikfSqkWUTPv_lsXQ_Q02YPz-K';
 let RENT=3500, ELEC=6.5, WATER=22, DAY_RATE=116;
 const MTH=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+function thShort(v){
+  if(!v)return'—';
+  const d=new Date(v.includes('T')?v:v+'T00:00:00');
+  if(isNaN(d.getTime()))return v;
+  return d.getDate()+' '+MTH[d.getMonth()]+' '+(d.getFullYear()+543);
+}
 const INC_T=['rent-in','elec-in','water-in','washer-in','other-in'];
 const EXP_T=['elec-out','water-out','internet-out','repair-out','tax-out','other-out','rent-out','deposit-out'];
 const CAP_T=['capital-in','capital-out'];
@@ -1746,8 +1753,8 @@ function renderMeterGrid(){
       </div>
       <div class="mrc-name" style="margin-bottom:9px">${t.name||'—'}</div>
       <div class="mrc-dates">
-        <div><div class="mrc-dl prev">ก่อนหน้า</div><input type="date" id="pd-${t.room}" value="${m.prevDate||''}" class="mrc-di" oninput="calcMC(${t.room})" disabled></div>
-        <div><div class="mrc-dl curr">ล่าสุด</div><input type="date" id="cd-${t.room}" value="${m.currDate||today}" class="mrc-di" oninput="calcMC(${t.room})" disabled></div>
+        <div><div class="mrc-dl prev">ก่อนหน้า</div><div class="mrc-dv" id="pdv-${t.room}">${thShort(m.prevDate)}</div><input type="date" id="pd-${t.room}" value="${m.prevDate||''}" class="mrc-di" oninput="calcMC(${t.room})" style="display:none"></div>
+        <div><div class="mrc-dl curr">ล่าสุด</div><div class="mrc-dv" id="cdv-${t.room}">${thShort(m.currDate||today)}</div><input type="date" id="cd-${t.room}" value="${m.currDate||today}" class="mrc-di" oninput="calcMC(${t.room})" style="display:none"></div>
       </div>
       <div class="mrc-in">
         <div class="mib e"><label>⚡ ไฟ เก่า</label><input type="number" id="ep-${t.room}" value="${m.elecPrev||''}" placeholder="0" oninput="calcMC(${t.room})" disabled></div>
@@ -1764,9 +1771,17 @@ function toggleMeterEdit(room){
   const card=document.getElementById('mrc-'+room);
   const btn=document.getElementById('mrc-edit-'+room);
   const inputs=card.querySelectorAll('input');
+  const pdInput=document.getElementById('pd-'+room), cdInput=document.getElementById('cd-'+room);
+  const pdv=document.getElementById('pdv-'+room), cdv=document.getElementById('cdv-'+room);
   const isEditing=card.classList.contains('editing');
   if(isEditing){
-    // ปิด editing mode
+    // ปิด editing mode — อัปเดตข้อความวันที่แบบไทย แล้วสลับกลับไปโชว์ span
+    if(pdv&&pdInput)pdv.textContent=thShort(pdInput.value);
+    if(cdv&&cdInput)cdv.textContent=thShort(cdInput.value);
+    if(pdInput)pdInput.style.display='none';
+    if(cdInput)cdInput.style.display='none';
+    if(pdv)pdv.style.display='block';
+    if(cdv)cdv.style.display='block';
     card.classList.remove('editing');
     card.style.borderColor='';
     card.style.boxShadow='';
@@ -1774,7 +1789,11 @@ function toggleMeterEdit(room){
     btn.style.cssText='font-size:10px;padding:3px 7px;color:var(--t2);flex-shrink:0';
     inputs.forEach(i=>i.disabled=true);
   } else {
-    // เปิด editing mode
+    // เปิด editing mode — สลับไปโชว์ input date จริงแทน span
+    if(pdv)pdv.style.display='none';
+    if(cdv)cdv.style.display='none';
+    if(pdInput)pdInput.style.display='block';
+    if(cdInput)cdInput.style.display='block';
     card.classList.add('editing');
     card.style.borderColor='var(--green)';
     card.style.boxShadow='0 0 0 2px rgba(29,158,117,.15)';

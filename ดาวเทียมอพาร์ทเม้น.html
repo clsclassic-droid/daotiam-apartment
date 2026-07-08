@@ -745,7 +745,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
     <div class="fg"><label>บัตรประชาชน</label><input type="text" id="t-idcard" class="fc"></div>
     <div class="fg"><label>วันเข้าพัก</label><input type="text" id="t-checkin" class="fc" placeholder="15/01/68"></div>
     <div class="fg"><label>สัญญาถึง</label><input type="text" id="t-contract" class="fc" placeholder="15/05/68"></div>
-    <div class="fg"><label>ค่าประกัน (฿)</label><input type="number" id="t-deposit" class="fc" value="3500"></div>
+    <div class="fg"><label>ค่าประกัน</label><input type="number" id="t-deposit" class="fc" value="3500"></div>
     <div class="fg"><label>สถานะ</label><select id="t-status" class="fc"><option value="active">มีผู้เช่า</option><option value="overdue">ค้างชำระ</option></select></div>
   </div>
   <div class="fg"><label>LINE User ID</label><input type="text" id="t-line" class="fc" placeholder="U xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"></div>
@@ -786,7 +786,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
     </select></div>
     <div class="fg"><label>รายการ</label><input type="text" id="tx-desc" class="fc"></div>
     <div class="fg"><label>ห้อง (ถ้ามี)</label><input type="text" id="tx-room" class="fc"></div>
-    <div class="fg"><label>จำนวน (฿)</label><input type="number" id="tx-amount" class="fc" min="0"></div>
+    <div class="fg"><label>จำนวน</label><input type="number" id="tx-amount" class="fc" min="0"></div>
     <div class="fg"><label>ช่องทาง</label><select id="tx-channel" class="fc"><option value="bank">โอนธนาคาร</option><option value="cash">เงินสด</option></select></div>
   </div>
   <div class="fg"><label>หมายเหตุ</label><input type="text" id="tx-note" class="fc"></div>
@@ -816,8 +816,8 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
     </tbody>
   </table>
   <div style="background:#f8f9fa;border-radius:7px;padding:9px 11px;margin-bottom:12px">
-    <div style="font-size:11px;color:var(--t2);margin-bottom:5px;font-weight:500">จำนวนที่ชำระ (฿)</div>
-    <div style="display:flex;align-items:center;gap:7px"><span style="color:var(--t3)">฿</span><input type="text" id="pay-amount" inputmode="decimal" style="flex:1;font-size:18px;font-weight:600;padding:6px 9px;border:1px solid var(--border);border-radius:7px;text-align:right;background:#fff;color:var(--text)" oninput="checkPayDiff()"></div>
+    <div style="font-size:11px;color:var(--t2);margin-bottom:5px;font-weight:500">จำนวนที่ชำระ ()</div>
+    <div style="display:flex;align-items:center;gap:7px"><input type="text" id="pay-amount" inputmode="decimal" style="flex:1;font-size:18px;font-weight:600;padding:6px 9px;border:1px solid var(--border);border-radius:7px;text-align:right;background:#fff;color:var(--text)" oninput="checkPayDiff()"></div>
     <div id="pay-diff" style="font-size:11px;min-height:16px;margin-top:4px;text-align:right"></div>
   </div>
   <div style="font-size:11px;font-weight:500;color:var(--t2);margin-bottom:7px">ช่องทางการชำระ</div>
@@ -841,8 +841,8 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
     <div class="fg"><label>วันที่ย้ายออก</label><input type="date" id="co-date" class="fc" oninput="calcCo()"></div>
     <div class="fg"><label>เหตุผล</label><select id="co-reason" class="fc" onchange="toggleCoReason(this)"><option>หมดสัญญา</option><option>ย้ายที่ทำงาน</option><option>ออกก่อนกำหนด</option><option>ซื้อบ้านใหม่</option><option>ไม่จ่ายค่าเช่า</option><option>รบกวนผู้เช่าอื่น</option><option>อื่นๆ</option></select>
     <input type="text" id="co-reason-other" class="fc" placeholder="ระบุเหตุผล..." style="margin-top:6px;display:none"></div>
-    <div class="fg"><label>คืนค่าเช่าล่วงหน้า (฿)</label><input type="number" id="co-clean" value="3500" oninput="calcCo()" class="fc"></div>
-    <div class="fg"><label>คืนเงินประกัน (฿)</label><input type="number" id="co-dep-ret" class="fc" oninput="calcCo()"></div>
+    <div class="fg"><label>คืนค่าเช่าล่วงหน้า</label><input type="number" id="co-clean" value="3500" oninput="calcCo()" class="fc"></div>
+    <div class="fg"><label>คืนเงินประกัน</label><input type="number" id="co-dep-ret" class="fc" oninput="calcCo()"></div>
   </div>
   <div style="font-size:11px;color:var(--t3);margin-bottom:8px">มิเตอร์ก่อนหน้า: ไฟ <span id="co-elec-prev" style="color:#854F0B;font-weight:500"></span> · น้ำ <span id="co-water-prev" style="color:#0C447C;font-weight:500"></span></div>
   <div id="co-summary" style="background:#f8f9fa;border-radius:7px;padding:9px 11px;margin-bottom:9px;font-size:12px"></div>
@@ -870,7 +870,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
     <div class="fg"><label>วันออก</label><input type="text" id="h-checkout" class="fc"></div>
     <div class="fg"><label>พักนาน (เดือน)</label><input type="number" id="h-months" class="fc"></div>
     <div class="fg"><label>เหตุผลออก</label><input type="text" id="h-reason" class="fc"></div>
-    <div class="fg"><label>คืนประกัน (฿)</label><input type="number" id="h-dep-ret" class="fc" value="3500"></div>
+    <div class="fg"><label>คืนประกัน</label><input type="number" id="h-dep-ret" class="fc" value="3500"></div>
     <div class="fg"><label>สถานะ</label><select id="h-status" class="fc"><option value="good">ออกปกติ</option><option value="blacklist">แบล็คลิสต์</option></select></div>
   </div>
   <div class="fg"><label>หมายเหตุ</label><input type="text" id="h-note" class="fc"></div>
@@ -882,7 +882,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
   <div class="fr2">
     <div class="fg"><label>วันที่</label><input type="date" id="mnt-date" class="fc"></div>
     <div class="fg"><label>ประเภทงาน</label><select id="mnt-type" class="fc"><option>ล้างแอร์</option><option>ซ่อมไฟฟ้า</option><option>ซ่อมประปา</option><option>ซ่อมแอร์</option><option>ทาสี</option><option>อื่นๆ</option></select></div>
-    <div class="fg"><label>ค่าใช้จ่าย (฿)</label><input type="number" id="mnt-cost" class="fc" placeholder="0"></div>
+    <div class="fg"><label>ค่าใช้จ่าย</label><input type="number" id="mnt-cost" class="fc" placeholder="0"></div>
     <div class="fg"><label>หมายเหตุ</label><input type="text" id="mnt-note" class="fc"></div>
   </div>
   <div class="fg"><label>ห้องที่ทำ (คลิกเลือก)</label><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-top:5px" id="mnt-rooms"></div></div>
@@ -1536,10 +1536,10 @@ function renderRevenueExpenseChart(monthlyInc, monthlyExp, labels) {
             const incV = monthlyInc[idx] ?? 0, expV = monthlyExp[idx] ?? 0;
             const lbl = labels[idx];
             tipM.textContent = revYear === 'all' ? lbl : (lbl + ' ' + (parseInt(revYear)+543));
-            tipInc.textContent = '฿' + Math.round(incV).toLocaleString('th-TH');
-            tipExp.textContent = '฿' + Math.round(expV).toLocaleString('th-TH');
+            tipInc.textContent = '' + Math.round(incV).toLocaleString('th-TH');
+            tipExp.textContent = '' + Math.round(expV).toLocaleString('th-TH');
             const profit = incV - expV;
-            tipProfit.textContent = (profit >= 0 ? '+' : '-') + '฿' + Math.round(Math.abs(profit)).toLocaleString('th-TH');
+            tipProfit.textContent = (profit >= 0 ? '+' : '-') + '' + Math.round(Math.abs(profit)).toLocaleString('th-TH');
             tipProfit.style.color = profit >= 0 ? 'var(--green)' : 'var(--red)';
             tip.style.display = 'block';
             tip.style.left = context.tooltip.caretX + 'px';
@@ -1606,7 +1606,7 @@ function renderCashflowChart(monthly, labels) {
             const dp = context.tooltip.dataPoints?.[0];
             if (!dp || dp.raw === null) { tip.style.display = 'none'; return; }
             tipM.textContent = revYear === 'all' ? dp.label : (dp.label + ' ' + (parseInt(revYear)+543));
-            tipV.textContent = (dp.raw >= 0 ? '+' : '-') + '฿' + Math.round(Math.abs(dp.raw)).toLocaleString('th-TH');
+            tipV.textContent = (dp.raw >= 0 ? '+' : '-') + '' + Math.round(Math.abs(dp.raw)).toLocaleString('th-TH');
             tipV.style.color = dp.raw >= 0 ? 'var(--green)' : 'var(--red)';
             tip.style.display = 'block';
             tip.style.left = context.tooltip.caretX + 'px';
@@ -1671,12 +1671,12 @@ function renderDash(){
   };
   document.getElementById('dash-stats').innerHTML=`
     <div class="stat" style="padding:11px 13px;position:relative"><div style="position:absolute;top:11px;right:12px;width:29px;height:29px;border-radius:7px;background:var(--gl);display:flex;align-items:center;justify-content:center;color:var(--green);font-size:15.5px"><i class="ti ti-building"></i></div><div class="stat-l">อัตราเข้าพัก</div><div class="stat-v" style="color:var(--green)">${Math.round(occ/21*100)}%</div><div class="stat-s" style="margin-bottom:7px">${occ} / 21 ห้อง${vac>0?' · ว่าง '+vac:''}</div><div style="height:4px;border-radius:2px;background:#E5E7EB;overflow:hidden"><div style="height:100%;width:${Math.round(occ/21*100)}%;border-radius:2px;background:var(--green)"></div></div></div>
-    <div class="stat"><div class="stat-l">ค้างชำระ</div><div class="stat-v" style="color:var(--red)">${ov}</div><div class="stat-s">${ov>0?'฿'+fmtN(window._dashOverdueAmt||0):'—'}</div></div>
-    <div class="stat"><div class="stat-l">รายรับ/เดือน${momBadge(momInc,false)}</div><div class="stat-v" style="color:var(--green)">฿${fmtN(window._dashIncome||0)}</div><div class="stat-s">เฉลี่ย ${window._dashIncomeMonths||0} เดือน</div></div>
-    <div class="stat"><div class="stat-l">รายจ่าย/เดือน${momBadge(momExp,true)}</div><div class="stat-v" style="color:var(--red)">฿${fmtN(window._dashExpense||0)}</div><div class="stat-s">เฉลี่ย ${window._dashExpenseMonths||0} เดือน</div></div>
-    <div class="stat"><div class="stat-l">กำไร/เดือน</div><div class="stat-v" style="color:var(--gd)">฿${fmtN(Math.abs(_profit))}</div><div class="stat-s">เฉลี่ย ${window._dashIncomeMonths||0} เดือน</div></div>
-    <div class="stat"><div class="stat-l">เงินสดคงเหลือ</div><div class="stat-v" style="color:${(window._dashCashBalance||0)>=0?'var(--gd)':'var(--red)'}">฿${fmtN(window._dashCashBalance||0)}</div><div class="stat-s">สะสมทั้งหมด</div></div>
-    <div class="stat"><div class="stat-l">เงินประกันรวม</div><div class="stat-v" style="color:var(--blue)">฿${fmtN(occ*3500)}</div><div class="stat-s">ต้องคืนผู้เช่า (หนี้สิน)</div></div>`;
+    <div class="stat"><div class="stat-l">ค้างชำระ</div><div class="stat-v" style="color:var(--red)">${ov}</div><div class="stat-s">${ov>0?''+fmtN(window._dashOverdueAmt||0):'—'}</div></div>
+    <div class="stat"><div class="stat-l">รายรับ/เดือน${momBadge(momInc,false)}</div><div class="stat-v" style="color:var(--green)">${fmtN(window._dashIncome||0)}</div><div class="stat-s">เฉลี่ย ${window._dashIncomeMonths||0} เดือน</div></div>
+    <div class="stat"><div class="stat-l">รายจ่าย/เดือน${momBadge(momExp,true)}</div><div class="stat-v" style="color:var(--red)">${fmtN(window._dashExpense||0)}</div><div class="stat-s">เฉลี่ย ${window._dashExpenseMonths||0} เดือน</div></div>
+    <div class="stat"><div class="stat-l">กำไร/เดือน</div><div class="stat-v" style="color:var(--gd)">${fmtN(Math.abs(_profit))}</div><div class="stat-s">เฉลี่ย ${window._dashIncomeMonths||0} เดือน</div></div>
+    <div class="stat"><div class="stat-l">เงินสดคงเหลือ</div><div class="stat-v" style="color:${(window._dashCashBalance||0)>=0?'var(--gd)':'var(--red)'}">${fmtN(window._dashCashBalance||0)}</div><div class="stat-s">สะสมทั้งหมด</div></div>
+    <div class="stat"><div class="stat-l">เงินประกันรวม</div><div class="stat-v" style="color:var(--blue)">${fmtN(occ*3500)}</div><div class="stat-s">ต้องคืนผู้เช่า (หนี้สิน)</div></div>`;
   ['bdg-inv','bdg-ov'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=ov;});
   const bb=document.getElementById('bn-bdg-ov');if(bb){bb.textContent=ov;bb.style.display=ov>0?'flex':'none';}
   let rm='';for(let i=1;i<=21;i++){const t=tenants.find(x=>String(x.room)===String(i));const cls=!t?'vac':t.status==='overdue'?'ov':'occ';const click=t&&t.status==='overdue'?`onclick="goPageThenPay('${i}')"`:'';rm+=`<div class="rc ${cls}" title="${t?.name||'ว่าง'}" ${click} style="${t&&t.status==='overdue'?'cursor:pointer':''}"><div class="rn">${i}</div><div class="rs">${!t?'ว่าง':t.status==='overdue'?'ค้างชำระ':'มีผู้เช่า'}</div></div>`;}
@@ -1714,17 +1714,17 @@ async function renderFinance(){
   const tOut=txns.filter(t=>t.type?.endsWith('-out')).reduce((s,t)=>s+parseFloat(t.amount||0),0);
   const net=tIn-tOut;
   document.getElementById('fin-cards').innerHTML=`
-    <div class="stat" style="background:var(--gl)"><div class="stat-l" style="color:var(--gd)">รายรับรวม</div><div class="stat-v" style="color:var(--green)">฿${fmtN(tIn)}</div></div>
-    <div class="stat" style="background:var(--rl)"><div class="stat-l" style="color:#791F1F">รายจ่ายรวม</div><div class="stat-v" style="color:var(--red)">฿${fmtN(tOut)}</div></div>
-    <div class="stat" style="background:${net>=0?'var(--gl)':'var(--rl)'}"><div class="stat-l" style="color:${net>=0?'var(--gd)':'#791F1F'}">กำไรสุทธิ</div><div class="stat-v" style="color:${net>=0?'var(--green)':'var(--red)'}">฿${fmtN(Math.abs(net))}</div></div>`;
-  const mkRow=(tp,total,color)=>{const val=txns.filter(t=>t.type===tp).reduce((s,t)=>s+parseFloat(t.amount||0),0);const pct=total>0?Math.round(val/total*100):0;return`<div class="fin-row"><div class="fin-lbl">${TX_L[tp]||tp}</div><div class="fin-bar"><div class="fin-fill" style="width:${pct}%;background:${color}"></div></div><div class="fin-amt" style="color:${color}">฿${fmtN(val)}</div></div>`;};
+    <div class="stat" style="background:var(--gl)"><div class="stat-l" style="color:var(--gd)">รายรับรวม</div><div class="stat-v" style="color:var(--green)">${fmtN(tIn)}</div></div>
+    <div class="stat" style="background:var(--rl)"><div class="stat-l" style="color:#791F1F">รายจ่ายรวม</div><div class="stat-v" style="color:var(--red)">${fmtN(tOut)}</div></div>
+    <div class="stat" style="background:${net>=0?'var(--gl)':'var(--rl)'}"><div class="stat-l" style="color:${net>=0?'var(--gd)':'#791F1F'}">กำไรสุทธิ</div><div class="stat-v" style="color:${net>=0?'var(--green)':'var(--red)'}">${fmtN(Math.abs(net))}</div></div>`;
+  const mkRow=(tp,total,color)=>{const val=txns.filter(t=>t.type===tp).reduce((s,t)=>s+parseFloat(t.amount||0),0);const pct=total>0?Math.round(val/total*100):0;return`<div class="fin-row"><div class="fin-lbl">${TX_L[tp]||tp}</div><div class="fin-bar"><div class="fin-fill" style="width:${pct}%;background:${color}"></div></div><div class="fin-amt" style="color:${color}">${fmtN(val)}</div></div>`;};
   const spacer=`<div class="fin-row" style="visibility:hidden"><div class="fin-lbl">-</div><div class="fin-bar"></div><div class="fin-amt">-</div></div>`;
   const incRows=INC_T.map(tp=>mkRow(tp,tIn,"var(--green)")).join("");
   const expRows=EXP_T.map(tp=>mkRow(tp,tOut,"var(--red)")).join("");
   const diff=EXP_T.length-INC_T.length;
   const pad=diff>0?Array(diff).fill(spacer).join(""):'';
-  document.getElementById("fin-income").innerHTML=incRows+pad+`<div style="display:flex;justify-content:space-between;padding:6px 0 0;border-top:0.5px solid #eee;font-size:12px;font-weight:600;margin-top:4px"><span>รวม</span><span style="color:var(--green)">฿${fmtN(tIn)}</span></div>`;
-  document.getElementById("fin-expense").innerHTML=EXP_T.map(tp=>mkRow(tp,tOut,"var(--red)")).join("")+`<div style="display:flex;justify-content:space-between;padding:6px 0 0;border-top:0.5px solid #eee;font-size:12px;font-weight:600;margin-top:4px"><span>รวม</span><span style="color:var(--red)">฿${fmtN(tOut)}</span></div>`;
+  document.getElementById("fin-income").innerHTML=incRows+pad+`<div style="display:flex;justify-content:space-between;padding:6px 0 0;border-top:0.5px solid #eee;font-size:12px;font-weight:600;margin-top:4px"><span>รวม</span><span style="color:var(--green)">${fmtN(tIn)}</span></div>`;
+  document.getElementById("fin-expense").innerHTML=EXP_T.map(tp=>mkRow(tp,tOut,"var(--red)")).join("")+`<div style="display:flex;justify-content:space-between;padding:6px 0 0;border-top:0.5px solid #eee;font-size:12px;font-weight:600;margin-top:4px"><span>รวม</span><span style="color:var(--red)">${fmtN(tOut)}</span></div>`;
 }
 
 // METER
@@ -1893,7 +1893,7 @@ function renderTenantTbl(list){
   const ca2=document.getElementById('tn-arw-duration');if(ca2)ca2.textContent=col==='duration'?(dir==='asc'?' ▲':' ▼'):'';
   document.getElementById('tenant-body').innerHTML=list.map(t=>{
     const s=sm[t.status]||{c:'bgray',l:t.status};
-    return`<tr><td style="font-weight:700;font-size:15px;text-align:center">${parseInt(t.room)}</td><td style="font-weight:500">${t.name}</td><td style="font-size:11px;color:var(--t3)">${fmtDate(t.checkin)}</td><td style="font-size:11px;color:var(--t3)">${calcStay(t.checkin)}</td><td>฿${fmtN(t.deposit||3500)}</td><td><span class="bdg ${s.c}">${s.l}</span></td><td style="display:flex;gap:4px"><button class="btn btn-sm btn-icon" onclick="editTenant('${t.room}')"><i class="ti ti-edit" style="font-size:12px"></i></button><button class="btn btn-sm" style="font-size:11px;color:var(--red);border-color:var(--red);padding:3px 7px" onclick="openCoModal('${t.room}')"><i class="ti ti-door-exit" style="font-size:11px"></i> ย้ายออก</button></td></tr>`;
+    return`<tr><td style="font-weight:700;font-size:15px;text-align:center">${parseInt(t.room)}</td><td style="font-weight:500">${t.name}</td><td style="font-size:11px;color:var(--t3)">${fmtDate(t.checkin)}</td><td style="font-size:11px;color:var(--t3)">${calcStay(t.checkin)}</td><td>${fmtN(t.deposit||3500)}</td><td><span class="bdg ${s.c}">${s.l}</span></td><td style="display:flex;gap:4px"><button class="btn btn-sm btn-icon" onclick="editTenant('${t.room}')"><i class="ti ti-edit" style="font-size:12px"></i></button><button class="btn btn-sm" style="font-size:11px;color:var(--red);border-color:var(--red);padding:3px 7px" onclick="openCoModal('${t.room}')"><i class="ti ti-door-exit" style="font-size:11px"></i> ย้ายออก</button></td></tr>`;
   }).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--t3);padding:20px">ยังไม่มีผู้เช่า</td></tr>';
 }
 function filterTenants(){const q=document.getElementById('tenant-q').value.toLowerCase();renderTenantTbl(tenants.filter(t=>t.name?.toLowerCase().includes(q)||String(t.room).includes(q)));}
@@ -2261,9 +2261,9 @@ function renderTxTbl(){
   const txSel=document.getElementById('tx-sel')?.value||'';
   const isAll=txSel==='all'||txSel.startsWith('year_')||txSel==='';
   const capNet=tCapIn-tCapOut;
-  const balExtra=isAll?` &nbsp;|&nbsp; 💳 ธนาคาร <strong style="color:var(--blue)">฿${fmt2(bankBal)}</strong> · 💵 เงินสด <strong style="color:var(--amber)">฿${fmt2(cashBal)}</strong>`:'';
+  const balExtra=isAll?` &nbsp;|&nbsp; 💳 ธนาคาร <strong style="color:var(--blue)">${fmt2(bankBal)}</strong> · 💵 เงินสด <strong style="color:var(--amber)">${fmt2(cashBal)}</strong>`:'';
   const netBal=tIn-tOut+capNet-tAsset;
-  document.getElementById('tx-summary').innerHTML=`รายรับ <strong style="color:var(--green)">฿${fmt2(tIn)}</strong> · รายจ่าย <strong style="color:var(--red)">฿${fmt2(tOut)}</strong> · เพิ่มทุนเข้า <strong style="color:#185FA5">฿${fmt2(tCapIn)}</strong> · ถอนทุนออก <strong style="color:#854F0B">฿${fmt2(tCapOut)}</strong> · ซื้อสินทรัพย์ถาวร <strong style="color:#6B4A1E">฿${fmt2(tAsset)}</strong> · คงเหลือ <strong style="color:${netBal>=0?'var(--green)':'var(--red)'}">฿${fmt2(netBal)}</strong>${balExtra}`;
+  document.getElementById('tx-summary').innerHTML=`รายรับ <strong style="color:var(--green)">${fmt2(tIn)}</strong> · รายจ่าย <strong style="color:var(--red)">${fmt2(tOut)}</strong> · เพิ่มทุนเข้า <strong style="color:#185FA5">${fmt2(tCapIn)}</strong> · ถอนทุนออก <strong style="color:#854F0B">${fmt2(tCapOut)}</strong> · ซื้อสินทรัพย์ถาวร <strong style="color:#6B4A1E">${fmt2(tAsset)}</strong> · คงเหลือ <strong style="color:${netBal>=0?'var(--green)':'var(--red)'}">${fmt2(netBal)}</strong>${balExtra}`;
   // คำนวณ "คงเหลือ" (running balance) จากลำดับวันที่จริงเสมอ (เก่า→ใหม่) ไม่ขึ้นกับลำดับที่แสดงผล
   const chrono=[...transactions].sort((a,b)=>(a.date||'').localeCompare(b.date||'')||String(a.id).localeCompare(String(b.id)));
   const balMap={};
@@ -2287,7 +2287,7 @@ function renderTxTbl(){
     const el=document.getElementById('th-arw-'+c);if(!el)return;
     el.textContent=c===col?(dir==='asc'?' ▲':' ▼'):'';
   });
-  document.getElementById('tx-body').innerHTML=display.map(t=>{const isCap=t.type==='capital-in'||t.type==='capital-out';const isAsset=ASSET_T.includes(t.type);const isCapIn=t.type==='capital-in';const isIn=isCap?isCapIn:t.type?.endsWith('-in');const runVal=balMap[t.id]??0;const roomTxt=t.room?String(parseInt(t.room)||t.room):'—';const bdgStyle=isCap?`style="background:#E6F1FB;color:#185FA5;font-size:11px;padding:2px 7px;border-radius:4px;font-weight:500"`:isAsset?`style="background:#F3E8D9;color:#6B4A1E;font-size:11px;padding:2px 7px;border-radius:4px;font-weight:500"`:'class="bdg '+(isIn?'bg':'br')+'"';return`<tr><td style="font-size:11px;color:var(--t3)">${fmtDate(t.date)||'—'}</td><td>${cleanTxDesc(t.desc,t.room)||'—'}</td><td class="c" style="font-size:12px;font-weight:600">${roomTxt}</td><td><span ${bdgStyle}>${TX_L[t.type]||t.type}</span></td><td class="r" style="font-weight:500;color:${isCap?'var(--blue)':isAsset?'#6B4A1E':isIn?'var(--green)':'var(--red)'}">${isIn?'+':'-'}฿${fmt2(t.amount)}</td><td style="font-size:11px;color:var(--t3)">${t.channel==='bank'?'โอน':'เงินสด'}</td><td class="r" style="font-size:11px;color:${runVal>=0?'var(--green)':'var(--red)'}">฿${fmt2(runVal)}</td><td style="display:flex;gap:4px"><button class="btn btn-sm btn-icon" style="color:var(--blue)" onclick="editTx('${t.id}')"><i class="ti ti-edit" style="font-size:11px"></i></button><button class="btn btn-sm btn-icon" style="color:var(--t3)" onclick="delTx('${t.id}')"><i class="ti ti-trash" style="font-size:11px"></i></button></td></tr>`;}).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--t3);padding:20px">ยังไม่มีรายการ</td></tr>';
+  document.getElementById('tx-body').innerHTML=display.map(t=>{const isCap=t.type==='capital-in'||t.type==='capital-out';const isAsset=ASSET_T.includes(t.type);const isCapIn=t.type==='capital-in';const isIn=isCap?isCapIn:t.type?.endsWith('-in');const runVal=balMap[t.id]??0;const roomTxt=t.room?String(parseInt(t.room)||t.room):'—';const bdgStyle=isCap?`style="background:#E6F1FB;color:#185FA5;font-size:11px;padding:2px 7px;border-radius:4px;font-weight:500"`:isAsset?`style="background:#F3E8D9;color:#6B4A1E;font-size:11px;padding:2px 7px;border-radius:4px;font-weight:500"`:'class="bdg '+(isIn?'bg':'br')+'"';return`<tr><td style="font-size:11px;color:var(--t3)">${fmtDate(t.date)||'—'}</td><td>${cleanTxDesc(t.desc,t.room)||'—'}</td><td class="c" style="font-size:12px;font-weight:600">${roomTxt}</td><td><span ${bdgStyle}>${TX_L[t.type]||t.type}</span></td><td class="r" style="font-weight:500;color:${isCap?'var(--blue)':isAsset?'#6B4A1E':isIn?'var(--green)':'var(--red)'}">${isIn?'+':'-'}${fmt2(t.amount)}</td><td style="font-size:11px;color:var(--t3)">${t.channel==='bank'?'โอน':'เงินสด'}</td><td class="r" style="font-size:11px;color:${runVal>=0?'var(--green)':'var(--red)'}">${fmt2(runVal)}</td><td style="display:flex;gap:4px"><button class="btn btn-sm btn-icon" style="color:var(--blue)" onclick="editTx('${t.id}')"><i class="ti ti-edit" style="font-size:11px"></i></button><button class="btn btn-sm btn-icon" style="color:var(--t3)" onclick="delTx('${t.id}')"><i class="ti ti-trash" style="font-size:11px"></i></button></td></tr>`;}).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--t3);padding:20px">ยังไม่มีรายการ</td></tr>';
 }
 let txSortCol='date', txSortDir='desc';
 function sortTxCol(col){
@@ -2466,7 +2466,7 @@ async function openPayModal(room){
   const wr=document.getElementById('pay-water-rate');if(wr)wr.textContent=WATER;
   // แสดงรายการพิเศษ
   const extrasEl=document.getElementById('pay-extras-tbody');
-  if(extrasEl) extrasEl.innerHTML=extras.map(x=>`<tr><td colspan="4" style="padding:4px 8px;color:var(--text)">${x.desc||'อื่นๆ'}</td><td class="r" style="padding:4px 8px;color:var(--text)">฿${fmt2(x.amount)}</td></tr>`).join('');
+  if(extrasEl) extrasEl.innerHTML=extras.map(x=>`<tr><td colspan="4" style="padding:4px 8px;color:var(--text)">${x.desc||'อื่นๆ'}</td><td class="r" style="padding:4px 8px;color:var(--text)">${fmt2(x.amount)}</td></tr>`).join('');
   // แสดง banner รายวัน
   let banner=document.getElementById('pay-day-banner');
   if(!banner){banner=document.createElement('div');banner.id='pay-day-banner';document.getElementById('pay-sub').after(banner);}
@@ -2503,7 +2503,7 @@ async function openPayModal(room){
   calcPayTotal();openMo('mo-pay');
 }
 function calcPayTotal(){if(!payData.t)return;const rentAmt=payData.rentAmt||RENT;const extraTotal=payData.extraTotal||0;payCurrentTotal=rentAmt+(payData.ec||0)+(payData.wc||0)+extraTotal;document.getElementById('pay-total').textContent=fmt2(payCurrentTotal);document.getElementById('pay-amount').value=payCurrentTotal.toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});checkPayDiff();}
-function checkPayDiff(){const paid=parseFloat((document.getElementById('pay-amount').value||'0').replace(/,/g,''))||0;const diff=paid-payCurrentTotal;const el=document.getElementById('pay-diff');const btn=document.getElementById('pay-confirm');if(Math.abs(diff)<0.01){el.textContent='✓ ครบจำนวน';el.style.color='var(--green)';}else if(Math.abs(diff)<=1){el.textContent=(diff<0?'ขาด':'เกิน')+' ฿'+Math.abs(diff).toFixed(2)+' (ยืนยันได้)';el.style.color='var(--amber)';}else if(diff<0){el.textContent='ขาด ฿'+Math.abs(diff).toFixed(2)+' — กรุณาชำระให้ครบก่อน';el.style.color='var(--red)';}else{el.textContent='เกิน ฿'+diff.toFixed(2);el.style.color='var(--amber)';}const canConfirm=payMethod&&paid>0&&(Math.abs(diff)<=1);btn.style.opacity=canConfirm?'1':'0.35';btn.style.pointerEvents=canConfirm?'auto':'none';}
+function checkPayDiff(){const paid=parseFloat((document.getElementById('pay-amount').value||'0').replace(/,/g,''))||0;const diff=paid-payCurrentTotal;const el=document.getElementById('pay-diff');const btn=document.getElementById('pay-confirm');if(Math.abs(diff)<0.01){el.textContent='✓ ครบจำนวน';el.style.color='var(--green)';}else if(Math.abs(diff)<=1){el.textContent=(diff<0?'ขาด':'เกิน')+' '+Math.abs(diff).toFixed(2)+' (ยืนยันได้)';el.style.color='var(--amber)';}else if(diff<0){el.textContent='ขาด '+Math.abs(diff).toFixed(2)+' — กรุณาชำระให้ครบก่อน';el.style.color='var(--red)';}else{el.textContent='เกิน '+diff.toFixed(2);el.style.color='var(--amber)';}const canConfirm=payMethod&&paid>0&&(Math.abs(diff)<=1);btn.style.opacity=canConfirm?'1':'0.35';btn.style.pointerEvents=canConfirm?'auto':'none';}
 function selPayMethod(m){payMethod=m;const sel='background:var(--gl);border:1.5px solid var(--green);color:var(--gd);font-weight:500';const def='background:#f8f9fa';document.getElementById('pb-cash').style.cssText=`flex:1;padding:9px;border-radius:7px;border:1px solid var(--border);font-size:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;${m==='cash'?sel:def}`;document.getElementById('pb-bank').style.cssText=`flex:1;padding:9px;border-radius:7px;border:1px solid var(--border);font-size:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;${m==='bank'?sel:def}`;checkPayDiff();}
 async function confirmPay(){
   const paid=parseFloat((document.getElementById('pay-amount').value||'0').replace(/,/g,''))||0;
@@ -2663,9 +2663,9 @@ function calcCo(){
   document.getElementById('co-water-prev').textContent=m.waterCurr||'—';
   window._coData={rentAdv,depRet,totalReturn,elecPrev:parseFloat(m.elecCurr||0),waterPrev:parseFloat(m.waterCurr||0)};
   document.getElementById('co-summary').innerHTML=`
-    <div style="display:flex;justify-content:space-between;color:var(--t2);margin-bottom:4px"><span>คืนค่าเช่าล่วงหน้า</span><span>฿${fmtN(rentAdv)}</span></div>
-    <div style="display:flex;justify-content:space-between;color:var(--t2);margin-bottom:8px"><span>คืนเงินประกัน</span><span>฿${fmtN(depRet)}</span></div>
-    <div style="border-top:1px solid var(--border);padding-top:6px;display:flex;justify-content:space-between;font-weight:600;font-size:13px"><span>คืนเงินผู้เช่ารวม</span><span style="color:var(--green)">฿${fmtN(totalReturn)}</span></div>`;
+    <div style="display:flex;justify-content:space-between;color:var(--t2);margin-bottom:4px"><span>คืนค่าเช่าล่วงหน้า</span><span>${fmtN(rentAdv)}</span></div>
+    <div style="display:flex;justify-content:space-between;color:var(--t2);margin-bottom:8px"><span>คืนเงินประกัน</span><span>${fmtN(depRet)}</span></div>
+    <div style="border-top:1px solid var(--border);padding-top:6px;display:flex;justify-content:space-between;font-weight:600;font-size:13px"><span>คืนเงินผู้เช่ารวม</span><span style="color:var(--green)">${fmtN(totalReturn)}</span></div>`;
 }
 async function confirmCo(){
   const t=tenants.find(x=>String(x.room)===String(coRoom));if(!t)return;
@@ -2699,7 +2699,7 @@ async function confirmCo(){
   if(txRows.length>0) await _sb.from('transactions').insert(txRows);
   await apiPost({action:'deleteTenant',room:coRoom},'กำลังย้ายออก...');
   closeMo('mo-checkout');await loadTenants();
-  showToast('✓ บันทึกย้ายออกแล้ว — คืนเงิน ฿'+fmtN(cd.totalReturn||0));
+  showToast('✓ บันทึกย้ายออกแล้ว — คืนเงิน '+fmtN(cd.totalReturn||0));
 }
 function showCheckoutInvoice(d){
   const now=new Date();
@@ -2770,7 +2770,7 @@ function renderAircon(){
         <td style="padding:4px 7px;color:var(--t2);white-space:nowrap">${r.date}</td>
         <td style="padding:4px 7px;font-size:10px;color:var(--t3)">${r.type||'—'}</td>
         ${Array.from({length:21},(_,i)=>{const checked=roomNums.includes(i+1);return`<td style="padding:3px 2px;text-align:center"><div style="width:14px;height:14px;border-radius:3px;margin:auto;${checked?'background:var(--green);display:flex;align-items:center;justify-content:center':'border:1.5px solid #ddd'}">${checked?'<i class="ti ti-check" style="font-size:9px;color:#fff"></i>':''}</div></td>`;}).join('')}
-        <td style="padding:4px 7px;text-align:right;font-weight:500">${r.cost>0?'฿'+fmtN(r.cost):'—'}</td>
+        <td style="padding:4px 7px;text-align:right;font-weight:500">${r.cost>0?''+fmtN(r.cost):'—'}</td>
         <td style="padding:4px 7px;color:var(--t3);font-size:10px">${r.note||'—'}</td>
         <td style="padding:4px 7px;white-space:nowrap">
           <button class="btn btn-sm btn-icon" style="color:var(--blue)" onclick="editRepair('${r.id}')"><i class="ti ti-edit" style="font-size:11px"></i></button>
@@ -2864,7 +2864,7 @@ function calcStayExact(checkin, checkout){
   return r.trim()||'0 วัน';
 }
 function renderHistTable(data){
-  document.getElementById('hist-body').innerHTML=data.map(h=>`<tr><td style="font-weight:600">${parseInt(h.room)||h.room}</td><td style="font-weight:500">${h.name}<div style="font-size:10px;color:var(--t3)">${h.phone||''}</div></td><td style="font-size:11px;color:var(--t3)">${fmtDate(h.checkin)}</td><td style="font-size:11px;color:var(--t3)">${fmtDate(h.checkout)}</td><td>${calcStayExact(h.checkin,h.checkout)||((h.months||'—')+' เดือน')}</td><td style="font-size:11px;color:var(--t3)">${h.reason||'—'}</td><td>฿${fmtN(h.depositReturn||0)}</td><td><span class="bdg ${h.status==='blacklist'?'br':'bg'}">${h.status==='blacklist'?'แบล็คลิสต์':'ออกปกติ'}</span></td></tr>`).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--t3);padding:20px">ไม่พบข้อมูล</td></tr>';
+  document.getElementById('hist-body').innerHTML=data.map(h=>`<tr><td style="font-weight:600">${parseInt(h.room)||h.room}</td><td style="font-weight:500">${h.name}<div style="font-size:10px;color:var(--t3)">${h.phone||''}</div></td><td style="font-size:11px;color:var(--t3)">${fmtDate(h.checkin)}</td><td style="font-size:11px;color:var(--t3)">${fmtDate(h.checkout)}</td><td>${calcStayExact(h.checkin,h.checkout)||((h.months||'—')+' เดือน')}</td><td style="font-size:11px;color:var(--t3)">${h.reason||'—'}</td><td>${fmtN(h.depositReturn||0)}</td><td><span class="bdg ${h.status==='blacklist'?'br':'bg'}">${h.status==='blacklist'?'แบล็คลิสต์':'ออกปกติ'}</span></td></tr>`).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--t3);padding:20px">ไม่พบข้อมูล</td></tr>';
 }
 function setHistRoom(room){
   histSelRoom=room;
@@ -3059,23 +3059,23 @@ async function renderCfDash(){
   document.getElementById('dash-kpi').innerHTML=`
     <div style="background:var(--gl);border-radius:8px;padding:12px 14px">
       <div style="font-size:10px;font-weight:600;color:var(--gd);margin-bottom:4px"><i class="ti ti-trending-up"></i> รายรับรวม</div>
-      <div style="font-size:17px;font-weight:700;color:var(--gd)">฿${fmtN(totalInc)}</div>
+      <div style="font-size:17px;font-weight:700;color:var(--gd)">${fmtN(totalInc)}</div>
       ${pctTag(pctInc)}
     </div>
     <div style="background:var(--rl);border-radius:8px;padding:12px 14px">
       <div style="font-size:10px;font-weight:600;color:#791F1F;margin-bottom:4px"><i class="ti ti-trending-down"></i> รายจ่ายรวม</div>
-      <div style="font-size:17px;font-weight:700;color:var(--red)">฿${fmtN(totalExp)}</div>
+      <div style="font-size:17px;font-weight:700;color:var(--red)">${fmtN(totalExp)}</div>
       ${pctTag(pctExp,true)}
     </div>
     <div style="background:#E6F1FB;border-radius:8px;padding:12px 14px">
       <div style="font-size:10px;font-weight:600;color:#185FA5;margin-bottom:4px"><i class="ti ti-calculator"></i> กำไรสุทธิ</div>
-      <div style="font-size:17px;font-weight:700;color:${netProfit>=0?'#0C447C':'var(--red)'}">฿${fmtN(netProfit)}</div>
+      <div style="font-size:17px;font-weight:700;color:${netProfit>=0?'#0C447C':'var(--red)'}">${fmtN(netProfit)}</div>
       <div style="font-size:10px;margin-top:3px;color:#185FA5">อัตรากำไร ${profitPct}%</div>
     </div>
     <div style="background:#FAEEDA;border-radius:8px;padding:12px 14px">
       <div style="font-size:10px;font-weight:600;color:#854F0B;margin-bottom:4px"><i class="ti ti-wallet"></i> คงเหลือรวม</div>
-      <div style="font-size:14px;font-weight:700;color:#633806">💳 ฿${fmtN(bankBal)}</div>
-      <div style="font-size:13px;font-weight:600;color:${cashBal>=0?'#BA7517':'var(--red)'};margin-top:3px">💵 ฿${fmtN(cashBal)}</div>
+      <div style="font-size:14px;font-weight:700;color:#633806">💳 ${fmtN(bankBal)}</div>
+      <div style="font-size:13px;font-weight:600;color:${cashBal>=0?'#BA7517':'var(--red)'};margin-top:3px">💵 ${fmtN(cashBal)}</div>
     </div>`;
 
   const donutColors2=['#E24B4A','#378ADD','#7F77DD','#EF9F27','#888780','#9CA3AF'];
@@ -3088,10 +3088,10 @@ async function renderCfDash(){
       <div style="font-size:10px;font-weight:600;width:14px;color:var(--t3)">${i+1}</div>
       <div style="font-size:11px;flex:1;color:var(--text)">${TX_L[k]||k}</div>
       <div style="width:90px;height:5px;background:#f0f2f5;border-radius:4px;overflow:hidden"><div style="height:100%;width:${Math.round(byType[k]/maxExp5*100)}%;background:var(--red);border-radius:4px"></div></div>
-      <div style="font-size:10px;font-weight:600;color:#A32D2D;width:66px;text-align:right">-฿${fmtN(byType[k])}</div>
+      <div style="font-size:10px;font-weight:600;color:#A32D2D;width:66px;text-align:right">-${fmtN(byType[k])}</div>
     </div>`).join('')||'<div style="font-size:12px;color:var(--t3)">ยังไม่มีข้อมูล</div>';
 
-  const chartOpts={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:9},autoSkip:false,maxRotation:45},grid:{display:false}},y:{ticks:{font:{size:9},callback:v=>'฿'+(Math.abs(v)/1000).toFixed(0)+'k'},grid:{color:'rgba(0,0,0,0.04)'}}}};
+  const chartOpts={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:9},autoSkip:false,maxRotation:45},grid:{display:false}},y:{ticks:{font:{size:9},callback:v=>''+(Math.abs(v)/1000).toFixed(0)+'k'},grid:{color:'rgba(0,0,0,0.04)'}}}};
   ['dash-bar-chart','dash-line-chart','dash-donut-chart','dash-profit-chart'].forEach(id=>{
     if(dashCharts[id]){dashCharts[id].destroy();delete dashCharts[id];}
   });
@@ -3152,7 +3152,7 @@ async function loadPayHistory(){
       };
     });
     const totalAmt=recs.reduce((s,r)=>s+parseFloat(r.total||0),0);
-    document.getElementById('ph-summary').textContent=`${recs.length} รายการ · รวม ฿${fmtN(totalAmt)}`;
+    document.getElementById('ph-summary').textContent=`${recs.length} รายการ · รวม ${fmtN(totalAmt)}`;
     renderPaymentHistoryTable();
   }catch(e){showToast('โหลดไม่สำเร็จ','err');}
   finally{hideLoad();}
@@ -3276,11 +3276,11 @@ async function loadPnlYearly(){
       }
       totalInc+=inc;totalExp+=exp;
       const net=inc-exp;
-      return `<tr><td>ปี ${y+543}</td><td class="r" style="color:var(--green)">฿${fmt2(inc)}</td><td class="r" style="color:var(--red)">฿${fmt2(exp)}</td><td class="r" style="font-weight:600;color:${net>=0?'var(--green)':'var(--red)'}">฿${fmt2(net)}</td></tr>`;
+      return `<tr><td>ปี ${y+543}</td><td class="r" style="color:var(--green)">${fmt2(inc)}</td><td class="r" style="color:var(--red)">${fmt2(exp)}</td><td class="r" style="font-weight:600;color:${net>=0?'var(--green)':'var(--red)'}">${fmt2(net)}</td></tr>`;
     }).join('');
     document.getElementById('pnl-yearly-body').innerHTML=rows||'<tr><td colspan="4" style="text-align:center;color:var(--t3);padding:20px">ยังไม่มีข้อมูล</td></tr>';
     const totalNet=totalInc-totalExp;
-    document.getElementById('pnl-yearly-foot').innerHTML=`<tr style="background:#f9f9f9;font-weight:700"><td>รวมทั้งหมด</td><td class="r" style="color:var(--green)">฿${fmt2(totalInc)}</td><td class="r" style="color:var(--red)">฿${fmt2(totalExp)}</td><td class="r" style="color:${totalNet>=0?'var(--green)':'var(--red)'}">฿${fmt2(totalNet)}</td></tr>`;
+    document.getElementById('pnl-yearly-foot').innerHTML=`<tr style="background:#f9f9f9;font-weight:700"><td>รวมทั้งหมด</td><td class="r" style="color:var(--green)">${fmt2(totalInc)}</td><td class="r" style="color:var(--red)">${fmt2(totalExp)}</td><td class="r" style="color:${totalNet>=0?'var(--green)':'var(--red)'}">${fmt2(totalNet)}</td></tr>`;
     return;
   }
   const yr=pnlYear;
@@ -3294,11 +3294,11 @@ async function loadPnlYearly(){
     const exp=(txns||[]).filter(t=>EXP_T.includes(t.type)).reduce((s,t)=>s+parseFloat(t.amount||0),0);
     totalInc+=inc;totalExp+=exp;
     const net=inc-exp;
-    return `<tr><td>${MTH[i]} ${parseInt(yr)+543}</td><td class="r" style="color:var(--green)">฿${fmt2(inc)}</td><td class="r" style="color:var(--red)">฿${fmt2(exp)}</td><td class="r" style="font-weight:600;color:${net>=0?'var(--green)':'var(--red)'}">฿${fmt2(net)}</td></tr>`;
+    return `<tr><td>${MTH[i]} ${parseInt(yr)+543}</td><td class="r" style="color:var(--green)">${fmt2(inc)}</td><td class="r" style="color:var(--red)">${fmt2(exp)}</td><td class="r" style="font-weight:600;color:${net>=0?'var(--green)':'var(--red)'}">${fmt2(net)}</td></tr>`;
   }).join('');
   document.getElementById('pnl-yearly-body').innerHTML=rows||'<tr><td colspan="4" style="text-align:center;color:var(--t3);padding:20px">ยังไม่มีข้อมูล</td></tr>';
   const totalNet=totalInc-totalExp;
-  document.getElementById('pnl-yearly-foot').innerHTML=`<tr style="background:#f9f9f9;font-weight:700"><td>รวม</td><td class="r" style="color:var(--green)">฿${fmt2(totalInc)}</td><td class="r" style="color:var(--red)">฿${fmt2(totalExp)}</td><td class="r" style="color:${totalNet>=0?'var(--green)':'var(--red)'}">฿${fmt2(totalNet)}</td></tr>`;
+  document.getElementById('pnl-yearly-foot').innerHTML=`<tr style="background:#f9f9f9;font-weight:700"><td>รวม</td><td class="r" style="color:var(--green)">${fmt2(totalInc)}</td><td class="r" style="color:var(--red)">${fmt2(totalExp)}</td><td class="r" style="color:${totalNet>=0?'var(--green)':'var(--red)'}">${fmt2(totalNet)}</td></tr>`;
 }
 async function loadPnlMonthly(){
   if(pnlYear==='all'){
@@ -3311,11 +3311,11 @@ async function loadPnlMonthly(){
   const inc=txns.filter(t=>INC_T.includes(t.type)).reduce((s,t)=>s+parseFloat(t.amount||0),0);
   const exp=txns.filter(t=>EXP_T.includes(t.type)).reduce((s,t)=>s+parseFloat(t.amount||0),0);
   const net=inc-exp;
-  document.getElementById('pnl-monthly-summary').innerHTML=`รายรับ <strong style="color:var(--green)">฿${fmt2(inc)}</strong> · รายจ่าย <strong style="color:var(--red)">฿${fmt2(exp)}</strong> · กำไร-ขาดทุน <strong style="color:${net>=0?'var(--green)':'var(--red)'}">฿${fmt2(net)}</strong>`;
+  document.getElementById('pnl-monthly-summary').innerHTML=`รายรับ <strong style="color:var(--green)">${fmt2(inc)}</strong> · รายจ่าย <strong style="color:var(--red)">${fmt2(exp)}</strong> · กำไร-ขาดทุน <strong style="color:${net>=0?'var(--green)':'var(--red)'}">${fmt2(net)}</strong>`;
   document.getElementById('pnl-monthly-body').innerHTML=txns.map(t=>{
     const isIn=t.type?.endsWith('-in');
     const roomTxt=t.room?String(parseInt(t.room)||t.room):'—';
-    return `<tr><td style="font-size:11px;color:var(--t3)">${fmtDate(t.date)||'—'}</td><td>${cleanTxDesc(t.desc,t.room)||'—'}</td><td class="c" style="font-size:12px;font-weight:600">${roomTxt}</td><td><span class="bdg ${isIn?'bg':'br'}">${TX_L[t.type]||t.type}</span></td><td class="r" style="font-weight:500;color:${isIn?'var(--green)':'var(--red)'}">${isIn?'+':'-'}฿${fmt2(t.amount)}</td><td style="font-size:11px;color:var(--t3)">${t.channel==='bank'?'โอน':'เงินสด'}</td></tr>`;
+    return `<tr><td style="font-size:11px;color:var(--t3)">${fmtDate(t.date)||'—'}</td><td>${cleanTxDesc(t.desc,t.room)||'—'}</td><td class="c" style="font-size:12px;font-weight:600">${roomTxt}</td><td><span class="bdg ${isIn?'bg':'br'}">${TX_L[t.type]||t.type}</span></td><td class="r" style="font-weight:500;color:${isIn?'var(--green)':'var(--red)'}">${isIn?'+':'-'}${fmt2(t.amount)}</td><td style="font-size:11px;color:var(--t3)">${t.channel==='bank'?'โอน':'เงินสด'}</td></tr>`;
   }).join('')||'<tr><td colspan="6" style="text-align:center;color:var(--t3);padding:20px">ยังไม่มีรายการ</td></tr>';
 }
 
@@ -3408,10 +3408,10 @@ async function renderMhMonth(){
     <div style="background:var(--bg);border-radius:8px;padding:10px 12px"><div style="font-size:9px;color:var(--t2);margin-bottom:3px">น้ำรวม</div><div style="font-size:16px;font-weight:600;color:#0F6E56">${fmtN(totalW)} <span style="font-size:10px;font-weight:400;color:var(--t3)">หน่วย</span></div>${badge(diffW,' หน่วย')}</div>
     <div style="background:var(--bg);border-radius:8px;padding:10px 12px"><div style="font-size:9px;color:var(--t2);margin-bottom:3px">ห้องใช้ไฟสูงสุด</div><div style="font-size:16px;font-weight:600">ห้อง ${maxE.room}</div><div style="font-size:10px;color:#185FA5;margin-top:3px">${maxE.val} หน่วย</div></div>
     <div style="background:var(--bg);border-radius:8px;padding:10px 12px"><div style="font-size:9px;color:var(--t2);margin-bottom:3px">ห้องใช้น้ำสูงสุด</div><div style="font-size:16px;font-weight:600">ห้อง ${maxW.room}</div><div style="font-size:10px;color:#0F6E56;margin-top:3px">${maxW.val} หน่วย</div></div>
-    <div style="background:var(--bg);border-radius:8px;padding:10px 12px"><div style="font-size:9px;color:var(--t2);margin-bottom:3px">ค่าไฟรวม(ที่เก็บจากผู้เช่า)</div><div style="font-size:16px;font-weight:600;color:#185FA5">฿${fmtN(elecCost)}</div>${badge(diffEC,' บาท')}</div>
-    <div style="background:var(--bg);border-radius:8px;padding:10px 12px"><div style="font-size:9px;color:var(--t2);margin-bottom:3px">ค่าน้ำรวม(ที่เก็บจากผู้เช่า)</div><div style="font-size:16px;font-weight:600;color:#0F6E56">฿${fmtN(waterCost)}</div>${badge(diffWC,' บาท')}</div>
-    <div style="background:var(--bg);border-radius:8px;padding:10px 12px"><div style="font-size:9px;color:var(--t2);margin-bottom:3px">ค่าไฟ+น้ำรวม</div><div style="font-size:16px;font-weight:600">฿${fmtN(totalCost)}</div>${badge(diffTC,' บาท')}</div>
-    <div style="background:var(--bg);border-radius:8px;padding:10px 12px"><div style="font-size:9px;color:var(--t2);margin-bottom:3px">เฉลี่ยต่อห้อง</div><div style="font-size:16px;font-weight:600">฿${fmtN(Math.round(totalCost/Math.max(1,tenants.length)))}</div><div style="font-size:10px;color:var(--t3);margin-top:3px">${tenants.length} ห้อง</div></div>`;
+    <div style="background:var(--bg);border-radius:8px;padding:10px 12px"><div style="font-size:9px;color:var(--t2);margin-bottom:3px">ค่าไฟรวม(ที่เก็บจากผู้เช่า)</div><div style="font-size:16px;font-weight:600;color:#185FA5">${fmtN(elecCost)}</div>${badge(diffEC,' บาท')}</div>
+    <div style="background:var(--bg);border-radius:8px;padding:10px 12px"><div style="font-size:9px;color:var(--t2);margin-bottom:3px">ค่าน้ำรวม(ที่เก็บจากผู้เช่า)</div><div style="font-size:16px;font-weight:600;color:#0F6E56">${fmtN(waterCost)}</div>${badge(diffWC,' บาท')}</div>
+    <div style="background:var(--bg);border-radius:8px;padding:10px 12px"><div style="font-size:9px;color:var(--t2);margin-bottom:3px">ค่าไฟ+น้ำรวม</div><div style="font-size:16px;font-weight:600">${fmtN(totalCost)}</div>${badge(diffTC,' บาท')}</div>
+    <div style="background:var(--bg);border-radius:8px;padding:10px 12px"><div style="font-size:9px;color:var(--t2);margin-bottom:3px">เฉลี่ยต่อห้อง</div><div style="font-size:16px;font-weight:600">${fmtN(Math.round(totalCost/Math.max(1,tenants.length)))}</div><div style="font-size:10px;color:var(--t3);margin-top:3px">${tenants.length} ห้อง</div></div>`;
   // table
   const tbBadge=(v,u='')=>{
     if(v>0)return`<span style="display:inline-flex;align-items:center;gap:2px;font-size:10px;padding:1px 6px;border-radius:8px;background:#FCEBEB;color:#A32D2D"><i class="ti ti-trending-up" style="font-size:9px"></i>+${v}${u}</span>`;
@@ -3438,7 +3438,7 @@ async function renderMhMonth(){
   const rows=rowsData.map(({t,eu,wu,dE,dW,cost,dC})=>{
     const eBadge=eu>0?`<span style="background:#fff8e6;color:#d97706;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px">${Math.round(eu)}</span>`:`<span style="background:#f5f5f5;color:#bbb;font-size:10px;padding:2px 8px;border-radius:10px">—</span>`;
     const wBadge=wu>0?`<span style="background:#e8f4ff;color:#3b6fd4;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px">${Math.round(wu)}</span>`:`<span style="background:#f5f5f5;color:#bbb;font-size:10px;padding:2px 8px;border-radius:10px">—</span>`;
-    return`<tr><td style="font-weight:600">${parseInt(t.room)}</td><td style="font-size:12px;color:var(--t2)">${t.name}</td><td style="text-align:right">${eBadge}</td><td style="text-align:right">${tbBadge(dE)}</td><td style="text-align:right">${wBadge}</td><td style="text-align:right">${tbBadge(dW)}</td><td style="text-align:right;font-size:11px;font-weight:500">${cost>0?'฿'+fmtN(cost):'—'}</td><td style="text-align:right">${tbBadge(dC,' ฿')}</td></tr>`;
+    return`<tr><td style="font-weight:600">${parseInt(t.room)}</td><td style="font-size:12px;color:var(--t2)">${t.name}</td><td style="text-align:right">${eBadge}</td><td style="text-align:right">${tbBadge(dE)}</td><td style="text-align:right">${wBadge}</td><td style="text-align:right">${tbBadge(dW)}</td><td style="text-align:right;font-size:11px;font-weight:500">${cost>0?''+fmtN(cost):'—'}</td><td style="text-align:right">${tbBadge(dC,' ')}</td></tr>`;
   }).join('');
   document.getElementById('mh-month-body').innerHTML=rows||'<tr><td colspan="8" style="text-align:center;color:var(--t3);padding:16px">ยังไม่มีข้อมูล</td></tr>';
   // render charts
@@ -3488,7 +3488,7 @@ async function renderMhRoom(){
     <div style="background:var(--bg);border-radius:8px;padding:10px 12px"><div style="font-size:9px;color:var(--t2);margin-bottom:3px">ไฟเฉลี่ย/เดือน</div><div style="font-size:16px;font-weight:600;color:#185FA5">${avgE} <span style="font-size:10px;font-weight:400;color:var(--t3)">หน่วย</span></div></div>
     <div style="background:var(--bg);border-radius:8px;padding:10px 12px"><div style="font-size:9px;color:var(--t2);margin-bottom:3px">น้ำเฉลี่ย/เดือน</div><div style="font-size:16px;font-weight:600;color:#0F6E56">${avgW} <span style="font-size:10px;font-weight:400;color:var(--t3)">หน่วย</span></div></div>
     <div style="background:var(--bg);border-radius:8px;padding:10px 12px"><div style="font-size:9px;color:var(--t2);margin-bottom:3px">เดือนที่ใช้ไฟสูงสุด</div><div style="font-size:14px;font-weight:600">${maxE.lbl||'—'}</div><div style="font-size:10px;color:#185FA5;margin-top:2px">${maxE.val} หน่วย</div></div>
-    <div style="background:var(--bg);border-radius:8px;padding:10px 12px"><div style="font-size:9px;color:var(--t2);margin-bottom:3px">ค่าเฉลี่ย/เดือน</div><div style="font-size:16px;font-weight:600">฿${fmtN(avgCost)}</div><div style="font-size:10px;color:var(--t3);margin-top:2px">ไฟ+น้ำ</div></div>`;
+    <div style="background:var(--bg);border-radius:8px;padding:10px 12px"><div style="font-size:9px;color:var(--t2);margin-bottom:3px">ค่าเฉลี่ย/เดือน</div><div style="font-size:16px;font-weight:600">${fmtN(avgCost)}</div><div style="font-size:10px;color:var(--t3);margin-top:2px">ไฟ+น้ำ</div></div>`;
   // render line charts
   ['mh-room-elec-chart','mh-room-water-chart'].forEach(id=>{const old=Chart.getChart(id);if(old)old.destroy();});
   new Chart(document.getElementById('mh-room-elec-chart'),{type:'line',data:{labels:chartLabels,datasets:[{label:'ไฟ',data:chartE,borderColor:'#378ADD',backgroundColor:'rgba(55,138,221,0.08)',fill:true,tension:0.3,pointRadius:2,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:12}},y:{ticks:{font:{size:9}},beginAtZero:true}}}});
@@ -3557,14 +3557,14 @@ async function sendLineMessage(lineUserId, pdfUrl, roomNo, tenantName, month, to
     msg+=`ห้อง ${roomNo} · ${tenantName}\n`;
     msg+=`ประจำเดือน ${month}\n`;
     msg+=`──────────────────\n`;
-    msg+=`🏠 ค่าเช่าห้อง      ฿${fmtN(rentAmt)}\n`;
-    msg+=`⚡ ค่าไฟ (${Math.round(eu)} หน่วย) ฿${fmtN(ec)}\n`;
-    msg+=`💧 ค่าน้ำ (${Math.round(wu)} หน่วย) ฿${fmtN(wc)}\n`;
+    msg+=`🏠 ค่าเช่าห้อง      ${fmtN(rentAmt)}\n`;
+    msg+=`⚡ ค่าไฟ (${Math.round(eu)} หน่วย) ${fmtN(ec)}\n`;
+    msg+=`💧 ค่าน้ำ (${Math.round(wu)} หน่วย) ${fmtN(wc)}\n`;
     if(extras.length>0){
-      extras.forEach(x=>{if(x&&x.amount>0)msg+=`📌 ${x.desc||'อื่นๆ'}      ฿${fmtN(x.amount)}\n`;});
+      extras.forEach(x=>{if(x&&x.amount>0)msg+=`📌 ${x.desc||'อื่นๆ'}      ${fmtN(x.amount)}\n`;});
     }
     msg+=`──────────────────\n`;
-    msg+=`💰 รวมทั้งสิ้น     ฿${fmtN(total)}\n\n`;
+    msg+=`💰 รวมทั้งสิ้น     ${fmtN(total)}\n\n`;
     msg+=`📅 กรุณาชำระภายในวันที่ 5\n`;
     msg+=`🏦 TTB 629-7-17118-0\n`;
     msg+=`👤 นายโสภณ ภิญโญศาสตร์\n`;

@@ -805,7 +805,10 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
         <option value="elec-out">ค่าไฟ (จ่าย)</option><option value="water-out">ค่าน้ำ (จ่าย)</option>
         <option value="internet-out">อินเตอร์เน็ต</option><option value="repair-out">ซ่อมบำรุง</option>
         <option value="tax-out">ภาษี</option><option value="other-out">รายจ่ายอื่นๆ</option>
-        <option value="rent-out">คืนค่าเช่าล่วงหน้า</option><option value="deposit-out">คืนเงินประกัน</option>
+      </optgroup>
+      <optgroup label="เงินประกัน/ค่าเช่าล่วงหน้า (หนี้สิน)">
+        <option value="deposit-in">รับเงินประกัน/มัดจำ</option><option value="advance-in">รับค่าเช่าล่วงหน้า</option>
+        <option value="deposit-out">คืนเงินประกัน</option><option value="rent-out">คืนค่าเช่าล่วงหน้า</option>
       </optgroup>
       <optgroup label="ทุน">
         <option value="capital-in">เพิ่มทุนเข้า</option><option value="capital-out">ถอนทุนออก</option>
@@ -978,10 +981,13 @@ function thShort(v){
   return d.getDate()+' '+MTH[d.getMonth()]+' '+(d.getFullYear()+543);
 }
 const INC_T=['rent-in','elec-in','water-in','washer-in','other-in'];
-const EXP_T=['elec-out','water-out','internet-out','repair-out','tax-out','other-out','rent-out','deposit-out'];
+const EXP_T=['elec-out','water-out','internet-out','repair-out','tax-out','other-out'];
 const CAP_T=['capital-in','capital-out'];
 const ASSET_T=['asset-out'];
-const TX_L={'rent-in':'ค่าเช่าห้อง','elec-in':'ค่าไฟ(เก็บ)','water-in':'ค่าน้ำ(เก็บ)','washer-in':'ตู้ซักผ้าหยอดเหรียญ','other-in':'รายรับอื่นๆ','elec-out':'ค่าไฟ(จ่าย)','water-out':'ค่าน้ำ(จ่าย)','internet-out':'อินเตอร์เน็ต','repair-out':'ซ่อมบำรุง','tax-out':'ภาษี','other-out':'รายจ่ายอื่นๆ','capital-in':'เพิ่มทุนเข้า','capital-out':'ถอนทุนออก','rent-out':'คืนค่าเช่าล่วงหน้า','deposit-out':'คืนเงินประกัน','asset-out':'ซื้อสินทรัพย์ถาวร'};
+// หนี้สิน: เงินประกัน/มัดจำ/ค่าเช่าล่วงหน้า — ไม่ใช่รายได้/รายจ่าย แต่เป็นเงินสดที่เคลื่อนไหวจริง
+const LIAB_IN_T=['deposit-in','advance-in'];
+const LIAB_OUT_T=['deposit-out','rent-out'];
+const TX_L={'rent-in':'ค่าเช่าห้อง','elec-in':'ค่าไฟ(เก็บ)','water-in':'ค่าน้ำ(เก็บ)','washer-in':'ตู้ซักผ้าหยอดเหรียญ','other-in':'รายรับอื่นๆ','deposit-in':'รับเงินประกัน/มัดจำ','advance-in':'รับค่าเช่าล่วงหน้า','elec-out':'ค่าไฟ(จ่าย)','water-out':'ค่าน้ำ(จ่าย)','internet-out':'อินเตอร์เน็ต','repair-out':'ซ่อมบำรุง','tax-out':'ภาษี','other-out':'รายจ่ายอื่นๆ','capital-in':'เพิ่มทุนเข้า','capital-out':'ถอนทุนออก','rent-out':'คืนค่าเช่าล่วงหน้า','deposit-out':'คืนเงินประกัน','asset-out':'ซื้อสินทรัพย์ถาวร'};
 // ตัดเลขห้องที่ซ้ำกับคอลัมน์ "ห้อง" ออกจากข้อความรายการ (รองรับทั้งข้อมูลเก่าและใหม่)
 function cleanTxDesc(desc,room){
   if(!desc)return desc||'';
@@ -1581,34 +1587,38 @@ async function loadBalanceSheet(){
       }
     }
     
-    // ดึง Current Assets
+    // ดึง Current Assets — เงินสด = ทุกรายการเงินสดจริง (endsWith in/out รวม LIAB, capital, asset)
     const allTx=await sbGetTransactionsByDate('all');
-    const deposits=allTx.filter(t=>t.type==='capital-in'||t.type==='capital-out').reduce((s,t)=>s+(t.type==='capital-in'?t.amount:-t.amount),0);
+    const netCapital=allTx.filter(t=>t.type==='capital-in'||t.type==='capital-out').reduce((s,t)=>s+(t.type==='capital-in'?t.amount:-t.amount),0);
     const totalIncomes=allTx.filter(t=>INC_T.includes(t.type)).reduce((s,t)=>s+t.amount,0);
     const totalExpenses=allTx.filter(t=>EXP_T.includes(t.type)).reduce((s,t)=>s+t.amount,0);
-    const totalAssets=allTx.filter(t=>ASSET_T.includes(t.type)).reduce((s,t)=>s+t.amount,0);
-    const cashBalance=deposits+totalIncomes-totalExpenses-totalAssets;
+    const totalAssetsOut=allTx.filter(t=>ASSET_T.includes(t.type)).reduce((s,t)=>s+t.amount,0);
+    const liabIn=allTx.filter(t=>LIAB_IN_T.includes(t.type)).reduce((s,t)=>s+t.amount,0);
+    const liabOut=allTx.filter(t=>LIAB_OUT_T.includes(t.type)).reduce((s,t)=>s+t.amount,0);
+    const cashBalance=netCapital+totalIncomes-totalExpenses-totalAssetsOut+liabIn-liabOut;
     
-    // ดึง Liabilities & Equity
-    const tenants=await sbGetTenants();
-    const deposits_held=tenants.reduce((s,t)=>s+parseFloat(t.deposit||3500),0);
-    const advanceRent=allTx.filter(t=>t.type==='rent-in'&&t.desc?.toLowerCase().includes('ล่วงหน้า')).reduce((s,t)=>s+t.amount,0);
+    // หนี้สิน = เงินประกัน/มัดจำ/ค่าเช่าล่วงหน้าที่ถืออยู่ (รับเข้า - คืน/ริบ)
+    const depositLiab=allTx.filter(t=>t.type==='deposit-in').reduce((s,t)=>s+t.amount,0)
+      -allTx.filter(t=>t.type==='deposit-out').reduce((s,t)=>s+t.amount,0);
+    const advanceLiab=allTx.filter(t=>t.type==='advance-in').reduce((s,t)=>s+t.amount,0)
+      -allTx.filter(t=>t.type==='rent-out').reduce((s,t)=>s+t.amount,0);
     
-    // คำนวณ Accumulated Profit (กำไรจากการดำเนินงาน ไม่รวมค่าเสื่อม เพราะไม่มี tx สำหรับค่าเสื่อม)
+    // กำไรสะสม (จากการดำเนินงาน)
     const profit=totalIncomes-totalExpenses;
     
     // สร้างตาราง Balance Sheet
     renderBalanceSheetTable({
       landValue, buildingValue, furnValue, buildingDepr, furnDepr, cashBalance,
-      deposits_held, advanceRent, profit, netCapital: deposits, date: dateStr
+      deposits_held:Math.max(0,depositLiab), advanceRent:Math.max(0,advanceLiab),
+      profit, netCapital, totalAssetsOut, date: dateStr
     });
   }finally{hideLoad();}
 }
 function renderBalanceSheetTable(data){
   const table=document.getElementById('bs-table');if(!table)return;
-  const {landValue, buildingValue, furnValue, buildingDepr, furnDepr, cashBalance, deposits_held, advanceRent, profit, netCapital, date}=data;
+  const {landValue, buildingValue, furnValue, buildingDepr, furnDepr, cashBalance, deposits_held, advanceRent, profit, netCapital, totalAssetsOut, date}=data;
   
-  const currentAssetsTotal=Math.max(0, cashBalance);
+  const currentAssetsTotal=cashBalance;
   const buildingNet=Math.max(0, buildingValue-buildingDepr);
   const furnNet=Math.max(0, furnValue-furnDepr);
   const fixedAssetsTotal=landValue+buildingNet+furnNet;
@@ -1618,12 +1628,17 @@ function renderBalanceSheetTable(data){
   const retainedProfit=profit-totalDepr; // กำไรสะสม หักค่าเสื่อมสะสมแล้ว
   const totalEquity=netCapital+retainedProfit;
   const totalLiabEquity=totalLiabilities+totalEquity;
+  // ส่วนต่างจากการประเมินมูลค่าสินทรัพย์ (ราคาประเมิน vs ราคาซื้อจริงใน transactions)
+  const assetCost=landValue+buildingValue+furnValue;
+  const valuationDiff=assetCost-(totalAssetsOut||0);
+  const imbalance=totalAssets-totalLiabEquity;
+  const balanced=Math.abs(imbalance)<1;
   
   const fmt=(n)=>Math.round(n).toLocaleString('th-TH');
   const html=`<tbody>
     <tr style="background:#f5f5f5;font-weight:700"><td colspan="3" style="padding:10px 9px">สินทรัพย์ (Assets)</td></tr>
     <tr style="background:#fafafa"><td style="padding-left:20px">สินทรัพย์หมุนเวียน</td><td colspan="2"></td></tr>
-    <tr><td style="padding-left:32px">เงินสดในธนาคาร</td><td colspan="2" class="r" style="color:var(--green);font-weight:600">${fmt(Math.max(0,cashBalance))}</td></tr>
+    <tr><td style="padding-left:32px">เงินสดและเงินฝากธนาคาร</td><td colspan="2" class="r" style="color:${cashBalance>=0?'var(--green)':'var(--red)'};font-weight:600">${fmt(cashBalance)}</td></tr>
     <tr style="border-bottom:2px solid var(--border)"><td style="padding-left:20px;font-weight:600">รวมสินทรัพย์หมุนเวียน</td><td colspan="2" class="r" style="font-weight:600">${fmt(currentAssetsTotal)}</td></tr>
     <tr style="background:#fafafa"><td style="padding-left:20px">สินทรัพย์ไม่หมุนเวียน</td><td colspan="2"></td></tr>
     <tr><td style="padding-left:32px">ที่ดิน</td><td colspan="2" class="r">${fmt(landValue)}</td></tr>
@@ -1638,8 +1653,8 @@ function renderBalanceSheetTable(data){
     <tr style="height:10px;background:transparent;border:none"><td colspan="3"></td></tr>
     <tr style="background:#f5f5f5;font-weight:700"><td colspan="3" style="padding:10px 9px">หนี้สิน + ส่วนของเจ้าของ (Liab. + Equity)</td></tr>
     <tr style="background:#fafafa"><td style="padding-left:20px">หนี้สั้นระยะ</td><td colspan="2"></td></tr>
-    <tr><td style="padding-left:32px">เงินประกันผู้เช่า</td><td colspan="2" class="r">${fmt(deposits_held)}</td></tr>
-    <tr style="border-bottom:2px solid var(--border)"><td style="padding-left:32px">ค่าเช่าล่วงหน้า</td><td colspan="2" class="r">${fmt(advanceRent)}</td></tr>
+    <tr><td style="padding-left:32px">เงินประกัน/มัดจำผู้เช่า</td><td colspan="2" class="r">${fmt(deposits_held)}</td></tr>
+    <tr style="border-bottom:2px solid var(--border)"><td style="padding-left:32px">ค่าเช่าล่วงหน้ารับไว้</td><td colspan="2" class="r">${fmt(advanceRent)}</td></tr>
     <tr style="border-bottom:2px solid var(--border)"><td style="padding-left:20px;font-weight:600">รวมหนี้สิน</td><td colspan="2" class="r" style="font-weight:600">${fmt(totalLiabilities)}</td></tr>
     <tr style="background:#fafafa"><td style="padding-left:20px">ส่วนของเจ้าของ</td><td colspan="2"></td></tr>
     <tr><td style="padding-left:32px">ทุนสะสม (เพิ่มทุน-ถอนทุน)</td><td colspan="2" class="r">${fmt(netCapital)}</td></tr>
@@ -1647,8 +1662,8 @@ function renderBalanceSheetTable(data){
     <tr><td style="padding-left:32px;color:var(--t3)">ลบ: ค่าเสื่อมสะสม</td><td style="text-align:right;padding-right:20px;color:var(--t3)">(${fmt(totalDepr)})</td><td></td></tr>
     <tr style="border-bottom:2px solid var(--border)"><td style="padding-left:32px">= กำไรสะสม (สุทธิ)</td><td colspan="2" class="r" style="color:${retainedProfit>=0?'var(--green)':'var(--red)'}">${fmt(retainedProfit)}</td></tr>
     <tr style="border-bottom:2px solid var(--border)"><td style="padding-left:20px;font-weight:600">รวมส่วนของเจ้าของ</td><td colspan="2" class="r" style="font-weight:600">${fmt(totalEquity)}</td></tr>
-    <tr style="font-weight:700;background:var(--gl)"><td>รวมหนี้สิน + ส่วนของเจ้าของ</td><td colspan="2" class="r" style="color:${Math.abs(totalAssets-totalLiabEquity)<1?'var(--green)':'var(--red)'}">${fmt(totalLiabEquity)}</td></tr>
-    <tr><td colspan="3" style="padding:12px 9px;font-size:11px;color:var(--t3)">✓ ตรวจสอบ: สินทรัพย์ = หนี้สิน + ส่วนของเจ้าของ ${Math.abs(totalAssets-totalLiabEquity)<1?'✓':'⚠'}</td></tr>
+    <tr style="font-weight:700;background:var(--gl)"><td>รวมหนี้สิน + ส่วนของเจ้าของ</td><td colspan="2" class="r" style="color:${balanced?'var(--green)':'var(--red)'}">${fmt(totalLiabEquity)}</td></tr>
+    <tr><td colspan="3" style="padding:12px 9px;font-size:11px;color:var(--t3)">${balanced?'✓ ตรวจสอบ: สินทรัพย์ = หนี้สิน + ส่วนของเจ้าของ ✓':'⚠ ส่วนต่าง '+fmt(imbalance)+' บาท — มูลค่าสินทรัพย์ถาวรที่ประเมิน ('+fmt(assetCost)+') ต่างจากยอดซื้อจริงใน transactions ('+fmt(totalAssetsOut||0)+') อยู่ '+fmt(valuationDiff)+' บาท ที่เหลือมาจากรายการเก่าที่ยังไม่ได้ migrate'}</td></tr>
   </tbody>`;
   table.innerHTML=html;
   const info=document.getElementById('bs-info');if(info)info.textContent='ณ วันที่ '+fmtDate(date);
@@ -2504,25 +2519,30 @@ function renderTxTbl(){
   const tCapIn=transactions.filter(t=>t.type==='capital-in').reduce((s,t)=>s+parseFloat(t.amount||0),0);
   const tCapOut=transactions.filter(t=>t.type==='capital-out').reduce((s,t)=>s+parseFloat(t.amount||0),0);
   const tAsset=transactions.filter(t=>ASSET_T.includes(t.type)).reduce((s,t)=>s+parseFloat(t.amount||0),0);
+  const tLiabIn=transactions.filter(t=>LIAB_IN_T.includes(t.type)).reduce((s,t)=>s+parseFloat(t.amount||0),0);
+  const tLiabOut=transactions.filter(t=>LIAB_OUT_T.includes(t.type)).reduce((s,t)=>s+parseFloat(t.amount||0),0);
   let run=0;
-  const bankIn=transactions.filter(t=>(INC_T.includes(t.type)||t.type==='capital-in')&&t.channel==='bank').reduce((s,t)=>s+parseFloat(t.amount||0),0);
-  const bankOut=transactions.filter(t=>(EXP_T.includes(t.type)||t.type==='capital-out'||ASSET_T.includes(t.type))&&t.channel==='bank').reduce((s,t)=>s+parseFloat(t.amount||0),0);
-  const cashIn=transactions.filter(t=>(INC_T.includes(t.type)||t.type==='capital-in')&&t.channel==='cash').reduce((s,t)=>s+parseFloat(t.amount||0),0);
-  const cashOut=transactions.filter(t=>(EXP_T.includes(t.type)||t.type==='capital-out'||ASSET_T.includes(t.type))&&t.channel==='cash').reduce((s,t)=>s+parseFloat(t.amount||0),0);
+  const _isIn=t=>INC_T.includes(t.type)||t.type==='capital-in'||LIAB_IN_T.includes(t.type);
+  const _isOut=t=>EXP_T.includes(t.type)||t.type==='capital-out'||ASSET_T.includes(t.type)||LIAB_OUT_T.includes(t.type);
+  const bankIn=transactions.filter(t=>_isIn(t)&&t.channel==='bank').reduce((s,t)=>s+parseFloat(t.amount||0),0);
+  const bankOut=transactions.filter(t=>_isOut(t)&&t.channel==='bank').reduce((s,t)=>s+parseFloat(t.amount||0),0);
+  const cashIn=transactions.filter(t=>_isIn(t)&&t.channel==='cash').reduce((s,t)=>s+parseFloat(t.amount||0),0);
+  const cashOut=transactions.filter(t=>_isOut(t)&&t.channel==='cash').reduce((s,t)=>s+parseFloat(t.amount||0),0);
   const bankBal=bankIn-bankOut, cashBal=cashIn-cashOut;
   const txSel=document.getElementById('tx-sel')?.value||'';
   const isAll=txSel==='all'||txSel.startsWith('year_')||txSel==='';
   const capNet=tCapIn-tCapOut;
+  const liabNet=tLiabIn-tLiabOut;
   const balExtra=isAll?` &nbsp;|&nbsp; 💳 ธนาคาร <strong style="color:var(--blue)">${fmt2(bankBal)}</strong> · 💵 เงินสด <strong style="color:var(--amber)">${fmt2(cashBal)}</strong>`:'';
-  const netBal=tIn-tOut+capNet-tAsset;
-  document.getElementById('tx-summary').innerHTML=`รายรับ <strong style="color:var(--green)">${fmt2(tIn)}</strong> · รายจ่าย <strong style="color:var(--red)">${fmt2(tOut)}</strong> · เพิ่มทุนเข้า <strong style="color:#185FA5">${fmt2(tCapIn)}</strong> · ถอนทุนออก <strong style="color:#854F0B">${fmt2(tCapOut)}</strong> · ซื้อสินทรัพย์ถาวร <strong style="color:#6B4A1E">${fmt2(tAsset)}</strong> · คงเหลือ <strong style="color:${netBal>=0?'var(--green)':'var(--red)'}">${fmt2(netBal)}</strong>${balExtra}`;
+  const netBal=tIn-tOut+capNet-tAsset+liabNet;
+  document.getElementById('tx-summary').innerHTML=`รายรับ <strong style="color:var(--green)">${fmt2(tIn)}</strong> · รายจ่าย <strong style="color:var(--red)">${fmt2(tOut)}</strong> · เงินประกัน/ล่วงหน้ารับ <strong style="color:#0E7490">${fmt2(tLiabIn)}</strong> · คืน <strong style="color:#A16207">${fmt2(tLiabOut)}</strong> · เพิ่มทุนเข้า <strong style="color:#185FA5">${fmt2(tCapIn)}</strong> · ถอนทุนออก <strong style="color:#854F0B">${fmt2(tCapOut)}</strong> · ซื้อสินทรัพย์ถาวร <strong style="color:#6B4A1E">${fmt2(tAsset)}</strong> · คงเหลือ <strong style="color:${netBal>=0?'var(--green)':'var(--red)'}">${fmt2(netBal)}</strong>${balExtra}`;
   // คำนวณ "คงเหลือ" (running balance) จากลำดับวันที่จริงเสมอ (เก่า→ใหม่) ไม่ขึ้นกับลำดับที่แสดงผล
   const chrono=[...transactions].sort((a,b)=>(a.date||'').localeCompare(b.date||'')||String(a.id).localeCompare(String(b.id)));
   const balMap={};
   chrono.forEach(t=>{const isCap=t.type==='capital-in'||t.type==='capital-out';const isCapIn=t.type==='capital-in';const isIn=isCap?isCapIn:t.type?.endsWith('-in');run+=(isIn?1:-1)*parseFloat(t.amount||0);balMap[t.id]=run;});
   // เรียงลำดับสำหรับแสดงผลตามหัวคอลัมน์ที่บอสหนึ่งคลิกเลือก
   const col=txSortCol||'date', dir=txSortDir||'desc', mul=dir==='asc'?1:-1;
-  const TYPE_ORDER=['rent-in','elec-in','water-in','washer-in','other-in','elec-out','water-out','internet-out','repair-out','tax-out','other-out','rent-out','deposit-out','capital-in','capital-out','asset-out'];
+  const TYPE_ORDER=['rent-in','elec-in','water-in','washer-in','other-in','deposit-in','advance-in','elec-out','water-out','internet-out','repair-out','tax-out','other-out','rent-out','deposit-out','capital-in','capital-out','asset-out'];
   const display=[...transactions].sort((a,b)=>{
     let r=0;
     if(col==='date')r=(a.date||'').localeCompare(b.date||'');
@@ -2948,6 +2968,12 @@ async function confirmCo(){
   const txRows=[];
   if(cd.rentAdv>0) txRows.push({date:today,type:'rent-out',description:'คืนค่าเช่าล่วงหน้า',room:coRoom,amount:cd.rentAdv,channel:'bank',note:'',month:coMonth});
   if(cd.depRet>0) txRows.push({date:today,type:'deposit-out',description:'คืนเงินประกัน',room:coRoom,amount:cd.depRet,channel:'bank',note:'',month:coMonth});
+  // ริบเงินประกัน (ส่วนที่ไม่คืน): ล้างหนี้สิน (deposit-out) + รับรู้เป็นรายได้ (other-in) — เงินสดสุทธิ = 0
+  const _dep=parseFloat(t.deposit||3500), _forfeit=Math.max(0,_dep-(cd.depRet||0));
+  if(_forfeit>0){
+    txRows.push({date:today,type:'deposit-out',description:'ริบเงินประกัน (ล้างหนี้สิน)',room:coRoom,amount:_forfeit,channel:'bank',note:'ริบประกัน — คู่รายการ ไม่มีเงินสดเคลื่อนไหว',month:coMonth});
+    txRows.push({date:today,type:'other-in',description:'ริบเงินประกัน (รับรู้รายได้)',room:coRoom,amount:_forfeit,channel:'bank',note:'ริบประกัน — คู่รายการ ไม่มีเงินสดเคลื่อนไหว',month:coMonth});
+  }
   if(txRows.length>0) await _sb.from('transactions').insert(txRows);
   await apiPost({action:'deleteTenant',room:coRoom},'กำลังย้ายออก...');
   closeMo('mo-checkout');await loadTenants();
@@ -3296,10 +3322,10 @@ async function renderCfDash(){
   const pctExp=prevExp>0?((totalExp-prevExp)/prevExp*100):0;
   const pctNet=prevInc-prevExp!==0?((netProfit-(prevInc-prevExp))/(Math.abs(prevInc-prevExp))*100):0;
 
-  const bankBal=allTx.filter(t=>(INC_T.includes(t.type)||t.type==='capital-in')&&t.channel==='bank').reduce((s,t)=>s+parseFloat(t.amount||0),0)
-    -allTx.filter(t=>(EXP_T.includes(t.type)||t.type==='capital-out')&&t.channel==='bank').reduce((s,t)=>s+parseFloat(t.amount||0),0);
-  const cashBal=allTx.filter(t=>(INC_T.includes(t.type)||t.type==='capital-in')&&t.channel==='cash').reduce((s,t)=>s+parseFloat(t.amount||0),0)
-    -allTx.filter(t=>(EXP_T.includes(t.type)||t.type==='capital-out')&&t.channel==='cash').reduce((s,t)=>s+parseFloat(t.amount||0),0);
+  const bankBal=allTx.filter(t=>(INC_T.includes(t.type)||t.type==='capital-in'||LIAB_IN_T.includes(t.type))&&t.channel==='bank').reduce((s,t)=>s+parseFloat(t.amount||0),0)
+    -allTx.filter(t=>(EXP_T.includes(t.type)||t.type==='capital-out'||LIAB_OUT_T.includes(t.type))&&t.channel==='bank').reduce((s,t)=>s+parseFloat(t.amount||0),0);
+  const cashBal=allTx.filter(t=>(INC_T.includes(t.type)||t.type==='capital-in'||LIAB_IN_T.includes(t.type))&&t.channel==='cash').reduce((s,t)=>s+parseFloat(t.amount||0),0)
+    -allTx.filter(t=>(EXP_T.includes(t.type)||t.type==='capital-out'||LIAB_OUT_T.includes(t.type))&&t.channel==='cash').reduce((s,t)=>s+parseFloat(t.amount||0),0);
 
   const pctTag=(pct,invert=false)=>{
     const good=(invert?pct<0:pct>=0);

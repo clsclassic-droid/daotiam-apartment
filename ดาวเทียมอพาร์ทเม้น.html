@@ -428,7 +428,6 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
           <div style="display:flex;gap:6px;align-items:center">
             <button class="btn btn-sm" id="cf-view-list" onclick="setCfView('list')" style="font-size:11px;background:var(--green);border-color:var(--green);color:#fff"><i class="ti ti-list"></i> รายการ</button>
             <button class="btn btn-sm" id="cf-view-dash" onclick="setCfView('dash')" style="font-size:11px"><i class="ti ti-chart-bar"></i> Dashboard</button>
-            <button class="btn btn-sm" onclick="openTransferModal()" id="cf-transfer-btn" style="border-color:#94A3B8;color:#475569"><i class="ti ti-transfer"></i> โอนเงิน</button>
             <button class="btn btn-green btn-sm" onclick="openTxModal()" id="cf-add-btn"><i class="ti ti-plus"></i> เพิ่ม</button>
           </div>
         </div>
@@ -817,10 +816,6 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
       <optgroup label="สินทรัพย์">
         <option value="asset-out">ซื้อสินทรัพย์ถาวร</option>
       </optgroup>
-      <optgroup label="โอนเงินระหว่างช่องทาง (ปกติสร้างผ่านปุ่ม 'โอนเงิน')">
-        <option value="transfer-out">โอนเงินออก (ย้ายช่องทาง)</option>
-        <option value="transfer-in">โอนเงินเข้า (ย้ายช่องทาง)</option>
-      </optgroup>
     </select></div>
     <div class="fg"><label>รายการ</label><input type="text" id="tx-desc" class="fc"></div>
     <div class="fg"><label>ห้อง (ถ้ามี)</label><input type="text" id="tx-room" class="fc"></div>
@@ -829,19 +824,6 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
   </div>
   <div class="fg"><label>หมายเหตุ</label><input type="text" id="tx-note" class="fc"></div>
   <div class="mo-actions"><button class="btn btn-sm" onclick="closeMo('mo-tx')">ยกเลิก</button><button class="btn btn-green btn-sm" onclick="saveTx()"><i class="ti ti-check"></i> บันทึก</button></div>
-</div></div>
-
-<div class="mo" id="mo-transfer"><div class="mo-box">
-  <div class="mo-hd"><div class="mo-title"><i class="ti ti-transfer" style="color:#475569"></i> โอนเงินระหว่างช่องทาง</div><button class="mo-close" onclick="closeMo('mo-transfer')">✕</button></div>
-  <div style="font-size:11px;color:var(--t3);margin-bottom:10px">ใช้เมื่อถอน/ฝากเงินระหว่างบัญชีธนาคารกับเงินสดในมือ — ไม่นับเป็นรายรับ/รายจ่าย ไม่กระทบกำไร-ขาดทุน</div>
-  <div class="fg"><label>วันที่</label><input type="date" id="tr-date" class="fc"></div>
-  <div class="fg"><label>ทิศทาง</label><select id="tr-dir" class="fc">
-    <option value="bank2cash">ธนาคาร → เงินสด (ถอนออกมาใช้)</option>
-    <option value="cash2bank">เงินสด → ธนาคาร (นำฝากเข้าบัญชี)</option>
-  </select></div>
-  <div class="fg"><label>จำนวนเงิน</label><input type="number" id="tr-amount" class="fc" min="0"></div>
-  <div class="fg"><label>หมายเหตุ</label><input type="text" id="tr-note" class="fc" placeholder="เช่น ถอนไว้หมุนค่าใช้จ่ายทั่วไป"></div>
-  <div class="mo-actions"><button class="btn btn-sm" onclick="closeMo('mo-transfer')">ยกเลิก</button><button class="btn btn-green btn-sm" onclick="saveTransfer()"><i class="ti ti-check"></i> บันทึก</button></div>
 </div></div>
 
 <div class="mo" id="mo-pay"><div class="mo-box" style="max-width:480px">
@@ -1005,9 +987,7 @@ const ASSET_T=['asset-out'];
 // หนี้สิน: เงินประกัน/มัดจำ/ค่าเช่าล่วงหน้า — ไม่ใช่รายได้/รายจ่าย แต่เป็นเงินสดที่เคลื่อนไหวจริง
 const LIAB_IN_T=['deposit-in','advance-in'];
 const LIAB_OUT_T=['deposit-out','rent-out'];
-// โอนเงินระหว่างช่องทาง (bank<->cash) — ไม่ใช่รายรับ/รายจ่ายจริง แค่ย้ายที่เก็บเงิน ไม่กระทบ P&L
-const TRANSFER_T=['transfer-in','transfer-out'];
-const TX_L={'rent-in':'ค่าเช่าห้อง','elec-in':'ค่าไฟ(เก็บ)','water-in':'ค่าน้ำ(เก็บ)','washer-in':'ตู้ซักผ้าหยอดเหรียญ','other-in':'รายรับอื่นๆ','deposit-in':'รับเงินประกัน/มัดจำ','advance-in':'รับค่าเช่าล่วงหน้า','elec-out':'ค่าไฟ(จ่าย)','water-out':'ค่าน้ำ(จ่าย)','internet-out':'อินเตอร์เน็ต','repair-out':'ซ่อมบำรุง','tax-out':'ภาษี','other-out':'รายจ่ายอื่นๆ','capital-in':'เพิ่มทุนเข้า','capital-out':'ถอนทุนออก','rent-out':'คืนค่าเช่าล่วงหน้า','deposit-out':'คืนเงินประกัน','asset-out':'ซื้อสินทรัพย์ถาวร','transfer-in':'โอนเงินเข้า (ย้ายช่องทาง)','transfer-out':'โอนเงินออก (ย้ายช่องทาง)'};
+const TX_L={'rent-in':'ค่าเช่าห้อง','elec-in':'ค่าไฟ(เก็บ)','water-in':'ค่าน้ำ(เก็บ)','washer-in':'ตู้ซักผ้าหยอดเหรียญ','other-in':'รายรับอื่นๆ','deposit-in':'รับเงินประกัน/มัดจำ','advance-in':'รับค่าเช่าล่วงหน้า','elec-out':'ค่าไฟ(จ่าย)','water-out':'ค่าน้ำ(จ่าย)','internet-out':'อินเตอร์เน็ต','repair-out':'ซ่อมบำรุง','tax-out':'ภาษี','other-out':'รายจ่ายอื่นๆ','capital-in':'เพิ่มทุนเข้า','capital-out':'ถอนทุนออก','rent-out':'คืนค่าเช่าล่วงหน้า','deposit-out':'คืนเงินประกัน','asset-out':'ซื้อสินทรัพย์ถาวร'};
 // ตัดเลขห้องที่ซ้ำกับคอลัมน์ "ห้อง" ออกจากข้อความรายการ (รองรับทั้งข้อมูลเก่าและใหม่)
 function cleanTxDesc(desc,room){
   if(!desc)return desc||'';
@@ -2018,7 +1998,16 @@ async function renderFinance(){
 function getPrevMonth(m){const[y,mo]=m.split('_').map(Number);return mo===1?(y-1)+'_12':`${y}_${String(mo-1).padStart(2,'0')}`;}
 async function loadMeters(){
   if(!tenants.length)tenants=await api({action:'getTenants'},'กำลังโหลด...')||[];
-  const allRooms=[...tenants,{room:22,name:'ออฟฟิส'}];
+  // แสดงครบทุกห้อง 01-21 + ออฟฟิส 22 (รวมห้องว่าง เพื่อตรวจน้ำ/ไฟรั่ว)
+  const occupiedRooms=new Set(tenants.map(t=>String(t.room)));
+  const allRooms=[
+    ...Array.from({length:21},(_,i)=>i+1).map(r=>({
+      room:r,
+      name:tenants.find(t=>String(t.room)===String(r))?.name||null,
+      vacant:!occupiedRooms.has(String(r))
+    })),
+    {room:22,name:'ออฟฟิส',vacant:false}
+  ];
   const month=document.getElementById('meter-sel').value;
   const[curr,prev]=await Promise.all([api({action:'getMeters',month},'กำลังโหลดมิเตอร์...'),api({action:'getMeters',month:getPrevMonth(month)})]);
   meters=(curr||[]);
@@ -2045,7 +2034,7 @@ function renderMeterGrid(){
         <div class="mrc-num">ห้อง ${t.room}</div>
         <button class="btn btn-sm" id="mrc-edit-${t.room}" onclick="toggleMeterEdit(${t.room})" style="font-size:10px;padding:3px 7px;color:var(--t2);flex-shrink:0"><i class="ti ti-edit" style="font-size:10px"></i> แก้ไข</button>
       </div>
-      <div class="mrc-name" style="margin-bottom:9px">${t.name||'—'}</div>
+      <div class="mrc-name" style="margin-bottom:9px">${t.vacant?'<span style="color:var(--red);font-size:11px;font-weight:600">✕ ห้องว่าง</span>':t.name||'—'}</div>
       <div class="mrc-dates">
         <div class="dt-wrap"><div class="mrc-dl prev">ก่อนหน้า</div><div class="mrc-dv" id="pdv-${t.room}">${thShort(m.prevDate)}</div><input type="date" id="pd-${t.room}" value="${m.prevDate||''}" class="mrc-di dt-overlay" onchange="onMeterDateChange(${t.room},'pd')" disabled></div>
         <div class="dt-wrap"><div class="mrc-dl curr">ล่าสุด</div><div class="mrc-dv" id="cdv-${t.room}">${thShort(m.currDate||today)}</div><input type="date" id="cd-${t.room}" value="${m.currDate||today}" class="mrc-di dt-overlay" onchange="onMeterDateChange(${t.room},'cd')" disabled></div>
@@ -2103,7 +2092,7 @@ function calcMC(room){
 }
 async function saveMeters(){
   const month=document.getElementById('meter-sel').value;
-  const allRooms=[...tenants.map(t=>t.room),22];
+  const allRooms=[...Array.from({length:21},(_,i)=>i+1),22];
   const data=allRooms.map(room=>({room,elecPrev:parseFloat(document.getElementById('ep-'+room)?.value||0),elecCurr:parseFloat(document.getElementById('ec-'+room)?.value||0),waterPrev:parseFloat(document.getElementById('wp-'+room)?.value||0),waterCurr:parseFloat(document.getElementById('wc-'+room)?.value||0),prevDate:document.getElementById('pd-'+room)?.value||'',currDate:document.getElementById('cd-'+room)?.value||''})).filter(m=>m.elecCurr>0||m.waterCurr>0);
   const res=await apiPost({action:'saveMeters',month,meters:data},'กำลังบันทึกมิเตอร์...');
   if(res?.success)showToast('✓ บันทึกมิเตอร์ '+res.count+' ห้องแล้ว');
@@ -2542,8 +2531,8 @@ function renderTxTbl(){
   const tLiabIn=transactions.filter(t=>LIAB_IN_T.includes(t.type)).reduce((s,t)=>s+parseFloat(t.amount||0),0);
   const tLiabOut=transactions.filter(t=>LIAB_OUT_T.includes(t.type)).reduce((s,t)=>s+parseFloat(t.amount||0),0);
   let run=0;
-  const _isIn=t=>INC_T.includes(t.type)||t.type==='capital-in'||LIAB_IN_T.includes(t.type)||t.type==='transfer-in';
-  const _isOut=t=>EXP_T.includes(t.type)||t.type==='capital-out'||ASSET_T.includes(t.type)||LIAB_OUT_T.includes(t.type)||t.type==='transfer-out';
+  const _isIn=t=>INC_T.includes(t.type)||t.type==='capital-in'||LIAB_IN_T.includes(t.type);
+  const _isOut=t=>EXP_T.includes(t.type)||t.type==='capital-out'||ASSET_T.includes(t.type)||LIAB_OUT_T.includes(t.type);
   const bankIn=transactions.filter(t=>_isIn(t)&&t.channel==='bank').reduce((s,t)=>s+parseFloat(t.amount||0),0);
   const bankOut=transactions.filter(t=>_isOut(t)&&t.channel==='bank').reduce((s,t)=>s+parseFloat(t.amount||0),0);
   const cashIn=transactions.filter(t=>_isIn(t)&&t.channel==='cash').reduce((s,t)=>s+parseFloat(t.amount||0),0);
@@ -2562,7 +2551,7 @@ function renderTxTbl(){
   chrono.forEach(t=>{const isCap=t.type==='capital-in'||t.type==='capital-out';const isCapIn=t.type==='capital-in';const isIn=isCap?isCapIn:t.type?.endsWith('-in');run+=(isIn?1:-1)*parseFloat(t.amount||0);balMap[t.id]=run;});
   // เรียงลำดับสำหรับแสดงผลตามหัวคอลัมน์ที่บอสหนึ่งคลิกเลือก
   const col=txSortCol||'date', dir=txSortDir||'desc', mul=dir==='asc'?1:-1;
-  const TYPE_ORDER=['rent-in','elec-in','water-in','washer-in','other-in','deposit-in','advance-in','elec-out','water-out','internet-out','repair-out','tax-out','other-out','rent-out','deposit-out','capital-in','capital-out','asset-out','transfer-out','transfer-in'];
+  const TYPE_ORDER=['rent-in','elec-in','water-in','washer-in','other-in','deposit-in','advance-in','elec-out','water-out','internet-out','repair-out','tax-out','other-out','rent-out','deposit-out','capital-in','capital-out','asset-out'];
   const display=[...transactions].sort((a,b)=>{
     let r=0;
     if(col==='date')r=(a.date||'').localeCompare(b.date||'');
@@ -2579,7 +2568,7 @@ function renderTxTbl(){
     const el=document.getElementById('th-arw-'+c);if(!el)return;
     el.textContent=c===col?(dir==='asc'?' ▲':' ▼'):'';
   });
-  document.getElementById('tx-body').innerHTML=display.map(t=>{const isCap=t.type==='capital-in'||t.type==='capital-out';const isAsset=ASSET_T.includes(t.type);const isTransfer=TRANSFER_T.includes(t.type);const isCapIn=t.type==='capital-in';const isIn=isCap?isCapIn:t.type?.endsWith('-in');const runVal=balMap[t.id]??0;const roomTxt=t.room?String(parseInt(t.room)||t.room):'—';const bdgStyle=isCap?`style="background:#E6F1FB;color:#185FA5;font-size:11px;padding:2px 7px;border-radius:4px;font-weight:500"`:isAsset?`style="background:#F3E8D9;color:#6B4A1E;font-size:11px;padding:2px 7px;border-radius:4px;font-weight:500"`:isTransfer?`style="background:#F1F5F9;color:#475569;font-size:11px;padding:2px 7px;border-radius:4px;font-weight:500"`:'class="bdg '+(isIn?'bg':'br')+'"';return`<tr><td style="font-size:11px;color:var(--t3)">${fmtDate(t.date)||'—'}</td><td>${cleanTxDesc(t.desc,t.room)||'—'}</td><td class="c" style="font-size:12px;font-weight:600">${roomTxt}</td><td><span ${bdgStyle}>${TX_L[t.type]||t.type}</span></td><td class="r" style="font-weight:500;color:${isCap?'var(--blue)':isAsset?'#6B4A1E':isTransfer?'#475569':isIn?'var(--green)':'var(--red)'}">${isIn?'+':'-'}${fmt2(t.amount)}</td><td style="font-size:11px;color:var(--t3)">${t.channel==='bank'?'โอน':'เงินสด'}</td><td class="r" style="font-size:11px;color:${runVal>=0?'var(--green)':'var(--red)'}">${fmt2(runVal)}</td><td style="display:flex;gap:4px"><button class="btn btn-sm btn-icon" style="color:var(--blue)" onclick="editTx('${t.id}')"><i class="ti ti-edit" style="font-size:11px"></i></button><button class="btn btn-sm btn-icon" style="color:var(--t3)" onclick="delTx('${t.id}')"><i class="ti ti-trash" style="font-size:11px"></i></button></td></tr>`;}).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--t3);padding:20px">ยังไม่มีรายการ</td></tr>';
+  document.getElementById('tx-body').innerHTML=display.map(t=>{const isCap=t.type==='capital-in'||t.type==='capital-out';const isAsset=ASSET_T.includes(t.type);const isCapIn=t.type==='capital-in';const isIn=isCap?isCapIn:t.type?.endsWith('-in');const runVal=balMap[t.id]??0;const roomTxt=t.room?String(parseInt(t.room)||t.room):'—';const bdgStyle=isCap?`style="background:#E6F1FB;color:#185FA5;font-size:11px;padding:2px 7px;border-radius:4px;font-weight:500"`:isAsset?`style="background:#F3E8D9;color:#6B4A1E;font-size:11px;padding:2px 7px;border-radius:4px;font-weight:500"`:'class="bdg '+(isIn?'bg':'br')+'"';return`<tr><td style="font-size:11px;color:var(--t3)">${fmtDate(t.date)||'—'}</td><td>${cleanTxDesc(t.desc,t.room)||'—'}</td><td class="c" style="font-size:12px;font-weight:600">${roomTxt}</td><td><span ${bdgStyle}>${TX_L[t.type]||t.type}</span></td><td class="r" style="font-weight:500;color:${isCap?'var(--blue)':isAsset?'#6B4A1E':isIn?'var(--green)':'var(--red)'}">${isIn?'+':'-'}${fmt2(t.amount)}</td><td style="font-size:11px;color:var(--t3)">${t.channel==='bank'?'โอน':'เงินสด'}</td><td class="r" style="font-size:11px;color:${runVal>=0?'var(--green)':'var(--red)'}">${fmt2(runVal)}</td><td style="display:flex;gap:4px"><button class="btn btn-sm btn-icon" style="color:var(--blue)" onclick="editTx('${t.id}')"><i class="ti ti-edit" style="font-size:11px"></i></button><button class="btn btn-sm btn-icon" style="color:var(--t3)" onclick="delTx('${t.id}')"><i class="ti ti-trash" style="font-size:11px"></i></button></td></tr>`;}).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--t3);padding:20px">ยังไม่มีรายการ</td></tr>';
 }
 let txSortCol='date', txSortDir='desc';
 function sortTxCol(col){
@@ -2625,30 +2614,6 @@ async function saveTx(){
   }
 }
 async function delTx(id){if(!confirm('ยืนยันลบรายการนี้?'))return;const res=await apiPost({action:'deleteTransaction',id},'กำลังลบ...');if(res?.success){await loadTx();showToast('ลบแล้ว');}}
-function openTransferModal(){
-  document.getElementById('tr-date').value=new Date().toISOString().split('T')[0];
-  document.getElementById('tr-dir').value='bank2cash';
-  document.getElementById('tr-amount').value='';
-  document.getElementById('tr-note').value='';
-  openMo('mo-transfer');
-}
-async function saveTransfer(){
-  const date=document.getElementById('tr-date').value;
-  const dir=document.getElementById('tr-dir').value;
-  const amount=parseFloat(document.getElementById('tr-amount').value)||0;
-  const note=document.getElementById('tr-note').value||'';
-  if(!date||amount<=0){showToast('กรุณากรอกวันที่และจำนวนเงินให้ถูกต้อง','err');return;}
-  const month=date.slice(0,7).replace('-','_');
-  const fromCh=dir==='bank2cash'?'bank':'cash';
-  const toCh=dir==='bank2cash'?'cash':'bank';
-  const descTxt=dir==='bank2cash'?'โอนเงินออกจากธนาคาร (ย้ายเป็นเงินสด)':'นำเงินสดฝากเข้าธนาคาร';
-  const descTxt2=dir==='bank2cash'?'รับโอนเป็นเงินสด (จากธนาคาร)':'รับฝากเข้าธนาคาร (จากเงินสด)';
-  const r1=await apiPost({action:'saveTransaction',date,type:'transfer-out',desc:descTxt,room:'',amount,channel:fromCh,note,month},'กำลังบันทึก...');
-  if(!r1?.success){showToast('บันทึกไม่สำเร็จ','err');return;}
-  const r2=await apiPost({action:'saveTransaction',date,type:'transfer-in',desc:descTxt2,room:'',amount,channel:toCh,note,month},'กำลังบันทึก...');
-  if(r2?.success){closeMo('mo-transfer');await loadTx();showToast('✓ บันทึกการโอนเงินแล้ว');}
-  else showToast('บันทึกขาที่ 2 ไม่สำเร็จ กรุณาตรวจสอบรายการ','err');
-}
 function editTx(id){
   const t=transactions.find(x=>String(x.id)===String(id));if(!t)return;
   document.getElementById('tx-date').value=t.date?t.date.split(' ')[0]:'';
@@ -3366,10 +3331,10 @@ async function renderCfDash(){
   const pctExp=prevExp>0?((totalExp-prevExp)/prevExp*100):0;
   const pctNet=prevInc-prevExp!==0?((netProfit-(prevInc-prevExp))/(Math.abs(prevInc-prevExp))*100):0;
 
-  const bankBal=allTx.filter(t=>(INC_T.includes(t.type)||t.type==='capital-in'||LIAB_IN_T.includes(t.type)||t.type==='transfer-in')&&t.channel==='bank').reduce((s,t)=>s+parseFloat(t.amount||0),0)
-    -allTx.filter(t=>(EXP_T.includes(t.type)||t.type==='capital-out'||LIAB_OUT_T.includes(t.type)||t.type==='transfer-out')&&t.channel==='bank').reduce((s,t)=>s+parseFloat(t.amount||0),0);
-  const cashBal=allTx.filter(t=>(INC_T.includes(t.type)||t.type==='capital-in'||LIAB_IN_T.includes(t.type)||t.type==='transfer-in')&&t.channel==='cash').reduce((s,t)=>s+parseFloat(t.amount||0),0)
-    -allTx.filter(t=>(EXP_T.includes(t.type)||t.type==='capital-out'||LIAB_OUT_T.includes(t.type)||t.type==='transfer-out')&&t.channel==='cash').reduce((s,t)=>s+parseFloat(t.amount||0),0);
+  const bankBal=allTx.filter(t=>(INC_T.includes(t.type)||t.type==='capital-in'||LIAB_IN_T.includes(t.type))&&t.channel==='bank').reduce((s,t)=>s+parseFloat(t.amount||0),0)
+    -allTx.filter(t=>(EXP_T.includes(t.type)||t.type==='capital-out'||LIAB_OUT_T.includes(t.type))&&t.channel==='bank').reduce((s,t)=>s+parseFloat(t.amount||0),0);
+  const cashBal=allTx.filter(t=>(INC_T.includes(t.type)||t.type==='capital-in'||LIAB_IN_T.includes(t.type))&&t.channel==='cash').reduce((s,t)=>s+parseFloat(t.amount||0),0)
+    -allTx.filter(t=>(EXP_T.includes(t.type)||t.type==='capital-out'||LIAB_OUT_T.includes(t.type))&&t.channel==='cash').reduce((s,t)=>s+parseFloat(t.amount||0),0);
 
   const pctTag=(pct,invert=false)=>{
     const good=(invert?pct<0:pct>=0);

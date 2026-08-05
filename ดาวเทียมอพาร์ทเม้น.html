@@ -270,9 +270,22 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
   <div class="sb-sec">ระบบ</div>
   <button class="ni" onclick="goPage('settings')"><i class="ti ti-settings ni-i"></i> ตั้งค่า</button>
   <div class="sb-foot">
-    <div style="display:flex;align-items:center;gap:8px;padding:7px 9px">
-      <div class="sb-av">บ1</div>
-      <div><div style="font-size:12px;color:#fff;font-weight:500">บอสหนึ่ง</div><div style="font-size:10px;color:rgba(255,255,255,.35)">เจ้าของ · 21 ห้อง</div></div>
+    <div id="sb-cal" style="padding:8px 10px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <button onclick="sbCalPrev()" style="background:none;border:none;color:rgba(255,255,255,.6);cursor:pointer;font-size:14px;padding:0 4px;line-height:1">◂</button>
+        <div id="sb-cal-title" style="font-size:11px;font-weight:600;color:rgba(255,255,255,.85);letter-spacing:.3px"></div>
+        <button onclick="sbCalNext()" style="background:none;border:none;color:rgba(255,255,255,.6);cursor:pointer;font-size:14px;padding:0 4px;line-height:1">▸</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:1px;text-align:center">
+        <div style="font-size:8px;color:rgba(255,255,255,.35);padding:1px 0">อา</div>
+        <div style="font-size:8px;color:rgba(255,255,255,.35);padding:1px 0">จ</div>
+        <div style="font-size:8px;color:rgba(255,255,255,.35);padding:1px 0">อ</div>
+        <div style="font-size:8px;color:rgba(255,255,255,.35);padding:1px 0">พ</div>
+        <div style="font-size:8px;color:rgba(255,255,255,.35);padding:1px 0">พฤ</div>
+        <div style="font-size:8px;color:rgba(255,255,255,.35);padding:1px 0">ศ</div>
+        <div style="font-size:8px;color:rgba(255,255,255,.35);padding:1px 0">ส</div>
+      </div>
+      <div id="sb-cal-days" style="display:grid;grid-template-columns:repeat(7,1fr);gap:1px;text-align:center;margin-top:1px"></div>
     </div>
   </div>
 </aside>
@@ -3982,6 +3995,30 @@ async function init(){
   initApp();
 }
 
+
+// ========== Sidebar Calendar ==========
+let _sbCalYear=new Date().getFullYear(), _sbCalMonth=new Date().getMonth();
+const _sbMTH=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+function sbCalRender(){
+  const now=new Date();
+  const title=document.getElementById('sb-cal-title');
+  const days=document.getElementById('sb-cal-days');
+  if(!title||!days)return;
+  title.textContent=_sbMTH[_sbCalMonth]+' '+(_sbCalYear+543);
+  const firstDay=new Date(_sbCalYear,_sbCalMonth,1).getDay(); // 0=อา
+  const daysInMonth=new Date(_sbCalYear,_sbCalMonth+1,0).getDate();
+  let html='';
+  for(let i=0;i<firstDay;i++) html+='<div></div>';
+  for(let d=1;d<=daysInMonth;d++){
+    const isToday=d===now.getDate()&&_sbCalMonth===now.getMonth()&&_sbCalYear===now.getFullYear();
+    html+=`<div style="font-size:9px;padding:2px 1px;border-radius:3px;cursor:default;${isToday?'background:var(--green);color:#fff;font-weight:700':'color:rgba(255,255,255,.6)'}">${d}</div>`;
+  }
+  days.innerHTML=html;
+}
+function sbCalPrev(){if(_sbCalMonth===0){_sbCalMonth=11;_sbCalYear--;}else _sbCalMonth--;sbCalRender();}
+function sbCalNext(){if(_sbCalMonth===11){_sbCalMonth=0;_sbCalYear++;}else _sbCalMonth++;sbCalRender();}
+// ========== End Sidebar Calendar ==========
+
 async function initApp(){
   const now=new Date();
   document.getElementById('tb-date').textContent=now.getDate()+' '+MTH[now.getMonth()]+' '+(now.getFullYear()+543);
@@ -4004,6 +4041,7 @@ async function initApp(){
   }catch(e){console.log('anthropic key not found');}
   loadDashboard();
   loadTenants();
+  sbCalRender();
 }
 init();
 </script>

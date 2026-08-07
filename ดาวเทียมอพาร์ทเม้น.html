@@ -269,6 +269,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
   <button class="ni" onclick="goPage('payment-history')"><i class="ti ti-receipt ni-i"></i> การชำระเงิน</button>
   <div class="sb-sec">ระบบ</div>
   <button class="ni" onclick="goPage('settings')"><i class="ti ti-settings ni-i"></i> ตั้งค่า</button>
+  <button class="ni" onclick="goPage('guide')"><i class="ti ti-book ni-i"></i> คู่มือการใช้</button>
   <div class="sb-foot">
     <div id="sb-cal" style="padding:8px 10px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
@@ -689,6 +690,86 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
         </table></div>
       </div>
     </div>
+
+    <!-- GUIDE -->
+    <div class="page" id="page-guide">
+      <div class="card" style="margin-bottom:14px">
+        <div class="section-hd">
+          <div class="card-title" style="margin-bottom:0"><i class="ti ti-user-plus" style="color:var(--green)"></i> ผู้เช่าเข้าพักใหม่</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <div style="min-width:24px;height:24px;border-radius:50%;background:var(--green);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">1</div>
+            <div><div style="font-size:13px;font-weight:600;margin-bottom:2px">เพิ่มข้อมูลผู้เช่า</div><div style="font-size:12px;color:var(--t2)">ไปหน้า <b>ผู้เช่า</b> → กด <b>+ เพิ่มผู้เช่า</b> กรอกชื่อ, เบอร์โทร, เลขบัตร, ห้อง, วันที่เข้าพัก</div></div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <div style="min-width:24px;height:24px;border-radius:50%;background:var(--green);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">2</div>
+            <div><div style="font-size:13px;font-weight:600;margin-bottom:2px">บันทึกรับเงินก่อนเข้าพัก 7,000 บาท</div><div style="font-size:12px;color:var(--t2)">ไปหน้า <b>กระแสเงินสด</b> → <b>+ เพิ่ม</b> → บันทึก 2 รายการ:<br>• <b>รับเงินประกัน/มัดจำ</b> 3,500 บาท (deposit-in)<br>• <b>รับค่าเช่าล่วงหน้า</b> 3,500 บาท (advance-in)<br><span style="color:var(--t3);font-size:11px">ถ้ามีมัดจำมาก่อน ให้บันทึกยอดย่อยทีละ deposit-in</span></div></div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <div style="min-width:24px;height:24px;border-radius:50%;background:var(--green);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">3</div>
+            <div><div style="font-size:13px;font-weight:600;margin-bottom:2px">จดมิเตอร์เริ่มต้น</div><div style="font-size:12px;color:var(--t2)">ไปหน้า <b>มิเตอร์น้ำ-ไฟ</b> → จดค่ามิเตอร์น้ำและไฟในช่อง “ไฟใหม่” / “น้ำใหม่” เพื่อใช้เป็นค่าเริ่มต้นเดือนแรก</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:14px">
+        <div class="section-hd">
+          <div class="card-title" style="margin-bottom:0"><i class="ti ti-calendar-stats" style="color:var(--blue)"></i> คิดค่าเช่าสิ้นเดือน</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <div style="min-width:24px;height:24px;border-radius:50%;background:var(--blue);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">1</div>
+            <div><div style="font-size:13px;font-weight:600;margin-bottom:2px">จดมิเตอร์ทุกสิ้นเดือน</div><div style="font-size:12px;color:var(--t2)">ไปหน้า <b>มิเตอร์น้ำ-ไฟ</b> → จดค่ามิเตอร์ทุกห้อง (รวมห้องว่างเพื่อตรวจน้ำ/ไฟรั่ว) → กด <b>สแกนมิเตอร์จากรูปภาย</b> หรือกรอกตั้งเอง → กด <b>บันทึก</b></div></div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <div style="min-width:24px;height:24px;border-radius:50%;background:var(--blue);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">2</div>
+            <div><div style="font-size:13px;font-weight:600;margin-bottom:2px">ออกใบแจ้งหนี้วันที่ 1</div><div style="font-size:12px;color:var(--t2)">ไปหน้า <b>ใบแจ้งหนี้</b> → เลือกเดือนที่ต้องการออกบิล → กด <b>ออกบิลทุกห้อง</b><br><span style="color:var(--t3);font-size:11px">ระบบจะคำนวณค่าน้ำ-ไฟจากมิเตอร์และรวมค่าเช่าให้อัตโนมัติ</span></div></div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <div style="min-width:24px;height:24px;border-radius:50%;background:var(--blue);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">3</div>
+            <div><div style="font-size:13px;font-weight:600;margin-bottom:2px">ส่งบิลผ่าน LINE (ถ้าเชื่อมต่อ)</div><div style="font-size:12px;color:var(--t2)">ในหน้าใบแจ้งหนี้ → กดไอคอน LINE → ระบบจะส่งสรุปค่าเช่าให้ผู้เช่าที่ LINE โดยตรง</div></div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <div style="min-width:24px;height:24px;border-radius:50%;background:var(--blue);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">4</div>
+            <div><div style="font-size:13px;font-weight:600;margin-bottom:2px">รับชำระภายในวันที่ 5</div><div style="font-size:12px;color:var(--t2)">เมื่อผู้เช่าโอนเงินมา → ไปหน้า <b>ใบแจ้งหนี้</b> → กด <b>บันทึกรับชำระ</b> → ระบบออกใบเสร็จอัตโนมัติ<br><span style="color:#E85D04;font-size:11px">• ถ้าไม่ชำระภายวันที่ 5 → จะขึ้นหน้า “ค้างชำระ” อัตโนมัติ</span></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-hd">
+          <div class="card-title" style="margin-bottom:0"><i class="ti ti-user-minus" style="color:var(--red)"></i> ผู้เช่าย้ายออก</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <div style="min-width:24px;height:24px;border-radius:50%;background:var(--red);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">1</div>
+            <div><div style="font-size:13px;font-weight:600;margin-bottom:2px">ตรวจยอดค้างชำระ</div><div style="font-size:12px;color:var(--t2)">ไปหน้า <b>ค้างชำระ</b> → เช็คว่ามีบิลค้างอยู่หรือไม่ ถ้ามีให้เก็บเงินให้ครบก่อน</div></div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <div style="min-width:24px;height:24px;border-radius:50%;background:var(--red);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">2</div>
+            <div><div style="font-size:13px;font-weight:600;margin-bottom:2px">จดมิเตอร์วันที่ออก</div><div style="font-size:12px;color:var(--t2)">ไปหน้า <b>มิเตอร์น้ำ-ไฟ</b> → จดค่ามิเตอร์สุดท้ายของห้องนั้น (ไม่ต้องรอสิ้นเดือน)</div></div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <div style="min-width:24px;height:24px;border-radius:50%;background:var(--red);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">3</div>
+            <div><div style="font-size:13px;font-weight:600;margin-bottom:2px">ออกบิลงวดสุดท้าย</div><div style="font-size:12px;color:var(--t2)">ไปหน้า <b>ใบแจ้งหนี้</b> → ออกบิลเดือนนั้น → ถ้าออกกลางเดือนให้เพิ่ม extras ค่าเช่าเป็นรายวัน (117 บาท/วัน) แทนค่าเช่าเต็มเดือน</div></div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <div style="min-width:24px;height:24px;border-radius:50%;background:var(--red);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">4</div>
+            <div><div style="font-size:13px;font-weight:600;margin-bottom:2px">รับชำระบิลงวดสุดท้าย</div><div style="font-size:12px;color:var(--t2)">บันทึกรับชำระตามปกติ → ระบบออกใบเสร็จให้อัตโนมัติ</div></div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <div style="min-width:24px;height:24px;border-radius:50%;background:var(--red);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">5</div>
+            <div><div style="font-size:13px;font-weight:600;margin-bottom:2px">คืนเงินประกัน</div><div style="font-size:12px;color:var(--t2)">ไปหน้า <b>กระแสเงินสด</b> → <b>+ เพิ่ม</b> → เลือก <b>คืนเงินประกัน</b> (deposit-out) 3,500 บาท<br><span style="color:#E85D04;font-size:11px">• ถ้าออกก่อน 4 เดือน → ไม่ต้องบันทึกรายการนี้ (ไม่คืน)</span></div></div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <div style="min-width:24px;height:24px;border-radius:50%;background:var(--red);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">6</div>
+            <div><div style="font-size:13px;font-weight:600;margin-bottom:2px">ปิดห้อง (Checkout)</div><div style="font-size:12px;color:var(--t2)">ไปหน้า <b>ผู้เช่า</b> → กด <b>Checkout</b> ผู้เช่าคนนั้น → ระบบย้ายไปประวัติและห้องจะกลับเป็นว่างอัตโนมัติ</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
 
     <!-- METER HISTORY -->
     <div class="page" id="page-meter-history">
@@ -1437,7 +1518,7 @@ async function apiPost(d, msg){
 }
 
 // NAV
-const PAGES={dashboard:['หน้าหลัก','ภาพรวมดาวเทียมอพาร์ทเม้น'],'payment-history':['ประวัติการชำระเงิน','บันทึกใบเสร็จย้อนหลัง'],meter:['มิเตอร์น้ำ-ไฟ','บันทึกมิเตอร์ประจำเดือน'],'meter-history':['ประวัติมิเตอร์','ตรวจสอบการใช้น้ำ-ไฟย้อนหลัง'],invoice:['ใบแจ้งหนี้','ออกใบแจ้งยอดค่าเช่า'],cashflow:['กระแสเงินสด','รายรับ-รายจ่าย (ตามวันที่จ่ายจริง)'],pnl:['กำไร-ขาดทุน','สรุปกำไร-ขาดทุนตามรอบบิล'],balancesheet:['งบดุล','สินทรัพย์ หนี้สิน ส่วนของเจ้าของ'],overdue:['ค้างชำระ','รายการที่ยังไม่ชำระ'],tenant:['ผู้เช่า','ข้อมูลผู้เช่าปัจจุบัน'],maintenance:['ซ่อมบำรุง','ตารางซ่อมบำรุงและล้างแอร์'],history:['ประวัติ','ประวัติผู้เช่าเก่า'],'settings':['ตั้งค่า','อัตราค่าบริการ']};
+const PAGES={dashboard:['หน้าหลัก','ภาพรวมดาวเทียมอพาร์ทเม้น'],'payment-history':['ประวัติการชำระเงิน','บันทึกใบเสร็จย้อนหลัง'],meter:['มิเตอร์น้ำ-ไฟ','บันทึกมิเตอร์ประจำเดือน'],'meter-history':['ประวัติมิเตอร์','ตรวจสอบการใช้น้ำ-ไฟย้อนหลัง'],invoice:['ใบแจ้งหนี้','ออกใบแจ้งยอดค่าเช่า'],cashflow:['กระแสเงินสด','รายรับ-รายจ่าย (ตามวันที่จ่ายจริง)'],pnl:['กำไร-ขาดทุน','สรุปกำไร-ขาดทุนตามรอบบิล'],balancesheet:['งบดุล','สินทรัพย์ หนี้สิน ส่วนของเจ้าของ'],overdue:['ค้างชำระ','รายการที่ยังไม่ชำระ'],tenant:['ผู้เช่า','ข้อมูลผู้เช่าปัจจุบัน'],maintenance:['ซ่อมบำรุง','ตารางซ่อมบำรุงและล้างแอร์'],history:['ประวัติ','ประวัติผู้เช่าเก่า'],'settings':['ตั้งค่า','อัตราค่าบริการ'],'guide':['คู่มือการใช้','วิธีใช้งานระบบจัดการอพาร์ทเม้น']};
 function goPage(p){
   closeMobileSidebar();
   document.querySelectorAll('.page').forEach(e=>e.classList.remove('act'));

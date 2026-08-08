@@ -114,7 +114,10 @@ input,select,textarea{font-family:'Sarabun',sans-serif}
 .btn-icon{padding:5px;border-radius:6px}
 .fg{margin-bottom:11px}
 .fg label{font-size:11px;color:var(--t2);display:block;margin-bottom:3px;font-weight:500}
+/* Safari/iPad fix: ต้องมี -webkit-appearance:none + appearance:none + box-sizing:border-box ทุกครั้งที่ใช้ .fc
+   มิฉะนั้น Safari จะใช้ native style ของตัวเองทำให้ border ของ input/select ซ้อนทับกัน */
 .fc{width:100%;font-size:13px;padding:7px 9px;border:1px solid var(--border);border-radius:7px;background:#fff;color:var(--text);transition:border-color .15s;-webkit-appearance:none;appearance:none;box-sizing:border-box}
+select.fc{text-align:center}
 .fc:focus{outline:none;border-color:var(--green)}
 .fr2{display:grid;grid-template-columns:1fr 1fr;row-gap:10px;column-gap:12px}
 .meter-grid-wrap{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;min-width:0}

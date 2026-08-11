@@ -4021,9 +4021,10 @@ async function sendLineInv(){
   const room=document.getElementById('inv-room')?.value;if(!room)return;
   const t=tenants.find(x=>String(x.room)===String(room));
   if(!t?.line_user_id){showToast('ผู้เช่าไม่มี LINE User ID','err');return;}
-  const previewEl=document.getElementById('inv-preview');
-  if(!previewEl?.innerHTML){showToast('กรุณาเลือกห้องและเดือนก่อน','err');return;}
   const monthName=document.getElementById('inv-month').value;
+  const invDate=document.getElementById('inv-date').value;
+  const mDate=document.getElementById('inv-mdate').value;
+  const _coDateVal=document.getElementById('inv-checkout-date')?.value||'';
   const MONTH_MAP={'มกราคม':'01','กุมภาพันธ์':'02','มีนาคม':'03','เมษายน':'04','พฤษภาคม':'05','มิถุนายน':'06','กรกฎาคม':'07','สิงหาคม':'08','กันยายน':'09','ตุลาคม':'10','พฤศจิกายน':'11','ธันวาคม':'12'};
   const mo=MONTH_MAP[monthName]||'01';
   const now=new Date();let yr=now.getFullYear();
@@ -4033,9 +4034,16 @@ async function sendLineInv(){
   const eu=Math.max(0,parseFloat(m.elecCurr||0)-parseFloat(m.elecPrev||0));
   const wu=Math.max(0,parseFloat(m.waterCurr||0)-parseFloat(m.waterPrev||0));
   const total=RENT+Math.round(eu*ELEC)+Math.round(wu*WATER);
+  // สร้าง standalone div จาก buildInvHTML โดยตรง ไม่ clone จาก #inv-preview ที่ถูก layout บีบ
+  const tmpDiv=document.createElement('div');
+  tmpDiv.style.cssText='position:fixed;left:-9999px;top:0;width:794px;background:#fff;z-index:-1;';
+  tmpDiv.innerHTML=buildInvHTML(room,t,m,monthName,invDate,m.currDate||mDate,false,[],_coDateVal,monthKey);
+  document.body.appendChild(tmpDiv);
   showLoad('กำลังสร้าง PDF...');
-  let blob;try{blob=await htmlToPdfBlob(previewEl);}catch(e){hideLoad();showToast('สร้าง PDF ไม่สำเร็จ','err');return;}
-  hideLoad();
+  let blob;
+  try{blob=await htmlToPdfBlob(tmpDiv);}
+  catch(e){showToast('สร้าง PDF ไม่สำเร็จ','err');return;}
+  finally{try{document.body.removeChild(tmpDiv);}catch(e){}hideLoad();}
   const filename=`inv_r${String(room).padStart(2,'0')}_${monthKey}.pdf`;
   const pdfUrl=await uploadPdfToSupabase(blob,filename);
   if(!pdfUrl)return;

@@ -3931,7 +3931,10 @@ async function htmlToPdfBlob(htmlEl){
   const {jsPDF}=window.jspdf;
   const clone=htmlEl.cloneNode(true);
   // วาง clone ใน DOM จริงๆ ที่ซ้ายนอกหน้าจอ
-  clone.style.cssText='position:absolute;left:-9999px;top:0;width:760px;background:#fff;padding:8px;box-sizing:border-box;font-family:Sarabun,sans-serif;font-size:13px;z-index:-1';
+  clone.style.cssText='position:absolute;left:-9999px;top:0;width:760px;background:#fff;padding:0;box-sizing:border-box;font-family:Sarabun,sans-serif;font-size:13px;z-index:-1';
+  // reset padding ของ inner div (ใบแจ้งหนี้) ให้พอดีกับความกว้าง
+  const innerDiv=clone.querySelector('div');
+  if(innerDiv){innerDiv.style.maxWidth='760px';innerDiv.style.width='760px';innerDiv.style.padding='20px 24px';innerDiv.style.boxSizing='border-box';innerDiv.style.border='none';innerDiv.style.borderRadius='0';}
   document.body.appendChild(clone);
   // รอ browser render
   await new Promise(r=>setTimeout(r,300));
@@ -3944,7 +3947,7 @@ async function htmlToPdfBlob(htmlEl){
       width:W,height:H,
       x:0,y:0,
       scrollX:0,scrollY:0,
-      windowWidth:W+30
+      windowWidth:W
     });
     const imgData=canvas.toDataURL('image/jpeg',0.95);
     // PDF ขนาดพอดีกับเนื้อหา ไม่มีที่ว่าง
@@ -4061,7 +4064,7 @@ async function sendLineAllInv(){
     const wu=Math.max(0,parseFloat(m.waterCurr||0)-parseFloat(m.waterPrev||0));
     const total=RENT+Math.round(eu*ELEC)+Math.round(wu*WATER);
     const tmpDiv=document.createElement('div');
-    tmpDiv.style.cssText='position:fixed;left:-9999px;top:0;width:600px;background:#fff;z-index:-1';
+    tmpDiv.style.cssText='position:fixed;left:-9999px;top:0;width:760px;background:#fff;z-index:-1';
     tmpDiv.innerHTML=buildInvHTML(t.room,t,m,monthName,invDate,m.currDate||mDate,false,[]);
     document.body.appendChild(tmpDiv);
     try{

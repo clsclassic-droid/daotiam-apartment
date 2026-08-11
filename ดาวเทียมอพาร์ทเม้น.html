@@ -3928,7 +3928,7 @@ async function htmlToPdfBlob(htmlEl){
   const {jsPDF}=window.jspdf;
   const clone=htmlEl.cloneNode(true);
   // วาง clone ใน DOM จริงๆ ที่ซ้ายนอกหน้าจอ
-  clone.style.cssText='position:absolute;left:-9999px;top:0;width:620px;background:#fff;padding:16px;box-sizing:border-box;font-family:Sarabun,sans-serif;font-size:13px;z-index:-1';
+  clone.style.cssText='position:absolute;left:-9999px;top:0;width:700px;background:#fff;padding:12px;box-sizing:border-box;font-family:Sarabun,sans-serif;font-size:13px;z-index:-1';
   document.body.appendChild(clone);
   // รอ browser render
   await new Promise(r=>setTimeout(r,300));

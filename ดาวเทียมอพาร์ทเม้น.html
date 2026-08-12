@@ -3932,13 +3932,16 @@ async function renderMhRoom(){
 async function htmlToPdfBlob(htmlEl){
   const {jsPDF}=window.jspdf;
   const A4W=794;
-  // inject htmlEl เข้า body โดยตรง ไม่ใช้ iframe
-  htmlEl.style.cssText='position:fixed;left:-9999px;top:0;width:'+A4W+'px;background:#fff;z-index:-9999;box-sizing:border-box;';
-  document.body.appendChild(htmlEl);
+  // สร้าง wrapper ที่มี overflow:visible และกว้าง A4W
+  const wrapper=document.createElement('div');
+  wrapper.style.cssText='position:absolute;left:-9999px;top:0;width:'+A4W+'px;min-width:'+A4W+'px;overflow:visible;background:#fff;z-index:-9999;';
+  htmlEl.style.cssText='width:'+A4W+'px;min-width:'+A4W+'px;background:#fff;box-sizing:border-box;';
+  wrapper.appendChild(htmlEl);
+  document.body.appendChild(wrapper);
   await new Promise(r=>setTimeout(r,500));
-  const H=htmlEl.scrollHeight||1000;
+  const H=wrapper.scrollHeight||1000;
   try{
-    const canvas=await html2canvas(htmlEl,{
+    const canvas=await html2canvas(wrapper,{
       scale:2,useCORS:true,backgroundColor:'#ffffff',
       logging:false,
       width:A4W,height:H,
@@ -3946,14 +3949,13 @@ async function htmlToPdfBlob(htmlEl){
       windowWidth:A4W,windowHeight:H
     });
     const imgData=canvas.toDataURL('image/jpeg',0.95);
-    // กำหนด PDF size จาก canvas จริงๆ → ไม่มีทางตัดขอบ
     const pdfW=canvas.width/2*25.4/96;
     const pdfH=canvas.height/2*25.4/96;
     const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:[pdfW,pdfH]});
     pdf.addImage(imgData,'JPEG',0,0,pdfW,pdfH);
     return pdf.output('blob');
   } finally {
-    try{document.body.removeChild(htmlEl);}catch(e){}
+    try{document.body.removeChild(wrapper);}catch(e){}
   }
 }
 

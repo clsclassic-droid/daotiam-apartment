@@ -3932,45 +3932,29 @@ async function renderMhRoom(){
 async function htmlToPdfBlob(htmlEl){
   const {jsPDF}=window.jspdf;
   const A4W=794;
-  return new Promise((resolve,reject)=>{
-    // สร้าง iframe viewport 794px แยกจาก layout หลัก
-    const iframe=document.createElement('iframe');
-    iframe.style.cssText='position:fixed;left:-9999px;top:0;width:'+A4W+'px;height:1px;border:none;visibility:hidden;';
-    document.body.appendChild(iframe);
-    iframe.onload=async()=>{
-      try{
-        const idoc=iframe.contentDocument||iframe.contentWindow.document;
-        // inject font
-        const style=idoc.createElement('style');
-        style.textContent="@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap');*{box-sizing:border-box;margin:0;padding:0;font-family:'Sarabun',sans-serif}body{background:#fff;width:"+A4W+"px}";
-        idoc.head.appendChild(style);
-        // inject content
-        const div=idoc.createElement('div');
-        div.style.cssText='width:'+A4W+'px;background:#fff;padding:0;';
-        div.innerHTML=htmlEl.innerHTML||htmlEl.outerHTML;
-        idoc.body.appendChild(div);
-        // รอ font โหลด
-        await new Promise(r=>setTimeout(r,600));
-        const H=idoc.body.scrollHeight||1000;
-        iframe.style.height=H+'px';
-        const canvas=await html2canvas(idoc.body,{
-          scale:2,useCORS:true,backgroundColor:'#ffffff',
-          logging:false,
-          width:A4W,height:H,
-          x:0,y:0,scrollX:0,scrollY:0,
-          windowWidth:A4W,windowHeight:H
-        });
-        const imgData=canvas.toDataURL('image/jpeg',0.95);
-        const pdfW=210;
-        const pdfH=Math.round(H*25.4/96);
-        const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:[pdfW,pdfH]});
-        pdf.addImage(imgData,'JPEG',0,0,pdfW,pdfH);
-        resolve(pdf.output('blob'));
-      }catch(e){reject(e);}
-      finally{try{document.body.removeChild(iframe);}catch(e){}}
-    };
-    iframe.src='about:blank';
-  });
+  // inject htmlEl เข้า body โดยตรง ไม่ใช้ iframe
+  htmlEl.style.cssText='position:fixed;left:-9999px;top:0;width:'+A4W+'px;background:#fff;z-index:-9999;box-sizing:border-box;';
+  document.body.appendChild(htmlEl);
+  await new Promise(r=>setTimeout(r,500));
+  const H=htmlEl.scrollHeight||1000;
+  try{
+    const canvas=await html2canvas(htmlEl,{
+      scale:2,useCORS:true,backgroundColor:'#ffffff',
+      logging:false,
+      width:A4W,height:H,
+      x:0,y:0,scrollX:0,scrollY:0,
+      windowWidth:A4W,windowHeight:H
+    });
+    const imgData=canvas.toDataURL('image/jpeg',0.95);
+    // กำหนด PDF size จาก canvas จริงๆ → ไม่มีทางตัดขอบ
+    const pdfW=canvas.width/2*25.4/96;
+    const pdfH=canvas.height/2*25.4/96;
+    const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:[pdfW,pdfH]});
+    pdf.addImage(imgData,'JPEG',0,0,pdfW,pdfH);
+    return pdf.output('blob');
+  } finally {
+    try{document.body.removeChild(htmlEl);}catch(e){}
+  }
 }
 
 async function uploadPdfToSupabase(blob, filename){

@@ -3929,9 +3929,8 @@ async function renderMhRoom(){
 
 
 // ===== LINE MESSAGING =====
-async function htmlToPdfBlob(htmlEl){
+async function htmlToPdfBlob(htmlEl,A4W=773){
   const {jsPDF}=window.jspdf;
-  const A4W=794;
   // สร้าง wrapper ที่มี overflow:visible และกว้าง A4W
   const wrapper=document.createElement('div');
   wrapper.style.cssText='position:absolute;left:-9999px;top:0;width:'+A4W+'px;min-width:'+A4W+'px;overflow:visible;background:#fff;z-index:-9999;';
@@ -4032,13 +4031,15 @@ async function sendLineInv(){
   const eu=Math.max(0,parseFloat(m.elecCurr||0)-parseFloat(m.elecPrev||0));
   const wu=Math.max(0,parseFloat(m.waterCurr||0)-parseFloat(m.waterPrev||0));
   const total=RENT+Math.round(eu*ELEC)+Math.round(wu*WATER);
-  // สร้าง standalone div จาก buildInvHTML โดยตรง ไม่ clone จาก #inv-preview ที่ถูก layout บีบ
+  // ใช้ความกว้างจริงของ #inv-preview
+  const previewEl=document.getElementById('inv-preview');
+  const A4W=previewEl?previewEl.offsetWidth:773;
   const tmpDiv=document.createElement('div');
-  tmpDiv.style.cssText='width:794px;background:#fff;';
+  tmpDiv.style.cssText='width:'+A4W+'px;background:#fff;';
   tmpDiv.innerHTML=buildInvHTML(room,t,m,monthName,invDate,m.currDate||mDate,false,[],_coDateVal,monthKey);
   showLoad('กำลังสร้าง PDF...');
   let blob;
-  try{blob=await htmlToPdfBlob(tmpDiv);}
+  try{blob=await htmlToPdfBlob(tmpDiv,A4W);}
   catch(e){showToast('สร้าง PDF ไม่สำเร็จ','err');return;}
   finally{hideLoad();}
   const ts=Date.now();
@@ -4068,11 +4069,12 @@ async function sendLineAllInv(){
     const eu=Math.max(0,parseFloat(m.elecCurr||0)-parseFloat(m.elecPrev||0));
     const wu=Math.max(0,parseFloat(m.waterCurr||0)-parseFloat(m.waterPrev||0));
     const total=RENT+Math.round(eu*ELEC)+Math.round(wu*WATER);
+    const previewW=document.getElementById('inv-preview')?.offsetWidth||773;
     const tmpDiv=document.createElement('div');
-    tmpDiv.style.cssText='width:794px;background:#fff;';
+    tmpDiv.style.cssText='width:'+previewW+'px;background:#fff;';
     tmpDiv.innerHTML=buildInvHTML(t.room,t,m,monthName,invDate,m.currDate||mDate,false,[]);
     try{
-      const blob=await htmlToPdfBlob(tmpDiv);
+      const blob=await htmlToPdfBlob(tmpDiv,previewW);
       const filename=`inv_r${String(t.room).padStart(2,'0')}_${monthKey}_${Date.now()}.pdf`;
       const pdfUrl=await uploadPdfToSupabase(blob,filename);
       if(pdfUrl){const sent=await sendLineMessage(t.line_user_id,pdfUrl,parseInt(t.room),t.name,monthName,total,{rentAmt:RENT,eu,wu,ec:Math.round(eu*ELEC),wc:Math.round(wu*WATER),extras:[]});if(sent)ok++;else fail++;}

@@ -3935,6 +3935,13 @@ async function htmlToPdfBlob(htmlEl,A4W=773){
   htmlEl.style.cssText='width:'+A4W+'px;min-width:'+A4W+'px;background:#fff;box-sizing:border-box;';
   wrapper.appendChild(htmlEl);
   document.body.appendChild(wrapper);
+  // บังคับ inner div ทุกชั้นไม่ให้ล้นออกนอก A4W (แก้ max-width:min(850px,95vw))
+  const inner=htmlEl.firstElementChild;
+  if(inner){
+    inner.style.setProperty('max-width',A4W+'px','important');
+    inner.style.setProperty('width','100%','important');
+    inner.style.setProperty('box-sizing','border-box','important');
+  }
   await new Promise(r=>setTimeout(r,500));
   const H=wrapper.scrollHeight||1000;
   try{

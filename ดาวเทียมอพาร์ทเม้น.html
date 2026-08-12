@@ -4039,7 +4039,8 @@ async function sendLineInv(){
   try{blob=await htmlToPdfBlob(tmpDiv);}
   catch(e){showToast('สร้าง PDF ไม่สำเร็จ','err');return;}
   finally{hideLoad();}
-  const filename=`inv_r${String(room).padStart(2,'0')}_${monthKey}.pdf`;
+  const ts=Date.now();
+  const filename=`inv_r${String(room).padStart(2,'0')}_${monthKey}_${ts}.pdf`;
   const pdfUrl=await uploadPdfToSupabase(blob,filename);
   if(!pdfUrl)return;
   const ok=await sendLineMessage(t.line_user_id,pdfUrl,parseInt(room),t.name,monthName,total,{rentAmt:RENT,eu,wu,ec:Math.round(eu*ELEC),wc:Math.round(wu*WATER),extras:[]});
@@ -4070,7 +4071,7 @@ async function sendLineAllInv(){
     tmpDiv.innerHTML=buildInvHTML(t.room,t,m,monthName,invDate,m.currDate||mDate,false,[]);
     try{
       const blob=await htmlToPdfBlob(tmpDiv);
-      const filename=`inv_r${String(t.room).padStart(2,'0')}_${monthKey}.pdf`;
+      const filename=`inv_r${String(t.room).padStart(2,'0')}_${monthKey}_${Date.now()}.pdf`;
       const pdfUrl=await uploadPdfToSupabase(blob,filename);
       if(pdfUrl){const sent=await sendLineMessage(t.line_user_id,pdfUrl,parseInt(t.room),t.name,monthName,total,{rentAmt:RENT,eu,wu,ec:Math.round(eu*ELEC),wc:Math.round(wu*WATER),extras:[]});if(sent)ok++;else fail++;}
       else fail++;

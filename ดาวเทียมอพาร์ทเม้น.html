@@ -3931,8 +3931,8 @@ async function htmlToPdfBlob(htmlEl,A4W=773){
   const {jsPDF}=window.jspdf;
   // สร้าง wrapper ที่มี overflow:visible และกว้าง A4W
   const wrapper=document.createElement('div');
-  wrapper.style.cssText='position:absolute;left:-9999px;top:0;width:'+A4W+'px;min-width:'+A4W+'px;overflow:visible;background:#fff;z-index:-9999;';
-  htmlEl.style.cssText='width:'+A4W+'px;min-width:'+A4W+'px;background:#fff;box-sizing:border-box;';
+  wrapper.style.cssText='position:absolute;left:-9999px;top:0;display:inline-block;width:'+A4W+'px;overflow:visible;background:#fff;z-index:-9999;';
+  htmlEl.style.cssText='width:'+A4W+'px;background:#fff;box-sizing:border-box;';
   wrapper.appendChild(htmlEl);
   document.body.appendChild(wrapper);
   // บังคับ inner div ทุกชั้นไม่ให้ล้นออกนอก A4W (แก้ max-width:min(850px,95vw))
@@ -3948,14 +3948,14 @@ async function htmlToPdfBlob(htmlEl,A4W=773){
     const canvas=await html2canvas(wrapper,{
       scale:2,useCORS:true,backgroundColor:'#ffffff',
       logging:false,
-      width:A4W,height:H,
-      x:0,y:0,scrollX:0,scrollY:0,
-      windowWidth:A4W,windowHeight:H
+      scrollX:0,scrollY:0
     });
     const imgData=canvas.toDataURL('image/jpeg',0.95);
     const pdfW=canvas.width/2*25.4/96;
     const pdfH=canvas.height/2*25.4/96;
-    const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:[pdfW,pdfH]});
+    // ตั้ง orientation ตามอัตราส่วนจริง ไม่งั้น jsPDF จะสลับ w/h เองแล้วภาพล้นขอบ
+    const orient=pdfW>pdfH?'landscape':'portrait';
+    const pdf=new jsPDF({orientation:orient,unit:'mm',format:[pdfW,pdfH]});
     pdf.addImage(imgData,'JPEG',0,0,pdfW,pdfH);
     return pdf.output('blob');
   } finally {

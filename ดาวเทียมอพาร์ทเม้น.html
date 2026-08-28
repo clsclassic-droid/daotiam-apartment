@@ -685,6 +685,20 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
         <div id="cfg-msg" style="font-size:12px;color:var(--green);margin-top:8px;display:none">✓ บันทึกแล้ว</div>
       </div>
 
+      <div class="card" style="margin-bottom:14px">
+        <div class="section-hd">
+          <div class="card-title" style="margin-bottom:0"><i class="ti ti-bell" style="color:var(--green)"></i> LINE แจ้งเตือนผู้ดูแล</div>
+          <button class="btn btn-green btn-sm" onclick="addNotifyId()"><i class="ti ti-plus"></i> เพิ่ม LINE ID</button>
+        </div>
+        <div style="font-size:12px;color:var(--t2);margin-bottom:10px;line-height:1.7">
+          ผู้ดูแลจะได้รับแจ้งเตือนเมื่อ: มีผู้เช่าลงทะเบียน LINE ใหม่ · มีคนพยายามลงทะเบียนซ้ำ · มีผู้เช่าส่งสลิปโอนเงิน<br>
+          <span style="color:var(--t3)">วิธีหา LINE ID: พิมพ์ <b>ไอดีของฉัน</b> ในแชท LINE OA แล้วบอทจะตอบ ID กลับมา</span>
+        </div>
+        <div id="notify-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px"></div>
+        <button class="btn btn-green btn-sm" onclick="saveNotifyIds()"><i class="ti ti-device-floppy"></i> บันทึกรายชื่อ</button>
+        <div id="notify-msg" style="font-size:12px;color:var(--green);margin-top:8px;display:none">✓ บันทึกแล้ว</div>
+      </div>
+
       <div class="card">
         <div class="section-hd">
           <div class="card-title" style="margin-bottom:0"><i class="ti ti-building"></i> จัดการสินทรัพย์ถาวร</div>
@@ -715,6 +729,62 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
           <div style="display:flex;gap:10px;align-items:flex-start">
             <div style="min-width:24px;height:24px;border-radius:50%;background:var(--green);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">3</div>
             <div><div style="font-size:13px;font-weight:600;margin-bottom:2px">จดมิเตอร์เริ่มต้น</div><div style="font-size:12px;color:var(--t2)">ไปหน้า <b>มิเตอร์น้ำ-ไฟ</b> → จดค่ามิเตอร์น้ำและไฟในช่อง “ไฟใหม่” / “น้ำใหม่” เพื่อใช้เป็นค่าเริ่มต้นเดือนแรก</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:14px">
+        <div class="section-hd">
+          <div class="card-title" style="margin-bottom:0"><i class="ti ti-brand-line" style="color:#06C755"></i> เชื่อมต่อ LINE ผู้เช่า</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <div style="min-width:24px;height:24px;border-radius:50%;background:#06C755;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">1</div>
+            <div><div style="font-size:13px;font-weight:600;margin-bottom:2px">ให้ผู้เช่าแอด LINE OA</div><div style="font-size:12px;color:var(--t2)">บอกผู้เช่าให้ค้นหา <b style="font-family:monospace;background:var(--bg2);padding:1px 5px;border-radius:4px">@312ivfiz</b> ในแอป LINE แล้วกดเพิ่มเพื่อน<br><span style="color:var(--t3);font-size:11px">หรือให้สแกน QR Code จาก LINE OA Manager</span></div></div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <div style="min-width:24px;height:24px;border-radius:50%;background:#06C755;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">2</div>
+            <div><div style="font-size:13px;font-weight:600;margin-bottom:2px">ให้ผู้เช่าพิมพ์เลขห้อง</div><div style="font-size:12px;color:var(--t2)">พิมพ์เฉพาะตัวเลขห้องส่งเข้าแชท เช่น <b>5</b> ระบบจะบันทึก LINE ID ให้อัตโนมัติ<br><span style="color:#E85D04;font-size:11px">⚠️ ต้องเพิ่มข้อมูลผู้เช่าในหน้า “ผู้เช่า” ก่อน ไม่งั้นบอทจะแจ้งว่าไม่พบห้อง</span></div></div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <div style="min-width:24px;height:24px;border-radius:50%;background:#06C755;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">3</div>
+            <div><div style="font-size:13px;font-weight:600;margin-bottom:2px">ตรวจสอบว่าเชื่อมสำเร็จ</div><div style="font-size:12px;color:var(--t2)">ไปหน้า <b>ผู้เช่า</b> → เลือกห้องนั้น → ดูช่อง <b>LINE User ID</b> ถ้ามีรหัสขึ้นต้นด้วย U แสดงว่าเชื่อมแล้ว<br><span style="color:var(--t3);font-size:11px">ผู้ดูแลจะได้รับแจ้งเตือนทาง LINE ทุกครั้งที่มีคนลงทะเบียนใหม่</span></div></div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <div style="min-width:24px;height:24px;border-radius:50%;background:#06C755;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">4</div>
+            <div><div style="font-size:13px;font-weight:600;margin-bottom:2px">ผู้เช่าส่งสลิปโอนเงิน</div><div style="font-size:12px;color:var(--t2)">ผู้เช่าส่งรูปสลิปเข้าแชทได้เลย ระบบจะเก็บรูปไว้อัตโนมัติและส่งแจ้งเตือนพร้อมรูปให้ผู้ดูแล<br><span style="color:var(--t3);font-size:11px">สลิปเก่ากว่า 1 ปีจะถูกลบอัตโนมัติเพื่อประหยัดพื้นที่</span></div></div>
+          </div>
+          <div style="background:var(--bg2);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--t2);line-height:1.8">
+            <b style="color:var(--t1)">เมื่อผู้เช่าย้ายออก</b><br>
+            ระบบลบ LINE ID ให้อัตโนมัติ ไม่ต้องทำอะไรเพิ่ม แต่ควรแจ้งผู้เช่าว่าไม่ต้องพิมพ์เลขห้องเข้ามาอีก<br>
+            <span style="color:var(--t3);font-size:11px">หากผู้เช่าเดิมกลับมาเช่าใหม่ ให้พิมพ์เลขห้องเข้ามาได้ตามปกติ</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:14px">
+        <div class="section-hd">
+          <div class="card-title" style="margin-bottom:0"><i class="ti ti-users" style="color:#06C755"></i> เพิ่มผู้ดูแลระบบ LINE</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <div style="min-width:24px;height:24px;border-radius:50%;background:#06C755;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">1</div>
+            <div><div style="font-size:13px;font-weight:600;margin-bottom:2px">เพิ่มเป็นแอดมิน LINE OA (เพื่อดูและตอบแชท)</div><div style="font-size:12px;color:var(--t2)">เข้า <b>manager.line.biz</b> → เลือก OA → <b>ตั้งค่า</b> → <b>สิทธิ์การเข้าถึง</b> → <b>เพิ่มสมาชิก</b> → ส่งลิงก์เชิญ<br><span style="color:var(--t3);font-size:11px">แนะนำระดับ “ผู้จัดการ” — ตอบแชทได้แต่แก้ตั้งค่าไม่ได้ · ผู้ดูแลโหลดแอป LINE Official Account เพื่อดูแชททั้งหมด</span></div></div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <div style="min-width:24px;height:24px;border-radius:50%;background:#06C755;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">2</div>
+            <div><div style="font-size:13px;font-weight:600;margin-bottom:2px">ขอ LINE User ID (เพื่อรับแจ้งเตือน)</div><div style="font-size:12px;color:var(--t2)">ให้ผู้ดูแลแอด LINE OA แล้วพิมพ์ <b>ไอดีของฉัน</b> ในแชท บอทจะตอบ User ID กลับมา</div></div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <div style="min-width:24px;height:24px;border-radius:50%;background:#06C755;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">3</div>
+            <div><div style="font-size:13px;font-weight:600;margin-bottom:2px">ใส่ ID ในระบบ</div><div style="font-size:12px;color:var(--t2)">ไปหน้า <b>ตั้งค่า</b> → <b>LINE แจ้งเตือนผู้ดูแล</b> → กด <b>+ เพิ่ม LINE ID</b> → วาง ID → กด <b>บันทึกรายชื่อ</b><br><span style="color:var(--t3);font-size:11px">เพิ่มได้หลายคน ทุกคนจะได้รับแจ้งเตือนพร้อมกัน</span></div></div>
+          </div>
+          <div style="background:var(--bg2);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--t2);line-height:1.8">
+            <b style="color:var(--t1)">ผู้ดูแลจะได้รับแจ้งเตือนเมื่อ</b><br>
+            🔔 มีผู้เช่าลงทะเบียน LINE ใหม่<br>
+            ⚠️ มีคนพยายามลงทะเบียนห้องที่มีคนแล้ว<br>
+            📸 มีผู้เช่าส่งสลิปโอนเงิน (พร้อมรูป)<br>
+            📤 สรุปผลหลังกดส่งบิลทุกห้อง
           </div>
         </div>
       </div>
@@ -2827,12 +2897,53 @@ async function loadSettings(){
       WATER=parseFloat(data.water)||22;
       DAY_RATE=parseFloat(data.day_rate)||116;
       if(data.line_token) window._lineToken=data.line_token;
+      _notifyIds=(data.notify_line_ids||'').split(',').map(s=>s.trim()).filter(Boolean);
     }
   }catch(e){console.log('settings not found, using defaults');}
   const r=document.getElementById('cfg-rent');if(r)r.value=RENT;
   const el=document.getElementById('cfg-elec');if(el)el.value=ELEC;
   const w=document.getElementById('cfg-water');if(w)w.value=WATER;
   const d=document.getElementById('cfg-day');if(d)d.value=DAY_RATE;
+  renderNotifyList();
+}
+
+// ===== LINE แจ้งเตือนผู้ดูแล =====
+let _notifyIds=[];
+function renderNotifyList(){
+  const box=document.getElementById('notify-list');
+  if(!box)return;
+  if(!_notifyIds.length){
+    box.innerHTML='<div style="font-size:12px;color:var(--t3);padding:8px 0">ยังไม่มี LINE ID ผู้ดูแล</div>';
+    return;
+  }
+  box.innerHTML=_notifyIds.map((id,i)=>
+    `<div style="display:flex;gap:6px;align-items:center">
+      <input type="text" class="fc" value="${id}" oninput="_notifyIds[${i}]=this.value.trim()" style="flex:1;font-size:12px;font-family:monospace" placeholder="Uxxxxxxxxxxxxxxxx">
+      <button class="btn btn-sm" style="background:var(--red);color:#fff;flex-shrink:0" onclick="removeNotifyId(${i})"><i class="ti ti-trash"></i></button>
+    </div>`).join('');
+}
+function addNotifyId(){
+  _notifyIds.push('');
+  renderNotifyList();
+}
+function removeNotifyId(i){
+  _notifyIds.splice(i,1);
+  renderNotifyList();
+}
+async function saveNotifyIds(){
+  const clean=_notifyIds.map(s=>(s||'').trim()).filter(Boolean);
+  const bad=clean.filter(s=>!/^U[0-9a-f]{32}$/i.test(s));
+  if(bad.length){
+    showToast('รูปแบบ LINE ID ไม่ถูกต้อง (ต้องขึ้นต้นด้วย U ตามด้วย 32 ตัวอักษร)','err');
+    return;
+  }
+  try{
+    await _sb.from('settings').upsert({id:'main',notify_line_ids:clean.join(',')},{onConflict:'id'});
+    _notifyIds=clean;
+    renderNotifyList();
+    const msg=document.getElementById('notify-msg');
+    msg.style.display='block';setTimeout(()=>msg.style.display='none',2000);
+  }catch(e){showToast('บันทึกไม่สำเร็จ: '+e.message,'err');}
 }
 async function saveSettings(){
   const rent=parseFloat(document.getElementById('cfg-rent').value)||3500;
@@ -4088,6 +4199,23 @@ async function sendLineAllInv(){
     await new Promise(r=>setTimeout(r,1000));
   }
   showToast(`✓ ส่ง LINE สำเร็จ ${ok} ห้อง${fail>0?' · ล้มเหลว '+fail+' ห้อง':''}`);
+  // แจ้งสรุปผลไปยังผู้ดูแล
+  await notifyAdmins(`📤 ส่งใบแจ้งหนี้ประจำเดือน ${monthName}\nสำเร็จ ${ok} ห้อง${fail>0?'\n❌ ล้มเหลว '+fail+' ห้อง':''}`);
+}
+
+// ส่งข้อความแจ้งเตือนไปยัง LINE ID ผู้ดูแลทุกคน
+async function notifyAdmins(text){
+  const token=window._lineToken||'';
+  if(!token||!_notifyIds.length)return;
+  for(const to of _notifyIds){
+    try{
+      await fetch('https://api.line.me/v2/bot/message/push',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+        body:JSON.stringify({to,messages:[{type:'text',text}]})
+      });
+    }catch(e){console.error('notify failed',to,e);}
+  }
 }
 
 // ===== AUTH =====

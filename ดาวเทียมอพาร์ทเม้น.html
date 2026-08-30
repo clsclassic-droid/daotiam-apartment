@@ -1198,7 +1198,12 @@ let apiCount=0;
 const fmt2=n=>parseFloat(n||0).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});
 const fmtN=n=>Math.round(n||0).toLocaleString('th-TH');
 const fmtN1=n=>parseFloat(n||0).toLocaleString('th-TH',{minimumFractionDigits:1,maximumFractionDigits:1});
-function fmtDate(v){if(!v)return'';if(typeof v==='string'){if(v.includes('T')||v.match(/^\d{4}-\d{2}-\d{2}/)){const d=new Date(v.replace(' ','T'));return`${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;}if(v.match(/^\d{1,2}\/\d{1,2}\/\d{2,4}$/)){const parts=v.split('/');const yy=parseInt(parts[2]);const fullY=yy<100?(yy<70?2000+yy:1900+yy):yy;return`${parts[0].padStart(2,'0')}/${parts[1].padStart(2,'0')}/${fullY}`;}}return v;}
+function fmtDate(v){
+  if(!v)return'—';
+  const d=parseCheckinDate(v);
+  if(!d)return v;
+  return d.getDate()+' '+MTH[d.getMonth()]+' '+(d.getFullYear()+543);
+}
 function parseCheckinDate(v){
   if(!v)return null;
   if(typeof v!=='string')return null;
@@ -1209,7 +1214,17 @@ function parseCheckinDate(v){
   const parts=v.split('/');
   if(parts.length<3)return null;
   const yy=parseInt(parts[2]);
-  const fullY=yy<100?(yy<70?2000+yy:1900+yy):yy;
+  let fullY;
+  if(yy>=100){
+    fullY=yy;
+  }else{
+    // ปี 2 หลัก: ข้อมูลเก่าบางส่วนพิมพ์เป็น ค.ศ.2หลัก (เช่น 19,20,22,23,25,26)
+    // แต่ placeholder ของฟอร์มบอกเป็น พ.ศ.2หลัก (เช่น 15/01/68 = 2568)
+    // ตีความเป็น ค.ศ.2หลักก่อน ถ้าได้ปีอนาคตไกลเกินไป (เกิน 2 ปีจากปัจจุบัน) แสดงว่าน่าจะพิมพ์เป็น พ.ศ. ให้แปลงกลับเป็น ค.ศ.
+    const ceGuess=yy<70?2000+yy:1900+yy;
+    const nowY=new Date().getFullYear();
+    fullY=(ceGuess>nowY+2)?(1957+yy):ceGuess;
+  }
   const d=new Date(fullY,parseInt(parts[1])-1,parseInt(parts[0]));
   return isNaN(d.getTime())?null:d;
 }
@@ -1856,12 +1871,6 @@ function renderBalanceSheetTable(data){
   </tbody>`;
   table.innerHTML=html;
   const info=document.getElementById('bs-info');if(info)info.textContent='ณ วันที่ '+fmtDate(date);
-}
-function fmtDate(d){
-  if(!d)return'—';
-  const dt=new Date(d);
-  if(isNaN(dt.getTime()))return d;
-  return dt.getDate()+' '+MTH[dt.getMonth()]+' '+(dt.getFullYear()+543);
 }
 
 // DASHBOARD

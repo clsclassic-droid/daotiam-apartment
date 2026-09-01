@@ -3025,11 +3025,14 @@ function calcDayRent(checkin, checkout, month){
 }
 async function openPayModal(room){
   const t=tenants.find(x=>String(x.room)===String(room));if(!t)return;
-  const m=meters.find(x=>String(x.room)===String(room))||{};
+  const ovSel=document.getElementById('ov-sel')?.value||'';
+  // ดึงมิเตอร์ของ "เดือนที่กำลังจ่ายจริง" (ovSel) จาก Supabase ตรงๆ — ห้ามใช้ตัวแปร meters กลาง
+  // เพราะตัวแปรนั้นสะท้อนเดือนที่หน้า "มิเตอร์น้ำ-ไฟ" เปิดค้างอยู่ล่าสุด ซึ่งอาจคนละเดือนกับที่กำลังจ่ายบิล
+  const payMeterData=await api({action:'getMeters',month:ovSel})||[];
+  const m=payMeterData.find(x=>String(x.room)===String(room))||{};
   const eu=Math.max(0,parseFloat(m.elecCurr||0)-parseFloat(m.elecPrev||0));
   const wu=Math.max(0,parseFloat(m.waterCurr||0)-parseFloat(m.waterPrev||0));
   const ec=Math.round(eu*ELEC*100)/100,wc=Math.round(wu*WATER*100)/100;
-  const ovSel=document.getElementById('ov-sel')?.value||'';
   // ดึง invoice ของห้องนี้ในเดือนนี้ — ใช้ rent_amount จาก invoice เป็นหลัก
   // ถ้าใบเดิมเป็นของผู้เช่าคนก่อน (ห้องเปลี่ยนผู้เช่ากลางเดือน) ห้ามใช้ invoiceId/extras/ยอดเดิม
   // (ป้องกันการบันทึกจ่ายเงินไปทับใบแจ้งหนี้ของผู้เช่าคนก่อนโดยไม่ตั้งใจ)
@@ -3150,6 +3153,7 @@ async function confirmPay(){
     await _sb.from('receipts').insert({
       receipt_no:receiptNo,room:payCurrentRoom,month,date:today,
       rent_amount:finalRentAmt,elec_amount:finalEc,water_amount:finalWc,
+      elec_used:payData.eu,water_used:payData.wu,
       extras:JSON.stringify(finalExtras),total:grandTotal,
       channel:ch,tenant_name:t.name
     });
@@ -3178,8 +3182,8 @@ function showReceiptModal(d){
     </div>
     <table style="width:100%;font-size:12px;border-collapse:collapse;margin-bottom:8px">
       <tr><td style="padding:3px 0;color:var(--t3)">ค่าเช่าห้อง</td><td style="text-align:right">${fmt2(rentAmt)}</td></tr>
-      <tr><td style="padding:3px 0;color:var(--t3)">ค่าไฟ (${d.eu?.toFixed(1)||0} × 6.50)</td><td style="text-align:right">${fmt2(d.ec||0)}</td></tr>
-      <tr><td style="padding:3px 0;color:var(--t3)">ค่าน้ำ (${d.wu?.toFixed(1)||0} × 22)</td><td style="text-align:right">${fmt2(d.wc||0)}</td></tr>
+      <tr><td style="padding:3px 0;color:var(--t3)">ค่าไฟ (${d.eu!=null?d.eu.toFixed(1):'—'} × 6.50)</td><td style="text-align:right">${fmt2(d.ec||0)}</td></tr>
+      <tr><td style="padding:3px 0;color:var(--t3)">ค่าน้ำ (${d.wu!=null?d.wu.toFixed(1):'—'} × 22)</td><td style="text-align:right">${fmt2(d.wc||0)}</td></tr>
       ${extraRows}
     </table>
     <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:600;border-top:2px solid var(--text);padding-top:7px">
@@ -3196,14 +3200,15 @@ async function viewReceipt(room){
     const {data:rec}=await _sb.from('receipts').select('*').eq('room',room).eq('month',month).order('created_at',{ascending:false}).limit(1).maybeSingle();
     if(rec){
       const extras=typeof rec.extras==='string'?JSON.parse(rec.extras):rec.extras||[];
-      const m=meters.find(x=>String(x.room)===String(room))||{};
-      const eu=Math.max(0,parseFloat(m.elecCurr||0)-parseFloat(m.elecPrev||0));
-      const wu=Math.max(0,parseFloat(m.waterCurr||0)-parseFloat(m.waterPrev||0));
+      // อ่านหน่วยไฟ/น้ำที่ใช้จริงจาก snapshot ที่บันทึกไว้ตอนจ่ายเงิน (ไม่คำนวณสดจากมิเตอร์ปัจจุบัน
+      // เพราะมิเตอร์ปัจจุบันอาจเป็นคนละเดือนกับที่จ่ายไปแล้ว) — ใบเสร็จเก่าก่อนแก้ไขนี้จะไม่มีค่านี้ (null) -> แสดง "—"
       const d={
         room,name:rec.tenant_name,paid:parseFloat(rec.total||0),
         method:rec.channel==='cash'?'cash':'bank',
         rentAmt:parseFloat(rec.rent_amount||0),ec:parseFloat(rec.elec_amount||0),wc:parseFloat(rec.water_amount||0),
-        eu,wu,extras,date:fmtDate(rec.date),receiptNo:rec.receipt_no
+        eu:rec.elec_used!=null?parseFloat(rec.elec_used):null,
+        wu:rec.water_used!=null?parseFloat(rec.water_used):null,
+        extras,date:fmtDate(rec.date),receiptNo:rec.receipt_no
       };
       showReceiptModal(d);
       return;

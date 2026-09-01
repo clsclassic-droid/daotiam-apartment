@@ -436,6 +436,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
           <button class="btn btn-sm" id="inv-line-btn" onclick="sendLineInv()" style="display:none;background:#06c755;border-color:#06c755;color:#fff"><i class="ti ti-brand-line"></i> ส่ง LINE</button>
           <button class="btn btn-sm" onclick="sendLineAllInv()" style="background:#06c755;border-color:#06c755;color:#fff;opacity:.85"><i class="ti ti-brand-line"></i> ส่งทุกห้อง LINE</button>
         </div>
+        <div id="inv-tenant-warn" style="display:none;margin-bottom:12px;padding:10px 14px;background:#FFF3E0;border:1px solid #FFB74D;border-radius:8px;color:#8a5300;font-size:13px"></div>
         <div id="inv-preview"></div>
       </div>
     </div>
@@ -2496,6 +2497,21 @@ function buildInvHTML(rn,t,m,month,invDate,mDate,vacant,extras=[],checkoutDate='
   </div>`;
 }
 let _invMeterCache=null;
+// เช็คว่าใบแจ้งหนี้เดิมที่บันทึกไว้ (room+month) เป็นของผู้เช่าคนเดียวกับที่กำลังจะออกใบตอนนี้ไหม
+// คืน true = คนละคน (ห้องเปลี่ยนผู้เช่าไปแล้ว) -> ห้ามดึง extras/ยอดเดิมมาใช้อัตโนมัติ
+// invoice เก่าที่ไม่มี tenant_name (ข้อมูลก่อนแก้ไขนี้) ถือว่าไม่เช็ค (backward compatible)
+function isInvTenantMismatch(existingInvoice,t){
+  return!!(existingInvoice&&existingInvoice.tenant_name&&t?.name&&existingInvoice.tenant_name!==t.name);
+}
+function showInvTenantWarn(oldName){
+  const el=document.getElementById('inv-tenant-warn');if(!el)return;
+  el.style.display='';
+  el.innerHTML=`⚠️ พบใบแจ้งหนี้เดือนนี้ของผู้เช่าคนก่อน (คุณ ${oldName}) ระบบไม่ได้ดึงรายการ/ยอดเดิมมาให้อัตโนมัติ กรุณาตรวจสอบก่อนออกใบใหม่`;
+}
+function hideInvTenantWarn(){
+  const el=document.getElementById('inv-tenant-warn');if(!el)return;
+  el.style.display='none';el.innerHTML='';
+}
 async function renderInv(){
   const room=document.getElementById('inv-room')?.value;if(!room)return;
   const t=tenants.find(x=>String(x.room)===String(room));if(!t)return;
@@ -2511,7 +2527,9 @@ async function renderInv(){
   const meterData=await api({action:'getMeters',month:monthKey})||[];
   let extras=[],existingInvoice=null;
   try{const {data}=await _sb.from('invoices').select('*').eq('room',room).eq('month',monthKey).maybeSingle();if(data){existingInvoice=data;extras=typeof data.extras==='string'?JSON.parse(data.extras):data.extras||[];}}catch(e){}
-  _invMeterCache={meterData,monthKey,monthName,invDate,_room:room,_extras:extras};
+  const _tenantMismatch=isInvTenantMismatch(existingInvoice,t);
+  if(_tenantMismatch){extras=[];showInvTenantWarn(existingInvoice.tenant_name);}else{hideInvTenantWarn();}
+  _invMeterCache={meterData,monthKey,monthName,invDate,_room:room,_extras:extras,_tenantMismatch};
   const m=meterData.find(x=>String(x.room)===String(room));
   const mDate=m?.currDate||document.getElementById('inv-mdate').value;
   // โชว์/ซ่อนปุ่มแก้ไข
@@ -2538,9 +2556,15 @@ async function editInv(){
   const m=meterData.find(x=>String(x.room)===String(room));
   const mDate=m?.currDate||document.getElementById('inv-mdate').value;
   _invMeterCache={meterData,monthKey,monthName,invDate,m,mDate,room,t,_room:room,_extras:[]};
-  // โหลด extras เดิมจาก invoices
+  // โหลด extras เดิมจาก invoices — ถ้าใบเดิมเป็นของผู้เช่าคนก่อน (คนละคนกับตอนนี้) ห้ามดึงมาใช้
   let existingExtras=[];
-  try{const {data}=await _sb.from('invoices').select('extras').eq('room',room).eq('month',monthKey).maybeSingle();if(data?.extras){existingExtras=typeof data.extras==='string'?JSON.parse(data.extras):data.extras||[];}}catch(e){}
+  try{
+    const {data}=await _sb.from('invoices').select('extras,tenant_name').eq('room',room).eq('month',monthKey).maybeSingle();
+    if(data){
+      if(isInvTenantMismatch(data,t)){showInvTenantWarn(data.tenant_name);}
+      else{hideInvTenantWarn();if(data.extras)existingExtras=typeof data.extras==='string'?JSON.parse(data.extras):data.extras||[];}
+    }
+  }catch(e){}
   // reset แล้วใส่ extras เดิม
   _issueInvExtras=[];
   document.getElementById('inv-extra-list').innerHTML='';
@@ -2636,7 +2660,7 @@ async function confirmIssueInv(){
     await _sb.from('invoices').delete().eq('room',room).eq('month',monthKey);
     await _sb.from('invoices').insert({
       room,month:monthKey,issued_date:invDate,
-      rent_amount:rentAmtFinal,elec_amount:ec,water_amount:wc,
+      rent_amount:rentAmtFinal,elec_amount:ec,water_amount:wc,tenant_name:t.name,
       extras:JSON.stringify(extras),total,status:'pending'
     });
     const idx=tenants.findIndex(x=>String(x.room)===String(room));
@@ -2646,6 +2670,7 @@ async function confirmIssueInv(){
     }
     renderDash();
     closeMo('mo-issue-inv');
+    hideInvTenantWarn();
     document.getElementById('inv-preview').innerHTML=buildInvHTML(room,t,m,monthName,invDate,mDate,false,extras,_coDateVal2,monthKey);
     showToast(`ออกใบแจ้งหนี้ห้อง ${parseInt(room)} แล้ว`);
   }catch(e){showToast('ออกใบไม่สำเร็จ','err');}
@@ -2671,14 +2696,16 @@ async function printAllInv(){
     const existingMap={};
     (existingInvoices||[]).forEach(inv=>{existingMap[String(inv.room)]=inv;});
     const all=[];
-    let skipped=0;
+    let skipped=0,reissued=0;
     for(let n=1;n<=21;n++){
       const t=tenants.find(x=>String(x.room)===String(n));
       const m=meterData.find(x=>String(x.room)===String(n));
       const mDateRoom=m?.currDate||mDate;
       const existing=existingMap[String(n)];
-      // ถ้ามี invoice อยู่แล้ว ข้ามการเขียนทับ DB แต่ดึง extras เดิมมาแสดงในหน้าพิมพ์ให้ตรงกับของจริง
-      if(existing){
+      // ห้องนี้เปลี่ยนผู้เช่าไปแล้วหรือไม่ (ใบเดิมในเดือนนี้เป็นชื่อคนละคนกับผู้เช่าปัจจุบัน)
+      const mismatch=t&&isInvTenantMismatch(existing,t);
+      // ถ้ามี invoice อยู่แล้วและเป็นผู้เช่าคนเดิม -> ข้ามการเขียนทับ DB แต่ดึง extras เดิมมาแสดงในหน้าพิมพ์ให้ตรงกับของจริง
+      if(existing&&!mismatch){
         skipped++;
         let existingExtras=[];
         try{existingExtras=typeof existing.extras==='string'?JSON.parse(existing.extras):existing.extras||[];}catch(e){}
@@ -2692,9 +2719,14 @@ async function printAllInv(){
         const ec=Math.round(eu*ELEC*100)/100,wc=Math.round(wu*WATER*100)/100;
         const rentAmtRoom=calcRentProrate(t,monthKey,'').rentAmt;
         const total=rentAmtRoom+ec+wc;
+        if(mismatch){
+          // ลบใบเดิมของผู้เช่าคนก่อนทิ้ง แล้วออกใบใหม่ให้ผู้เช่าปัจจุบันแทน (กัน room+month ซ้ำ)
+          await _sb.from('invoices').delete().eq('room',n).eq('month',monthKey);
+          reissued++;
+        }
         await _sb.from('invoices').insert({
           room:n,month:monthKey,issued_date:invDate,
-          rent_amount:rentAmtRoom,elec_amount:ec,water_amount:wc,
+          rent_amount:rentAmtRoom,elec_amount:ec,water_amount:wc,tenant_name:t.name,
           extras:JSON.stringify([]),total,status:'pending'
         });
       }
@@ -2712,7 +2744,9 @@ async function printAllInv(){
     } else {
       showToast('เบราว์เซอร์บล็อก popup กรุณาอนุญาตแล้วลองใหม่','err');
     }
-    showToast(skipped>0?`✓ ออกใบแล้ว · ข้าม ${skipped} ห้องที่มีใบอยู่แล้ว`:'✓ ออกใบแจ้งหนี้ทุกห้องและบันทึกแล้ว');
+    let msg2=skipped>0?`✓ ออกใบแล้ว · ข้าม ${skipped} ห้องที่มีใบอยู่แล้ว`:'✓ ออกใบแจ้งหนี้ทุกห้องและบันทึกแล้ว';
+    if(reissued>0)msg2+=` · ⚠️ ${reissued} ห้องเปลี่ยนผู้เช่า ออกใบใหม่ทับใบเดิม กรุณาตรวจสอบ`;
+    showToast(msg2);
   }catch(e){showToast('ออกใบไม่สำเร็จ','err');}
   finally{apiCount=0;document.getElementById('api-overlay').classList.remove('show');}
 }
@@ -2997,10 +3031,15 @@ async function openPayModal(room){
   const ec=Math.round(eu*ELEC*100)/100,wc=Math.round(wu*WATER*100)/100;
   const ovSel=document.getElementById('ov-sel')?.value||'';
   // ดึง invoice ของห้องนี้ในเดือนนี้ — ใช้ rent_amount จาก invoice เป็นหลัก
-  let extras=[],invoiceId=null,rentAmt=RENT;
+  // ถ้าใบเดิมเป็นของผู้เช่าคนก่อน (ห้องเปลี่ยนผู้เช่ากลางเดือน) ห้ามใช้ invoiceId/extras/ยอดเดิม
+  // (ป้องกันการบันทึกจ่ายเงินไปทับใบแจ้งหนี้ของผู้เช่าคนก่อนโดยไม่ตั้งใจ)
+  let extras=[],invoiceId=null,rentAmt=RENT,payTenantMismatchOld=null;
   try{
     const {data}=await _sb.from('invoices').select('*').eq('room',room).eq('month',ovSel).maybeSingle();
-    if(data){
+    if(data&&isInvTenantMismatch(data,t)){
+      payTenantMismatchOld=data.tenant_name;
+      rentAmt=calcRentProrate(t,ovSel,'').rentAmt;
+    } else if(data){
       invoiceId=data.id;
       extras=typeof data.extras==='string'?JSON.parse(data.extras):data.extras||[];
       if(data.rent_amount) rentAmt=parseFloat(data.rent_amount);
@@ -3015,6 +3054,15 @@ async function openPayModal(room){
   // แสดงรายการพิเศษ
   const extrasEl=document.getElementById('pay-extras-tbody');
   if(extrasEl) extrasEl.innerHTML=extras.map(x=>`<tr><td colspan="4" style="padding:4px 8px;color:var(--text)">${x.desc||'อื่นๆ'}</td><td class="r" style="padding:4px 8px;color:var(--text)">${fmt2(x.amount)}</td></tr>`).join('');
+  // แสดง banner เตือนถ้าห้องนี้เพิ่งเปลี่ยนผู้เช่า (มีใบแจ้งหนี้เดือนนี้ของคนก่อนอยู่)
+  let tenantWarnBanner=document.getElementById('pay-tenant-warn-banner');
+  if(!tenantWarnBanner){tenantWarnBanner=document.createElement('div');tenantWarnBanner.id='pay-tenant-warn-banner';document.getElementById('pay-sub').after(tenantWarnBanner);}
+  if(payTenantMismatchOld){
+    tenantWarnBanner.style.cssText='margin:6px 0;padding:8px 12px;background:#FFF3E0;border:1px solid #FFB74D;border-radius:6px;color:#8a5300;font-size:12px';
+    tenantWarnBanner.innerHTML=`⚠️ พบใบแจ้งหนี้เดือนนี้ของผู้เช่าคนก่อน (คุณ ${payTenantMismatchOld}) ยอดที่แสดงคำนวณใหม่สำหรับ ${t.name} — ยังไม่มีใบแจ้งหนี้บันทึกไว้ กรุณาออกใบแจ้งหนี้ก่อนรับชำระ`;
+  } else {
+    tenantWarnBanner.innerHTML='';tenantWarnBanner.style.cssText='';
+  }
   // แสดง banner รายวัน
   let banner=document.getElementById('pay-day-banner');
   if(!banner){banner=document.createElement('div');banner.id='pay-day-banner';document.getElementById('pay-sub').after(banner);}

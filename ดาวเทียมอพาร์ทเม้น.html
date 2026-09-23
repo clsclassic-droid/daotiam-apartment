@@ -3878,6 +3878,7 @@ async function loadPnlYearly(){
       for(let m=1;m<=maxM;m++)allP.push(api({action:'getTransactions',month:y+'_'+String(m).padStart(2,'0')}));
     });
     const res=await Promise.all(allP);
+    pnlCache=null;pnlOpenIdx=-1;
     let idx=0,totalInc=0,totalExp=0;
     const rows=years.map(y=>{
       const maxM=y===cy?new Date().getMonth()+1:12;
@@ -3901,17 +3902,67 @@ async function loadPnlYearly(){
   const maxM=parseInt(yr)===cy?now.getMonth()+1:12;
   const allP=[];for(let m=1;m<=maxM;m++)allP.push(api({action:'getTransactions',month:yr+'_'+String(m).padStart(2,'0')}));
   const res=await Promise.all(allP);
+  pnlCache={yr,res};pnlOpenIdx=-1; // เก็บรายการไว้ใช้ตอนกางแถว ไม่ต้องดึงซ้ำ
   let totalInc=0,totalExp=0;
   const rows=res.map((txns,i)=>{
     const inc=(txns||[]).filter(t=>INC_T.includes(t.type)).reduce((s,t)=>s+parseFloat(t.amount||0),0);
     const exp=(txns||[]).filter(t=>EXP_T.includes(t.type)).reduce((s,t)=>s+parseFloat(t.amount||0),0);
     totalInc+=inc;totalExp+=exp;
     const net=inc-exp;
-    return `<tr><td>${MTH[i]} ${parseInt(yr)+543}</td><td class="r" style="color:var(--green)">${fmt2(inc)}</td><td class="r" style="color:var(--red)">${fmt2(exp)}</td><td class="r" style="font-weight:600;color:${net>=0?'var(--green)':'var(--red)'}">${fmt2(net)}</td></tr>`;
+    return `<tr class="pnl-mrow" data-i="${i}" onclick="togglePnlRow(${i})" style="cursor:pointer" title="กดเพื่อดูรายการ"><td><span class="pnl-chev" style="display:inline-block;width:14px;color:var(--t3);transition:transform .15s">›</span>${MTH[i]} ${parseInt(yr)+543}</td><td class="r" style="color:var(--green)">${fmt2(inc)}</td><td class="r" style="color:var(--red)">${fmt2(exp)}</td><td class="r" style="font-weight:600;color:${net>=0?'var(--green)':'var(--red)'}">${fmt2(net)}</td></tr>`;
   }).join('');
   document.getElementById('pnl-yearly-body').innerHTML=rows||'<tr><td colspan="4" style="text-align:center;color:var(--t3);padding:20px">ยังไม่มีข้อมูล</td></tr>';
   const totalNet=totalInc-totalExp;
   document.getElementById('pnl-yearly-foot').innerHTML=`<tr style="background:#f9f9f9;font-weight:700"><td>รวม</td><td class="r" style="color:var(--green)">${fmt2(totalInc)}</td><td class="r" style="color:var(--red)">${fmt2(totalExp)}</td><td class="r" style="color:${totalNet>=0?'var(--green)':'var(--red)'}">${fmt2(totalNet)}</td></tr>`;
+}
+// ── PNL: กดแถวเดือนในตารางรายปี → กางรายการของรอบบิลนั้นลงใต้แถว ──
+let pnlCache=null,pnlOpenIdx=-1;
+function togglePnlRow(i){
+  const body=document.getElementById('pnl-yearly-body');if(!body||!pnlCache)return;
+  body.querySelectorAll('.pnl-detail').forEach(e=>e.remove());
+  body.querySelectorAll('.pnl-mrow').forEach(r=>{r.style.background='';r.style.fontWeight='';const c=r.querySelector('.pnl-chev');if(c){c.style.transform='';c.style.color='var(--t3)';}});
+  if(pnlOpenIdx===i){pnlOpenIdx=-1;return;}
+  pnlOpenIdx=i;
+  const row=body.querySelector(`.pnl-mrow[data-i="${i}"]`);if(!row)return;
+  row.style.background='var(--gl)';row.style.fontWeight='600';
+  const c=row.querySelector('.pnl-chev');if(c){c.style.transform='rotate(90deg)';c.style.color='var(--green)';}
+  const tr=document.createElement('tr');tr.className='pnl-detail';
+  tr.innerHTML=`<td colspan="4" style="background:#FBFCFD;padding:12px 14px 16px 24px;cursor:default">${renderPnlDetail(pnlCache.res[i]||[],pnlCache.yr,i)}</td>`;
+  row.after(tr);
+}
+function renderPnlDetail(txns,yr,i){
+  const sum=a=>a.reduce((s,t)=>s+parseFloat(t.amount||0),0);
+  const incT=txns.filter(t=>INC_T.includes(t.type)),expT=txns.filter(t=>EXP_T.includes(t.type));
+  const other=txns.filter(t=>!INC_T.includes(t.type)&&!EXP_T.includes(t.type));
+  const inc=sum(incT),exp=sum(expT),net=inc-exp;
+  const kpi=(l,v,col)=>`<div style="flex:1;min-width:130px;border:1px solid var(--border);border-radius:9px;padding:7px 12px;background:#fff"><div style="font-size:11px;color:var(--t2)">${l}</div><div style="font-size:15px;font-weight:700;color:${col}">${v}</div></div>`;
+  let h=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">${kpi('รายรับ',fmt2(inc),'var(--green)')}${kpi('รายจ่าย',fmt2(exp),'var(--red)')}${kpi('กำไร-ขาดทุน',fmt2(net),net>=0?'var(--green)':'var(--red)')}${kpi('จำนวนรายการ',(incT.length+expT.length).toLocaleString('th-TH'),'var(--text)')}</div>`;
+  // ยอดรวมแยกตามประเภท
+  const byType={};[...incT,...expT].forEach(t=>{byType[t.type]=(byType[t.type]||0)+parseFloat(t.amount||0);});
+  const chips=[...INC_T,...EXP_T].filter(k=>byType[k]).map(k=>{const isIn=INC_T.includes(k);return`<span style="font-size:11px;padding:3px 10px;border-radius:999px;border:1px solid ${isIn?'#BDE8D8':'#F6C9C8'};background:${isIn?'var(--gl)':'var(--rl)'};color:${isIn?'#0F6E56':'#B33'}">${TX_L[k]||k} ${fmt2(byType[k])}</span>`;}).join('');
+  if(chips)h+=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">${chips}</div>`;
+  const byDate=(a,b)=>String(a.date||'').localeCompare(String(b.date||''));
+  const line=(t,muted)=>{
+    const isIn=t.type?.endsWith('-in');
+    const roomTxt=t.room?String(parseInt(t.room)||t.room):'—';
+    const bdg=muted?'<span class="bdg" style="background:#EEF2F7;color:#475569">':`<span class="bdg ${isIn?'bg':'br'}">`;
+    const col=muted?'var(--t2)':(isIn?'var(--green)':'var(--red)');
+    return `<tr><td style="font-size:11px;color:var(--t3)">${fmtDate(t.date)||'—'}</td><td>${cleanTxDesc(t.desc,t.room)||'—'}</td><td class="c" style="font-size:12px;font-weight:600">${roomTxt}</td><td>${bdg}${TX_L[t.type]||t.type}</span></td><td class="r" style="font-weight:500;color:${col}">${isIn?'+':'-'}${fmt2(t.amount)}</td><td style="font-size:11px;color:var(--t3)">${t.channel==='bank'?'โอน':'เงินสด'}</td></tr>`;
+  };
+  const head=`<thead><tr><th>วันที่จ่ายจริง</th><th>รายการ</th><th class="c">ห้อง</th><th>ประเภท</th><th class="r">จำนวน</th><th>ช่องทาง</th></tr></thead>`;
+  const main=[...incT,...expT].sort(byDate);
+  h+=`<div class="tbl-wrap"><table class="tbl">${head}<tbody>${main.map(t=>line(t,false)).join('')||'<tr><td colspan="6" style="text-align:center;color:var(--t3);padding:16px">ไม่มีรายการรายรับ-รายจ่ายในรอบบิลนี้</td></tr>'}</tbody></table></div>`;
+  if(other.length){
+    h+=`<div style="font-size:12px;font-weight:600;color:var(--t2);margin:12px 0 4px">รายการที่ <u>ไม่นับ</u> ในกำไร-ขาดทุน (เงินประกัน / ค่าเช่าล่วงหน้า / โอน / ทุน / สินทรัพย์)</div><div class="tbl-wrap"><table class="tbl">${head}<tbody>${other.sort(byDate).map(t=>line(t,true)).join('')}</tbody></table></div>`;
+  }
+  const key=yr+'_'+String(i+1).padStart(2,'0');
+  h+=`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;font-size:11px;color:var(--t3)"><span>รายการตามรอบบิล ${MTH[i]} ${parseInt(yr)+543} · ยอดรวม = ตัวเลขในแถวนี้</span><span onclick="event.stopPropagation();openCashflowMonth('${yr}','${key}')" style="color:var(--blue);cursor:pointer;font-size:12px">เปิดในหน้ากระแสเงินสด →</span></div>`;
+  return h;
+}
+function openCashflowMonth(yr,key){
+  txYear=yr;goPage('cashflow');
+  const sel=document.getElementById('tx-sel');
+  if(sel&&[...sel.options].some(o=>o.value===key)){sel.value=key;loadTx();}
 }
 async function loadPnlMonthly(){
   if(pnlYear==='all'){

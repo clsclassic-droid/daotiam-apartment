@@ -459,8 +459,15 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
           <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px" id="tx-tabs"></div>
           <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap">
             <select id="tx-sel" onchange="loadTx()" style="font-size:11px;padding:0 8px;height:28px;border:1px solid var(--border);border-radius:20px;background:#fff;color:var(--text)"></select>
+            <div style="position:relative;display:flex;align-items:center">
+              <i class="ti ti-search" style="position:absolute;left:10px;font-size:12px;color:var(--t3);pointer-events:none"></i>
+              <input id="tx-search" type="text" placeholder="ค้นหารายการ / ประเภท / ห้อง..." oninput="onTxSearch()" autocomplete="off" style="font-size:12px;height:28px;width:230px;max-width:60vw;padding:0 28px;border:1px solid var(--border);border-radius:20px;background:#fff;color:var(--text);outline:none;-webkit-appearance:none;appearance:none;box-sizing:border-box">
+              <button id="tx-search-x" type="button" onclick="clearTxSearch()" style="display:none;position:absolute;right:6px;border:none;background:#F3F4F6;border-radius:50%;width:18px;height:18px;font-size:10px;line-height:18px;padding:0;color:var(--t2);cursor:pointer">✕</button>
+            </div>
+            <span style="font-size:11px;color:var(--t3)">ค้นในช่วงที่เลือกอยู่ · อยากค้นทุกปีให้เลือก "ทั้งหมด"</span>
           </div>
           <div style="font-size:12px;color:var(--t2);margin-bottom:10px" id="tx-summary"></div>
+          <div id="tx-found" style="display:none;font-size:12px;margin-bottom:10px;padding:6px 10px;border-radius:8px;background:#EEF6FF;color:#1E4E8C;border:1px solid #CFE3FA"></div>
           <div class="tbl-wrap"><table class="tbl">
             <thead><tr>
               <th class="th-sort" onclick="sortTxCol('date')" style="cursor:pointer;user-select:none">วันที่<span id="th-arw-date"></span></th>
@@ -2799,13 +2806,31 @@ function renderTxTbl(){
     else if(col==='balance')r=(balMap[a.id]||0)-(balMap[b.id]||0);
     return r*mul;
   });
+  // ── ค้นหา: กรองเฉพาะแถวที่แสดง (ยอดสรุปด้านบน + คงเหลือ ยังคิดจากทั้งช่วงเหมือนเดิม) ──
+  const txQ=(document.getElementById('tx-search')?.value||'').trim();
+  const txQl=txQ.toLowerCase();
+  const txHl=v=>{const str=String(v);if(!txQ)return str;const i=str.toLowerCase().indexOf(txQl);if(i<0)return str;let out='',p=0,j=i;while(j>=0){out+=str.slice(p,j)+'<mark style="background:#FFE58A;border-radius:3px;padding:0 1px">'+str.slice(j,j+txQ.length)+'</mark>';p=j+txQ.length;j=str.toLowerCase().indexOf(txQl,p);}return out+str.slice(p);};
+  if(txQ){
+    const kept=display.filter(t=>{const roomTxt=t.room?String(parseInt(t.room)||t.room):'';return (cleanTxDesc(t.desc,t.room)+' '+(t.desc||'')+' '+(TX_L[t.type]||t.type||'')+' '+roomTxt).toLowerCase().includes(txQl);});
+    display.length=0;display.push(...kept);
+    const fIn=kept.filter(t=>t.type?.endsWith('-in')).reduce((s,t)=>s+parseFloat(t.amount||0),0);
+    const fOut=kept.filter(t=>!t.type?.endsWith('-in')).reduce((s,t)=>s+parseFloat(t.amount||0),0);
+    const fd=document.getElementById('tx-found');
+    if(fd){fd.style.display='block';fd.innerHTML=`🔍 ค้นหา "<b>${txQ.replace(/[<>&"]/g,'')}</b>" พบ <b>${kept.length}</b> รายการ · รับ <b style="color:var(--green)">+${fmt2(fIn)}</b> · จ่าย <b style="color:var(--red)">-${fmt2(fOut)}</b>`;}
+  }else{const fd=document.getElementById('tx-found');if(fd)fd.style.display='none';}
   // อัพเดตลูกศรที่หัวคอลัมน์ให้ตรงกับคอลัมน์/ทิศทางที่กำลังเรียงอยู่
   ['date','desc','room','type','amount','channel','balance'].forEach(c=>{
     const el=document.getElementById('th-arw-'+c);if(!el)return;
     el.textContent=c===col?(dir==='asc'?' ▲':' ▼'):'';
   });
-  document.getElementById('tx-body').innerHTML=display.map(t=>{const isCap=t.type==='capital-in'||t.type==='capital-out';const isAsset=ASSET_T.includes(t.type);const isCapIn=t.type==='capital-in';const isIn=isCap?isCapIn:t.type?.endsWith('-in');const runVal=balMap[t.id]??0;const roomTxt=t.room?String(parseInt(t.room)||t.room):'—';const isTransfer=TRANSFER_T.includes(t.type);const bdgStyle=isCap?`style="background:#E6F1FB;color:#185FA5;font-size:11px;padding:2px 7px;border-radius:4px;font-weight:500"`:isAsset?`style="background:#F3E8D9;color:#6B4A1E;font-size:11px;padding:2px 7px;border-radius:4px;font-weight:500"`:isTransfer?`style="background:#F1F5F9;color:#475569;font-size:11px;padding:2px 7px;border-radius:4px;font-weight:500"`:'class="bdg '+(isIn?'bg':'br')+'"';return`<tr><td style="font-size:11px;color:var(--t3)">${fmtDate(t.date)||'—'}</td><td>${cleanTxDesc(t.desc,t.room)||'—'}</td><td class="c" style="font-size:12px;font-weight:600">${roomTxt}</td><td><span ${bdgStyle}>${TX_L[t.type]||t.type}</span></td><td class="r" style="font-weight:500;color:${isCap?'var(--blue)':isAsset?'#6B4A1E':isTransfer?'#475569':isIn?'var(--green)':'var(--red)'}">${isIn?'+':'-'}${fmt2(t.amount)}</td><td style="font-size:11px;color:var(--t3)">${t.channel==='bank'?'โอน':'เงินสด'}</td><td class="r" style="font-size:11px;color:${runVal>=0?'var(--green)':'var(--red)'}">${fmt2(runVal)}</td><td style="display:flex;gap:4px"><button class="btn btn-sm btn-icon" style="color:var(--blue)" onclick="editTx('${t.id}')"><i class="ti ti-edit" style="font-size:11px"></i></button><button class="btn btn-sm btn-icon" style="color:var(--t3)" onclick="delTx('${t.id}')"><i class="ti ti-trash" style="font-size:11px"></i></button></td></tr>`;}).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--t3);padding:20px">ยังไม่มีรายการ</td></tr>';
+  document.getElementById('tx-body').innerHTML=display.map(t=>{const isCap=t.type==='capital-in'||t.type==='capital-out';const isAsset=ASSET_T.includes(t.type);const isCapIn=t.type==='capital-in';const isIn=isCap?isCapIn:t.type?.endsWith('-in');const runVal=balMap[t.id]??0;const roomTxt=t.room?String(parseInt(t.room)||t.room):'—';const isTransfer=TRANSFER_T.includes(t.type);const bdgStyle=isCap?`style="background:#E6F1FB;color:#185FA5;font-size:11px;padding:2px 7px;border-radius:4px;font-weight:500"`:isAsset?`style="background:#F3E8D9;color:#6B4A1E;font-size:11px;padding:2px 7px;border-radius:4px;font-weight:500"`:isTransfer?`style="background:#F1F5F9;color:#475569;font-size:11px;padding:2px 7px;border-radius:4px;font-weight:500"`:'class="bdg '+(isIn?'bg':'br')+'"';return`<tr><td style="font-size:11px;color:var(--t3)">${fmtDate(t.date)||'—'}</td><td>${txHl(cleanTxDesc(t.desc,t.room)||'—')}</td><td class="c" style="font-size:12px;font-weight:600">${txHl(roomTxt)}</td><td><span ${bdgStyle}>${txHl(TX_L[t.type]||t.type)}</span></td><td class="r" style="font-weight:500;color:${isCap?'var(--blue)':isAsset?'#6B4A1E':isTransfer?'#475569':isIn?'var(--green)':'var(--red)'}">${isIn?'+':'-'}${fmt2(t.amount)}</td><td style="font-size:11px;color:var(--t3)">${t.channel==='bank'?'โอน':'เงินสด'}</td><td class="r" style="font-size:11px;color:${runVal>=0?'var(--green)':'var(--red)'}">${fmt2(runVal)}</td><td style="display:flex;gap:4px"><button class="btn btn-sm btn-icon" style="color:var(--blue)" onclick="editTx('${t.id}')"><i class="ti ti-edit" style="font-size:11px"></i></button><button class="btn btn-sm btn-icon" style="color:var(--t3)" onclick="delTx('${t.id}')"><i class="ti ti-trash" style="font-size:11px"></i></button></td></tr>`;}).join('')||(txQ?`<tr><td colspan="8" style="text-align:center;color:var(--t3);padding:20px">ไม่พบรายการที่ตรงกับ "${txQ.replace(/[<>&"]/g,'')}"</td></tr>`:'<tr><td colspan="8" style="text-align:center;color:var(--t3);padding:20px">ยังไม่มีรายการ</td></tr>');
 }
+function onTxSearch(){
+  const v=document.getElementById('tx-search')?.value||'';
+  const x=document.getElementById('tx-search-x');if(x)x.style.display=v?'block':'none';
+  renderTxTbl();
+}
+function clearTxSearch(){const i=document.getElementById('tx-search');if(i){i.value='';i.focus();}onTxSearch();}
 let txSortCol='date', txSortDir='desc';
 function sortTxCol(col){
   if(txSortCol===col){txSortDir=txSortDir==='asc'?'desc':'asc';}

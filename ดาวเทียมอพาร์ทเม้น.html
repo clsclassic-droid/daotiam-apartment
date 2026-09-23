@@ -3614,6 +3614,12 @@ function setCfView(v){
 
 function onDashYearChange(){
   const yr=document.getElementById('dash-year-sel').value;
+  if(yr==='all'){ // ทั้งหมด (ทุกปี) — ไม่ต้องเลือกเดือน
+    const mS=document.getElementById('dash-month-sel');
+    mS.innerHTML='<option value="all">ทุกเดือน</option>';mS.style.display='none';
+    renderCfDash();return;
+  }
+  document.getElementById('dash-month-sel').style.display='';
   const now=new Date(),cy=now.getFullYear();
   const maxM=parseInt(yr)===cy?now.getMonth()+1:12;
   const MTH_S=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
@@ -3629,17 +3635,21 @@ async function renderCfDash(){
   if(!ySel)return;
   // init year dropdown
   if(!ySel.options.length){
+    const oAll=document.createElement('option');oAll.value='all';oAll.textContent='ทั้งหมด (ทุกปี)';ySel.appendChild(oAll);
     for(let y=cy;y>=2022;y--){const o=document.createElement('option');o.value=String(y);o.textContent='ปี '+(y+543);ySel.appendChild(o);}
+    ySel.value=String(cy);
   }
   const yr=ySel.value||String(cy);
-  const maxM=parseInt(yr)===cy?now.getMonth()+1:12;
+  const isAllYears=yr==='all';
+  const dashYears=[];for(let y=2022;y<=cy;y++)dashYears.push(y);
+  const maxM=isAllYears?12:(parseInt(yr)===cy?now.getMonth()+1:12);
   const MTH_S=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
   // init month dropdown
   if(mSel&&!mSel.options.length){
     mSel.innerHTML=`<option value="all">ทั้งปี ${parseInt(yr)+543}</option>`;
     for(let m=1;m<=maxM;m++){const o=document.createElement('option');o.value=String(m).padStart(2,'0');o.textContent=MTH_S[m-1]+' '+(parseInt(yr)+543);mSel.appendChild(o);}
   }
-  const mVal=mSel?mSel.value:'all';
+  const mVal=(isAllYears||!mSel)?'all':mSel.value;
   const isMonthView=mVal!=='all';
 
   // โหลดข้อมูล
@@ -3647,6 +3657,11 @@ async function renderCfDash(){
   if(isMonthView){
     const res=await api({action:'getTransactions',month:yr+'_'+mVal});
     allTx=(res||[]).filter(Boolean);
+  } else if(isAllYears){
+    const allP=[];
+    dashYears.forEach(y=>{const mm=y===cy?now.getMonth()+1:12;for(let m=1;m<=mm;m++)allP.push(api({action:'getTransactions',month:y+'_'+String(m).padStart(2,'0')}));});
+    const allRes=await Promise.all(allP);
+    allTx=allRes.flat().filter(Boolean);
   } else {
     const allP=[];
     for(let m=1;m<=maxM;m++)allP.push(api({action:'getTransactions',month:yr+'_'+String(m).padStart(2,'0')}));
@@ -3658,21 +3673,22 @@ async function renderCfDash(){
   const prevYr=String(parseInt(yr)-1);
   const prevMaxM=12;
   const prevP=[];
-  for(let m=1;m<=prevMaxM;m++)prevP.push(api({action:'getTransactions',month:prevYr+'_'+String(m).padStart(2,'0')}));
+  if(!isAllYears)for(let m=1;m<=prevMaxM;m++)prevP.push(api({action:'getTransactions',month:prevYr+'_'+String(m).padStart(2,'0')}));
   const prevRes=await Promise.all(prevP);
   const prevTx=prevRes.flat().filter(Boolean);
   const prevInc=prevTx.filter(t=>INC_T.includes(t.type)).reduce((s,t)=>s+parseFloat(t.amount||0),0);
   const prevExp=prevTx.filter(t=>EXP_T.includes(t.type)).reduce((s,t)=>s+parseFloat(t.amount||0),0);
 
-  const incByM=Array(maxM).fill(0),expByM=Array(maxM).fill(0);
+  const nBucket=isAllYears?dashYears.length:maxM;
+  const incByM=Array(nBucket).fill(0),expByM=Array(nBucket).fill(0);
   const byType={};
   allTx.forEach(t=>{
-    const mo=parseInt((t.month||'').split('_')[1]||0)-1;
+    const mo=isAllYears?dashYears.indexOf(parseInt((t.month||'').split('_')[0]||0)):parseInt((t.month||'').split('_')[1]||0)-1;
     const amt=parseFloat(t.amount||0);
-    if(INC_T.includes(t.type)&&mo>=0&&mo<maxM)incByM[mo]+=amt;
-    if(EXP_T.includes(t.type)&&mo>=0&&mo<maxM){expByM[mo]+=amt;const k=t.type||'other';byType[k]=(byType[k]||0)+amt;}
+    if(INC_T.includes(t.type)&&mo>=0&&mo<nBucket)incByM[mo]+=amt;
+    if(EXP_T.includes(t.type)&&mo>=0&&mo<nBucket){expByM[mo]+=amt;const k=t.type||'other';byType[k]=(byType[k]||0)+amt;}
   });
-  const labels=isMonthView?[MTH_S[parseInt(mVal)-1]]:MTH_S.slice(0,maxM);
+  const labels=isAllYears?dashYears.map(y=>'ปี '+(y+543)):isMonthView?[MTH_S[parseInt(mVal)-1]]:MTH_S.slice(0,maxM);
   const incData=isMonthView?[Math.round(incByM[parseInt(mVal)-1])]:incByM.map(Math.round);
   const expData=isMonthView?[Math.round(expByM[parseInt(mVal)-1])]:expByM.map(Math.round);
   const profit=incData.map((v,i)=>v-expData[i]);

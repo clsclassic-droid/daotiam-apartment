@@ -3563,6 +3563,7 @@ function populateTxSel(){
     o.value=key;o.textContent=MTH[m-1]+' '+(parseInt(yr)+543);
     sel.appendChild(o);
   }
+  if(pendingTxSel){if([...sel.options].some(o=>o.value===pendingTxSel))sel.value=pendingTxSel;pendingTxSel=null;}
 }
 function selectTxYear(y){txYear=y;buildTxTabs();loadTx();}
 
@@ -3959,10 +3960,11 @@ function renderPnlDetail(txns,yr,i){
   h+=`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;font-size:11px;color:var(--t3)"><span>รายการตามรอบบิล ${MTH[i]} ${parseInt(yr)+543} · ยอดรวม = ตัวเลขในแถวนี้</span><span onclick="event.stopPropagation();openCashflowMonth('${yr}','${key}')" style="color:var(--blue);cursor:pointer;font-size:12px">เปิดในหน้ากระแสเงินสด →</span></div>`;
   return h;
 }
+let pendingTxSel=null; // เดือนที่ต้องเลือกไว้ก่อน loadTx อ่านค่า dropdown (กันโหลดซ้อน 2 ครั้ง)
 function openCashflowMonth(yr,key){
-  txYear=yr;goPage('cashflow');
-  const sel=document.getElementById('tx-sel');
-  if(sel&&[...sel.options].some(o=>o.value===key)){sel.value=key;loadTx();}
+  txYear=yr;pendingTxSel=key;
+  goPage('cashflow'); // buildTxTabs → populateTxSel ตั้งเดือนให้ → loadTx โหลดครั้งเดียว
+  window.scrollTo(0,0);
 }
 async function loadPnlMonthly(){
   if(pnlYear==='all'){

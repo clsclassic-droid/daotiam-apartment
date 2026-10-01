@@ -1362,7 +1362,7 @@ async function sbGetTransactionsByDate(period){
     return data.map(t=>({
       id:t.id, date:t.date||'', month:t.month||'', type:t.type||'',
       desc:t.description||'', room:t.room||'', amount:t.amount||0,
-      channel:t.channel||'cash', note:t.note||''
+      channel:t.channel||'cash', note:t.note||'', created_at:t.created_at||''
     }));
   }catch(e){showToast('โหลดรายการไม่สำเร็จ','err');return [];}
   finally{hideLoad();}
@@ -1382,7 +1382,7 @@ async function sbGetTransactions(month){
     return data.map(t=>({
       id:t.id, date:t.date||'', month:t.month||'', type:t.type||'',
       desc:t.description||'', room:t.room||'', amount:t.amount||0,
-      channel:t.channel||'cash', note:t.note||''
+      channel:t.channel||'cash', note:t.note||'', created_at:t.created_at||''
     }));
   }catch(e){showToast('โหลดรายการไม่สำเร็จ','err');return [];}
   finally{hideLoad();}
@@ -2835,7 +2835,7 @@ function renderTxTbl(){
   const netBal=tIn-tOut+capNet-tAsset+liabNet;
   document.getElementById('tx-summary').innerHTML=`รายรับ <strong style="color:var(--green)">${fmt2(tIn)}</strong> · รายจ่าย <strong style="color:var(--red)">${fmt2(tOut)}</strong> · เงินประกัน/ล่วงหน้ารับ <strong style="color:#0E7490">${fmt2(tLiabIn)}</strong> · คืน <strong style="color:#A16207">${fmt2(tLiabOut)}</strong> · เพิ่มทุนเข้า <strong style="color:#185FA5">${fmt2(tCapIn)}</strong> · ถอนทุนออก <strong style="color:#854F0B">${fmt2(tCapOut)}</strong> · ซื้อสินทรัพย์ถาวร <strong style="color:#6B4A1E">${fmt2(tAsset)}</strong> · คงเหลือ <strong style="color:${netBal>=0?'var(--green)':'var(--red)'}">${fmt2(netBal)}</strong>${balExtra}`;
   // คำนวณ "คงเหลือ" (running balance) จากลำดับวันที่จริงเสมอ (เก่า→ใหม่) ไม่ขึ้นกับลำดับที่แสดงผล
-  const chrono=[...transactions].sort((a,b)=>(a.date||'').localeCompare(b.date||'')||String(a.id).localeCompare(String(b.id)));
+  const chrono=[...transactions].sort((a,b)=>(a.date||'').localeCompare(b.date||'')||(a.created_at||'').localeCompare(b.created_at||'')||String(a.id).localeCompare(String(b.id)));
   const balMap={};
   chrono.forEach(t=>{const isCap=t.type==='capital-in'||t.type==='capital-out';const isCapIn=t.type==='capital-in';const isIn=isCap?isCapIn:t.type?.endsWith('-in');run+=(isIn?1:-1)*parseFloat(t.amount||0);balMap[t.id]=run;});
   // เรียงลำดับสำหรับแสดงผลตามหัวคอลัมน์ที่บอสหนึ่งคลิกเลือก
@@ -2851,6 +2851,7 @@ function renderTxTbl(){
     else if(col==='amount')r=parseFloat(a.amount||0)-parseFloat(b.amount||0);
     else if(col==='channel')r=(a.channel||'').localeCompare(b.channel||'');
     else if(col==='balance')r=(balMap[a.id]||0)-(balMap[b.id]||0);
+    if(r===0){const ca=(a.created_at||''),cb=(b.created_at||'');const tie=ca.localeCompare(cb);if(tie!==0)return -tie;return String(b.id).localeCompare(String(a.id));}
     return r*mul;
   });
   // ── ค้นหา: กรองเฉพาะแถวที่แสดง (ยอดสรุปด้านบน + คงเหลือ ยังคิดจากทั้งช่วงเหมือนเดิม) ──

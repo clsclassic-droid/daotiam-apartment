@@ -1256,7 +1256,7 @@ function calcStayDays(checkin){
   return Math.floor((now.getTime()-start.getTime())/86400000);
 }
 function showToast(msg,t='ok'){const el=document.getElementById('toast');el.innerHTML=`<i class="ti ti-${t==='ok'?'check':'alert-circle'}" style="color:${t==='ok'?'#1D9E75':'#E24B4A'}"></i>${msg}`;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2800);}
-function closeMo(id){document.getElementById(id)?.classList.remove('open');if(id==='mo-tx'){delete document.getElementById('mo-tx').dataset.editId;const t=document.querySelector('#mo-tx .mo-title');if(t)t.textContent='เพิ่มรายการรับ-จ่าย';}if(id==='mo-maint'){delete document.getElementById('mo-maint').dataset.editId;const t=document.querySelector('#mo-maint .mo-title');if(t)t.textContent='เพิ่มรายการซ่อมบำรุง';mntSelRooms=new Set();renderMntRooms();}}
+function closeMo(id){document.getElementById(id)?.classList.remove('open');if(id==='mo-tx'){delete document.getElementById('mo-tx').dataset.editId;const t=document.querySelector('#mo-tx .mo-title');if(t)t.textContent='เพิ่มรายการรับ-จ่าย';}if(id==='mo-maint'){document.querySelectorAll('#mnt-type option[data-custom]').forEach(o=>o.remove());delete document.getElementById('mo-maint').dataset.editId;const t=document.querySelector('#mo-maint .mo-title');if(t)t.textContent='เพิ่มรายการซ่อมบำรุง';mntSelRooms=new Set();renderMntRooms();}}
 function openMo(id){document.getElementById(id)?.classList.add('open');}
 function showLoad(msg='กำลังโหลด...'){apiCount++;document.getElementById('api-msg').textContent=msg;document.getElementById('api-overlay').classList.add('show');}
 function hideLoad(){apiCount=Math.max(0,apiCount-1);if(!apiCount)document.getElementById('api-overlay').classList.remove('show');}
@@ -1368,13 +1368,28 @@ async function sbGetTransactions(month){
 async function sbSaveTransaction(d){
   showLoad('กำลังบันทึก...');
   try{
-    const {error}=await _sb.from('transactions').insert({
+    const {data:txIns,error}=await _sb.from('transactions').insert({
       date:d.date, month:d.month, type:d.type,
       description:d.desc||d.description||'', room:d.room||'',
       amount:parseFloat(d.amount)||0, channel:d.channel||'cash', note:d.note||''
-    });
+    }).select('id').single();
     if(error)throw error;
-    return {success:true};
+    // ซ่อมบำรุง → บันทึกลงหน้าซ่อมบำรุงอัตโนมัติ (เชื่อมด้วย tx_id)
+    if(d.type==='repair-out'&&txIns?.id!=null){
+      try{
+        const rn=parseInt(d.room);
+        const {error:rErr}=await _sb.from('repairs').insert({
+          date:fromInputDate(String(d.date||'').split(' ')[0]),
+          type:d.desc||d.description||'',
+          cost:parseFloat(d.amount)||0,
+          rooms:(rn>=1&&rn<=22)?[rn]:[],
+          note:d.note||'',
+          tx_id:String(txIns.id)
+        });
+        if(rErr)throw rErr;
+      }catch(e2){console.error('sync repair',e2);showToast('บันทึกกระแสเงินสดแล้ว แต่ลงหน้าซ่อมบำรุงไม่สำเร็จ','err');}
+    }
+    return {success:true,id:txIns?.id};
   }catch(e){showToast('บันทึกไม่สำเร็จ','err');return null;}
   finally{hideLoad();}
 }
@@ -1385,6 +1400,11 @@ async function sbDeleteTransaction(id){
   try{
     const {error}=await _sb.from('transactions').delete().eq('id',id);
     if(error)throw error;
+    // ลบแถวซ่อมบำรุงที่เชื่อมกับรายการนี้ (ถ้ามี)
+    try{
+      const {error:rErr}=await _sb.from('repairs').delete().eq('tx_id',String(id));
+      if(rErr)throw rErr;
+    }catch(e2){console.error('sync repair delete',e2);showToast('ลบกระแสเงินสดแล้ว แต่ลบแถวในหน้าซ่อมบำรุงไม่สำเร็จ','err');}
     return {success:true};
   }catch(e){showToast('ลบไม่สำเร็จ','err');return null;}
   finally{hideLoad();}
@@ -1425,7 +1445,8 @@ async function sbGetRepairs(){
     if(error)throw error;
     return data.map(r=>({
       id:r.id, date:r.date||'', type:r.type||'',
-      rooms:r.rooms||[], cost:r.cost||0, note:r.note||''
+      rooms:r.rooms||[], cost:r.cost||0, note:r.note||'',
+      tx_id:r.tx_id||null
     }));
   }catch(e){showToast('โหลดไม่สำเร็จ','err');return [];}
   finally{hideLoad();}
@@ -3413,8 +3434,8 @@ function renderAircon(){
         <td style="padding:4px 7px;text-align:right;font-weight:500">${r.cost>0?''+fmtN(r.cost):'—'}</td>
         <td style="padding:4px 7px;color:var(--t3);font-size:10px">${r.note||'—'}</td>
         <td style="padding:4px 7px;white-space:nowrap">
-          <button class="btn btn-sm btn-icon" style="color:var(--blue)" onclick="editRepair('${r.id}')"><i class="ti ti-edit" style="font-size:11px"></i></button>
-          <button class="btn btn-sm btn-icon" style="color:var(--t3)" onclick="delRepair('${r.id}')"><i class="ti ti-trash" style="font-size:11px"></i></button>
+          ${r.tx_id?`<span title="มาจากกระแสเงินสด — แก้ไข/ลบที่หน้ากระแสเงินสด" onclick="showToast('รายการนี้มาจากกระแสเงินสด แก้ไข/ลบที่หน้ากระแสเงินสด')" style="display:inline-flex;align-items:center;gap:3px;font-size:10px;color:var(--t3);cursor:help"><i class="ti ti-cash" style="font-size:12px;color:var(--green)"></i>กระแสเงินสด</span>`:`<button class="btn btn-sm btn-icon" style="color:var(--blue)" onclick="editRepair('${r.id}')"><i class="ti ti-edit" style="font-size:11px"></i></button>
+          <button class="btn btn-sm btn-icon" style="color:var(--t3)" onclick="delRepair('${r.id}')"><i class="ti ti-trash" style="font-size:11px"></i></button>`}
         </td>
       </tr>`;
     });
@@ -3450,7 +3471,10 @@ function editRepair(id){
   const r=maintData.find(x=>String(x.id)===String(id));if(!r)return;
   let roomArr=[];try{roomArr=typeof r.rooms==='string'?JSON.parse(r.rooms):r.rooms||[];}catch(e){}
   document.getElementById('mnt-date').value=toInputDate(r.date);
-  document.getElementById('mnt-type').value=r.type||'ล้างแอร์';
+  const mtSel=document.getElementById('mnt-type');
+  const mtVal=r.type||'ล้างแอร์';
+  if(![...mtSel.options].some(o=>o.value===mtVal)){const o=document.createElement('option');o.value=mtVal;o.textContent=mtVal;o.dataset.custom='1';mtSel.appendChild(o);}
+  mtSel.value=mtVal;
   document.getElementById('mnt-cost').value=r.cost||0;
   document.getElementById('mnt-note').value=r.note||'';
   mntSelRooms=new Set(roomArr.map(x=>parseInt(x)||x));

@@ -709,7 +709,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
             <tr><td>ค่าเช่า (บาท/เดือน)</td><td class="r"><input type="number" id="cfg-rent" class="fc" style="width:120px;text-align:right" value="3500"></td></tr>
             <tr><td>ค่าไฟ (บาท/หน่วย)</td><td class="r"><input type="number" id="cfg-elec" class="fc" style="width:120px;text-align:right" value="6.5" step="0.1"></td></tr>
             <tr><td>ค่าน้ำ (บาท/หน่วย)</td><td class="r"><input type="number" id="cfg-water" class="fc" style="width:120px;text-align:right" value="22"></td></tr>
-            <tr><td>ค่าเช่ารายวัน (บาท/วัน)</td><td class="r"><input type="number" id="cfg-day" class="fc" style="width:120px;text-align:right" value="116"></td></tr>
+            <tr><td>ค่าเช่ารายวัน (บาท/วัน)</td><td class="r"><input type="number" id="cfg-day" class="fc" style="width:120px;text-align:right" value="117"></td></tr>
           </tbody>
         </table>
         <button class="btn btn-green btn-sm" onclick="saveSettings()"><i class="ti ti-device-floppy"></i> บันทึกตั้งค่า</button>
@@ -1226,7 +1226,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
 // ===== CONFIG =====
 const SUPABASE_URL = 'https://uokxrijfhezojnasnzps.supabase.co';
 const SUPABASE_KEY = 'sb_publishable__zegOiikfSqkWUTPv_lsXQ_Q02YPz-K';
-let RENT=3500, ELEC=6.5, WATER=22, DAY_RATE=116;
+let RENT=3500, ELEC=6.5, WATER=22, DAY_RATE=117;
 const MTH=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 function thShort(v){
   if(!v)return'—';
@@ -2510,7 +2510,7 @@ function populateInvRoom(){const sel=document.getElementById('inv-room');if(!sel
 // กรณี 1: ผู้ใช้กรอก "วันที่ออก (กลางเดือน)" เอง -> คิดวันที่ 1 ถึงวันที่กรอก (ย้ายออกกลางเดือน)
 // กรณี 2: ไม่ได้กรอก แต่ผู้เช่าเข้าพักเดือนนี้และเข้าพักหลังวันที่ 1 -> auto คิดจากวันเข้าพักถึงสิ้นเดือน (เข้าพักกลางเดือน)
 function calcRentProrate(t,monthKey,checkoutDate){
-  const INV_DAY_RATE=117;
+  const INV_DAY_RATE=DAY_RATE||117;
   let rentAmt=RENT,rentRange='—',rentDays=0,isProrate=false;
   const fmt2d=n=>String(n).padStart(2,'0');
   if(checkoutDate){
@@ -2554,7 +2554,7 @@ function buildInvHTML(rn,t,m,month,invDate,mDate,vacant,extras=[],checkoutDate='
   const wu=Math.max(0,parseFloat(m?.waterCurr||0)-parseFloat(m?.waterPrev||0));
   const ec=vacant?0:Math.round(eu*ELEC*100)/100,wc=vacant?0:Math.round(wu*WATER*100)/100;
   // คำนวณค่าเช่า: รายวัน 117 บาท ถ้ากรอกวันออกกลางเดือน หรือเป็นเดือนแรกที่เข้าพักกลางเดือน
-  const INV_DAY_RATE=117;
+  const INV_DAY_RATE=DAY_RATE||117;
   let rentAmt=RENT,rentRange='—',rentDays=0,isProrate=false;
   if(!vacant){
     const pr=calcRentProrate(t,monthKey||window._invMeterCache?.monthKey||'',checkoutDate);
@@ -2661,7 +2661,7 @@ async function editInv(){
   const wu=Math.max(0,parseFloat(m?.waterCurr||0)-parseFloat(m?.waterPrev||0));
   const ec=Math.round(eu*ELEC*100)/100,wc=Math.round(wu*WATER*100)/100;
   const _coModal=document.getElementById('inv-checkout-date')?.value||'';
-  const _INV_DR=117;
+  const _INV_DR=DAY_RATE||117;
   const _pr=calcRentProrate(t,monthKey,_coModal);
   const _pDays=_pr.rentDays,_rentRange=_pr.rentRange,_rentModalAmt=_pr.rentAmt,_isPr=_pr.isProrate;
   document.getElementById('inv-modal-preview').innerHTML=`
@@ -2715,7 +2715,7 @@ async function issueInv(){
   const wu=Math.max(0,parseFloat(m?.waterCurr||0)-parseFloat(m?.waterPrev||0));
   const ec=Math.round(eu*ELEC*100)/100,wc=Math.round(wu*WATER*100)/100;
   const _coModal=document.getElementById('inv-checkout-date')?.value||'';
-  const _INV_DR=117;
+  const _INV_DR=DAY_RATE||117;
   const _pr2=calcRentProrate(t,monthKey,_coModal);
   const _pDays=_pr2.rentDays,_rentRange=_pr2.rentRange,_rentModalAmt=_pr2.rentAmt,_isPr2=_pr2.isProrate;
   document.getElementById('inv-modal-preview').innerHTML=`
@@ -3062,7 +3062,7 @@ async function loadSettings(){
       RENT=parseFloat(data.rent)||3500;
       ELEC=parseFloat(data.elec)||6.5;
       WATER=parseFloat(data.water)||22;
-      DAY_RATE=parseFloat(data.day_rate)||116;
+      DAY_RATE=parseFloat(data.day_rate)||117;
       if(data.line_token) window._lineToken=data.line_token;
       _notifyIds=(data.notify_line_ids||'').split(',').map(s=>s.trim()).filter(Boolean);
     }
@@ -3116,7 +3116,7 @@ async function saveSettings(){
   const rent=parseFloat(document.getElementById('cfg-rent').value)||3500;
   const elec=parseFloat(document.getElementById('cfg-elec').value)||6.5;
   const water=parseFloat(document.getElementById('cfg-water').value)||22;
-  const day_rate=parseFloat(document.getElementById('cfg-day').value)||116;
+  const day_rate=parseFloat(document.getElementById('cfg-day').value)||117;
   try{
     await _sb.from('settings').upsert({id:'main',rent,elec,water,day_rate},{onConflict:'id'});
     RENT=rent;ELEC=elec;WATER=water;DAY_RATE=day_rate;
@@ -3192,7 +3192,8 @@ async function openPayModal(room){
   banner.innerHTML='';
   // แสดงค่าเช่า: ถ้ารายวันให้แสดง range+วัน+ราคา ถ้าเต็มเดือนแสดง —
   if(isDayRate){
-    const days=Math.round(rentAmt/117);
+    const _payDR=DAY_RATE||117;
+    const days=Math.round(rentAmt/_payDR);
     const[ovYr,ovMo]=ovSel.split('_').map(Number);
     const startStr='01/'+String(ovMo).padStart(2,'0')+'/'+String(ovYr).slice(-2);
     // หาวันที่ออกจาก invoice หรือคำนวณจาก days
@@ -3203,7 +3204,7 @@ async function openPayModal(room){
     const rentRow=document.getElementById('pay-rent').closest('tr');
     document.getElementById('pay-rent-range').textContent=rentRange;
     document.getElementById('pay-rent-days').textContent=fmtN(days);
-    document.getElementById('pay-rent-rate').textContent='117';
+    document.getElementById('pay-rent-rate').textContent=String(_payDR);
   } else {
     document.getElementById('pay-rent').textContent=fmt2(rentAmt);
     document.getElementById('pay-rent-range').textContent='—';

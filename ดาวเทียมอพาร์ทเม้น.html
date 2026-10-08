@@ -496,7 +496,13 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
           <!-- Row 1: Bar chart + Donut side by side -->
           <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;margin-bottom:12px">
             <div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px;min-width:0">
-              <div style="font-size:11px;font-weight:600;color:var(--t2);margin-bottom:6px"><i class="ti ti-chart-bar"></i> รายรับ vs รายจ่าย รายเดือน</div>
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+                <div style="font-size:11px;font-weight:600;color:var(--t2)"><i class="ti ti-chart-bar"></i> <span id="bar-title">รายรับ vs รายจ่าย รายเดือน</span></div>
+                <div id="bar-mode-toggle" style="display:flex;background:#f0f2f5;border-radius:20px;padding:3px;gap:2px">
+                  <button id="bar-mode-month" class="vt-mh active" onclick="setBarMode('month')">รายเดือน</button>
+                  <button id="bar-mode-year" class="vt-mh" onclick="setBarMode('year')">รายปี</button>
+                </div>
+              </div>
               <div style="display:flex;gap:12px;margin-bottom:8px">
                 <span style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--t2)"><span style="width:8px;height:8px;border-radius:2px;background:var(--green);display:inline-block"></span>รายรับ</span>
                 <span style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--t2)"><span style="width:8px;height:8px;border-radius:2px;background:var(--red);display:inline-block"></span>รายจ่าย</span>
@@ -3684,6 +3690,8 @@ function onDashYearChange(){
   for(let m=1;m<=maxM;m++){const o=document.createElement('option');o.value=String(m).padStart(2,'0');o.textContent=MTH_S[m-1]+' '+(parseInt(yr)+543);mSel.appendChild(o);}
   renderCfDash();
 }
+let dashBarMode='month';
+function setBarMode(m){dashBarMode=m;renderCfDash();}
 async function renderCfDash(){
   const now=new Date(),cy=now.getFullYear();
   const ySel=document.getElementById('dash-year-sel');
@@ -3805,10 +3813,48 @@ async function renderCfDash(){
     </div>`).join('')||'<div style="font-size:12px;color:var(--t3)">ยังไม่มีข้อมูล</div>';
 
   const chartOpts={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:9},autoSkip:false,maxRotation:45},grid:{display:false}},y:{ticks:{font:{size:9},callback:v=>''+(Math.abs(v)/1000).toFixed(0)+'k'},grid:{color:'rgba(0,0,0,0.04)'}}}};
+  // ── กราฟแท่งรายรับ vs รายจ่าย: โหมดรายเดือน / รายปี ──
+  const isBarYear=dashBarMode==='year'&&!isMonthView;
+  let barLabels=labels, barInc=incData, barExp=expData;
+  const barTitleEl=document.getElementById('bar-title');
+  if(barTitleEl)barTitleEl.textContent=isBarYear?'รายรับ vs รายจ่าย รายปี':'รายรับ vs รายจ่าย รายเดือน';
+  ['month','year'].forEach(k=>{const b=document.getElementById('bar-mode-'+k);if(b)b.classList.toggle('active',(k==='year')===isBarYear);});
+  const barTg=document.getElementById('bar-mode-toggle');if(barTg)barTg.style.display=isMonthView?'none':'flex';
+  if(!isMonthView){
+    if(isAllYears){
+      if(isBarYear){
+        barLabels=dashYears.map(y=>String(y+543));
+        barInc=incByM.map(Math.round);barExp=expByM.map(Math.round);
+      }else{
+        // รายเดือนของทุกปี (ใช้ข้อมูลที่โหลดไว้แล้ว)
+        const mk={};
+        allTx.forEach(t=>{const p=(t.month||'').split('_');const y=parseInt(p[0]),m=parseInt(p[1]);if(!y||!m)return;const k=y*100+m;if(!mk[k])mk[k]={i:0,e:0};const amt=parseFloat(t.amount||0);if(INC_T.includes(t.type))mk[k].i+=amt;if(EXP_T.includes(t.type))mk[k].e+=amt;});
+        barLabels=[];barInc=[];barExp=[];
+        dashYears.forEach(y=>{const mm=y===cy?now.getMonth()+1:12;for(let m=1;m<=mm;m++){barLabels.push(MTH_S[m-1]+' '+String(y+543).slice(-2));const v=mk[y*100+m]||{i:0,e:0};barInc.push(Math.round(v.i));barExp.push(Math.round(v.e));}});
+      }
+    }else if(isBarYear){
+      // รายปี: ดึงข้อมูลทุกปีตั้งแต่ 2022 ถึงปีปัจจุบัน
+      const yInc=Array(dashYears.length).fill(0),yExp=Array(dashYears.length).fill(0);
+      const yP=[];
+      dashYears.forEach(y=>{const mm=y===cy?now.getMonth()+1:12;for(let m=1;m<=mm;m++)yP.push(api({action:'getTransactions',month:y+'_'+String(m).padStart(2,'0')}));});
+      const yRes=await Promise.all(yP);
+      yRes.flat().filter(Boolean).forEach(t=>{
+        const yi=dashYears.indexOf(parseInt((t.month||'').split('_')[0])||0);
+        if(yi<0)return;
+        const amt=parseFloat(t.amount||0);
+        if(INC_T.includes(t.type))yInc[yi]+=amt;
+        if(EXP_T.includes(t.type))yExp[yi]+=amt;
+      });
+      barLabels=dashYears.map(y=>String(y+543));
+      barInc=yInc.map(Math.round);barExp=yExp.map(Math.round);
+    }
+  }
   ['dash-bar-chart','dash-line-chart','dash-donut-chart','dash-profit-chart'].forEach(id=>{
     if(dashCharts[id]){dashCharts[id].destroy();delete dashCharts[id];}
   });
-  dashCharts['dash-bar-chart']=new Chart(document.getElementById('dash-bar-chart'),{type:'bar',data:{labels,datasets:[{label:'รายรับ',data:incData,backgroundColor:'#1D9E75',borderRadius:3},{label:'รายจ่าย',data:expData,backgroundColor:'#E24B4A',borderRadius:3}]},options:{...chartOpts}});
+  const barOpts={...chartOpts,layout:{padding:{left:6,right:18,top:4}},scales:{x:{ticks:{font:{size:9},autoSkip:!isBarYear,autoSkipPadding:4,maxRotation:0,minRotation:0},grid:{display:false}},y:chartOpts.scales.y}};
+  dashCharts['dash-bar-chart']=new Chart(document.getElementById('dash-bar-chart'),{type:'bar',data:{labels:barLabels,datasets:[{label:'รายรับ',data:barInc,backgroundColor:'#1D9E75',borderRadius:3},{label:'รายจ่าย',data:barExp,backgroundColor:'#E24B4A',borderRadius:3}]},options:barOpts});
+  requestAnimationFrame(()=>{const bc=dashCharts['dash-bar-chart'];if(bc)bc.resize();});
   dashCharts['dash-line-chart']=new Chart(document.getElementById('dash-line-chart'),{type:'line',data:{labels,datasets:[{label:'คงเหลือ',data:balance,borderColor:'#378ADD',backgroundColor:'rgba(55,138,221,0.08)',fill:true,tension:0.4,pointRadius:3,pointBackgroundColor:'#378ADD'}]},options:{...chartOpts}});
   dashCharts['dash-donut-chart']=new Chart(document.getElementById('dash-donut-chart'),{type:'doughnut',data:{labels:expTypes.slice(0,6).map(k=>TX_L[k]||k),datasets:[{data:expTypes.slice(0,6).map(k=>Math.round(byType[k])),backgroundColor:donutColors2.slice(0,expTypes.length)}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},cutout:'60%'}});
   dashCharts['dash-profit-chart']=new Chart(document.getElementById('dash-profit-chart'),{type:'bar',data:{labels,datasets:[{label:'กำไร',data:profit,backgroundColor:profit.map(v=>v>=0?'#1D9E75':'#E24B4A'),borderRadius:3}]},options:{...chartOpts}});

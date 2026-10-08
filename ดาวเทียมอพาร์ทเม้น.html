@@ -690,6 +690,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
           <div class="card-title" style="margin-bottom:0"><i class="ti ti-bell" style="color:var(--amber)"></i> รายการแจ้งเตือน</div>
           <button class="btn btn-green btn-sm" onclick="openRemModal()"><i class="ti ti-plus"></i> เพิ่มการแจ้งเตือน</button>
         </div>
+        <div id="rem-filter"></div>
         <div class="tbl-wrap"><table class="tbl">
           <thead><tr><th>วันที่บันทึก</th><th class="c">ห้อง</th><th>เตือน</th><th>วันนัด/วันออก</th><th></th></tr></thead>
           <tbody id="rem-body"></tbody>
@@ -1719,7 +1720,7 @@ function goPage(p){
   else if(p==='history')loadHist();
   else if(p==='settings'){loadSettings();loadAssets();}
   else if(p==='payment-history')loadPayHistory();
-  else if(p==='reminders')loadReminders();
+  else if(p==='reminders'){remFilterDate=_remPickPending;_remPickPending=null;loadReminders();}
 }
 let sbOpen=true;
 function toggleSidebar(){sbOpen=!sbOpen;document.getElementById('sidebar')?.classList.toggle('collapsed',!sbOpen);document.getElementById('sb-toggle').textContent=sbOpen?'◀':'▶';}
@@ -3890,20 +3891,24 @@ async function renderCfDash(){
 // ── แจ้งเตือน (ตาราง reminders ใน Supabase) ──
 let remData=[];
 const escRem=s=>String(s??'').replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
-async function loadReminders(){
-  showLoad('กำลังโหลด...');
+async function loadReminders(silent){
+  if(!silent)showLoad('กำลังโหลด...');
   try{
     const {data,error}=await _sb.from('reminders').select('*').order('appt_date',{ascending:true});
     if(error)throw error;
     remData=data||[];
   }catch(e){remData=[];showToast('โหลดไม่สำเร็จ','err');}
-  finally{hideLoad();}
+  finally{if(!silent)hideLoad();}
   renderReminders();
+  sbCalRender();
 }
 function renderReminders(){
   const tb=document.getElementById('rem-body');if(!tb)return;
-  if(!remData.length){tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--t3);padding:20px">ยังไม่มีการแจ้งเตือน</td></tr>';return;}
-  tb.innerHTML=remData.map(r=>`<tr>
+  const fd=document.getElementById('rem-filter');
+  if(fd){fd.innerHTML=remFilterDate?`<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:10px;padding:7px 10px;border-radius:8px;background:var(--rl);color:#791F1F;font-size:12px"><span><i class="ti ti-calendar-event"></i> แสดงวันนัด/วันออก ${fmtDate(remFilterDate)}</span><button class="btn btn-sm" onclick="clearRemFilter()">แสดงทั้งหมด</button></div>`:'';}
+  const list=remFilterDate?remData.filter(r=>String(r.appt_date).slice(0,10)===remFilterDate):remData;
+  if(!list.length){tb.innerHTML=`<tr><td colspan="5" style="text-align:center;color:var(--t3);padding:20px">${remFilterDate?'ไม่มีการแจ้งเตือนในวันที่นี้':'ยังไม่มีการแจ้งเตือน'}</td></tr>`;return;}
+  tb.innerHTML=list.map(r=>`<tr>
     <td style="font-size:11px;color:var(--t3);white-space:nowrap">${fmtDate(r.created_at)}</td>
     <td class="c" style="font-weight:600">${escRem(r.room)}</td>
     <td>${escRem(r.message)}</td>
@@ -4658,14 +4663,25 @@ function sbCalRender(){
   const daysInMonth=new Date(_sbCalYear,_sbCalMonth+1,0).getDate();
   let html='';
   for(let i=0;i<firstDay;i++) html+='<div></div>';
+  const remSet=new Set((remData||[]).map(r=>String(r.appt_date||'').slice(0,10)));
   for(let d=1;d<=daysInMonth;d++){
     const isToday=d===now.getDate()&&_sbCalMonth===now.getMonth()&&_sbCalYear===now.getFullYear();
-    html+=`<div style="font-size:9px;padding:2px 1px;border-radius:3px;cursor:default;${isToday?'background:var(--green);color:#fff;font-weight:700':'color:rgba(255,255,255,.6)'}">${d}</div>`;
+    const key=`${_sbCalYear}-${String(_sbCalMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const hasRem=remSet.has(key);
+    const base=isToday?'background:var(--green);color:#fff;font-weight:700;':'color:rgba(255,255,255,.6);';
+    const frame=hasRem?'box-shadow:inset 0 0 0 1.5px var(--red);':'';
+    html+=`<div onclick="sbCalPick(${d})" style="font-size:9px;padding:2px 1px;border-radius:3px;cursor:pointer;${base}${frame}">${d}</div>`;
   }
   days.innerHTML=html;
 }
 function sbCalPrev(){if(_sbCalMonth===0){_sbCalMonth=11;_sbCalYear--;}else _sbCalMonth--;sbCalRender();}
 function sbCalNext(){if(_sbCalMonth===11){_sbCalMonth=0;_sbCalYear++;}else _sbCalMonth++;sbCalRender();}
+let remFilterDate=null, _remPickPending=null;
+function sbCalPick(d){
+  _remPickPending=`${_sbCalYear}-${String(_sbCalMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  goPage('reminders');
+}
+function clearRemFilter(){remFilterDate=null;renderReminders();}
 // ========== End Sidebar Calendar ==========
 
 async function initApp(){
@@ -4691,6 +4707,7 @@ async function initApp(){
   loadDashboard();
   loadTenants();
   sbCalRender();
+  loadReminders(true);
 }
 init();
 </script>

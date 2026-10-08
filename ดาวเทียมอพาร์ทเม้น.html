@@ -494,8 +494,8 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
           <!-- KPI Cards: 4 in a row -->
           <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px" id="dash-kpi"></div>
           <!-- Row 1: Bar chart + Donut side by side -->
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
-            <div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px">
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;margin-bottom:12px">
+            <div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px;min-width:0">
               <div style="font-size:11px;font-weight:600;color:var(--t2);margin-bottom:6px"><i class="ti ti-chart-bar"></i> รายรับ vs รายจ่าย รายเดือน</div>
               <div style="display:flex;gap:12px;margin-bottom:8px">
                 <span style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--t2)"><span style="width:8px;height:8px;border-radius:2px;background:var(--green);display:inline-block"></span>รายรับ</span>
@@ -503,7 +503,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
               </div>
               <div style="position:relative;height:180px"><canvas id="dash-bar-chart" role="img" aria-label="กราฟแท่งรายรับและรายจ่ายรายเดือน">รายรับและรายจ่ายรายเดือน</canvas></div>
             </div>
-            <div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px">
+            <div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px;min-width:0">
               <div style="font-size:11px;font-weight:600;color:var(--t2);margin-bottom:6px"><i class="ti ti-chart-donut"></i> สัดส่วนรายจ่ายตามประเภท</div>
               <div id="dash-donut-legend" style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:8px"></div>
               <div style="position:relative;height:150px"><canvas id="dash-donut-chart" role="img" aria-label="กราฟวงกลมสัดส่วนรายจ่าย">สัดส่วนรายจ่ายตามประเภท</canvas></div>
@@ -518,12 +518,12 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
             <div style="position:relative;height:160px"><canvas id="dash-line-chart" role="img" aria-label="กราฟเส้นยอดคงเหลือสะสม">ยอดคงเหลือสะสม</canvas></div>
           </div>
           <!-- Row 3: Top5 + Profit chart -->
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-            <div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px">
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px">
+            <div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px;min-width:0">
               <div style="font-size:11px;font-weight:600;color:var(--t2);margin-bottom:10px"><i class="ti ti-arrow-up-right" style="color:var(--red)"></i> รายจ่ายสูงสุด 5 อันดับ</div>
               <div id="dash-top5"></div>
             </div>
-            <div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px">
+            <div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px;min-width:0">
               <div style="font-size:11px;font-weight:600;color:var(--t2);margin-bottom:8px"><i class="ti ti-calendar-stats" style="color:var(--blue)"></i> กำไรสุทธิรายเดือน</div>
               <div style="position:relative;height:160px"><canvas id="dash-profit-chart" role="img" aria-label="กราฟกำไรสุทธิรายเดือน">กำไรสุทธิรายเดือน</canvas></div>
             </div>
@@ -3851,6 +3851,8 @@ async function loadPayHistory(){
       return{
         id:r.id,
         date:fmtDate(r.date)||'',
+        dateTs:(parseCheckinDate(r.date)||new Date(0)).getTime(),
+        createdAt:r.created_at||'',
         rcnum:r.receipt_no||'',
         room:parseInt(r.room)||r.room,
         name:r.tenant_name||'',
@@ -3879,6 +3881,12 @@ function renderPaymentHistoryTable(){
   
   let sorted=data.slice();
   sorted.sort((a,b)=>{
+    // เรียงตามวันที่จริง (ไม่ใช่ข้อความไทย) ถ้าวันเดียวกันให้ใบเสร็จที่บันทึกทีหลังอยู่ก่อน (desc) / หลัง (asc)
+    if(paymentSortCol==='date'){
+      if(a.dateTs!==b.dateTs)return paymentSortDir==='asc'?a.dateTs-b.dateTs:b.dateTs-a.dateTs;
+      const c=String(a.createdAt).localeCompare(String(b.createdAt))||String(a.rcnum).localeCompare(String(b.rcnum));
+      return paymentSortDir==='asc'?c:-c;
+    }
     let aVal=a[paymentSortCol];
     let bVal=b[paymentSortCol];
     if(['room','rent','elec','water','other','total'].includes(paymentSortCol)){

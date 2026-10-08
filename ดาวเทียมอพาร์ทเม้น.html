@@ -2373,7 +2373,7 @@ function calcMC(room){
   const ep=parseFloat(document.getElementById('ep-'+room)?.value||0),ec=parseFloat(document.getElementById('ec-'+room)?.value||0);
   const wp=parseFloat(document.getElementById('wp-'+room)?.value||0),wc=parseFloat(document.getElementById('wc-'+room)?.value||0);
   const el=document.getElementById('mc-'+room);if(!el)return;
-  if(ec>ep&&wc>wp){const eU=Math.round(ec-ep),wU=Math.round(wc-wp),eC=Math.round(eU*ELEC),wC=Math.round(wU*WATER);el.textContent=`ไฟ ${eU}×6.5 + น้ำ ${wU}×22 = ${fmtN(RENT+eC+wC)} บาท`;el.style.color='var(--green)';}
+  if(ec>ep&&wc>wp){const eU=Math.round(ec-ep),wU=Math.round(wc-wp),eC=Math.round(eU*ELEC),wC=Math.round(wU*WATER);el.textContent=`ไฟ ${eU}×${ELEC} + น้ำ ${wU}×${WATER} = ${fmtN(RENT+eC+wC)} บาท`;el.style.color='var(--green)';}
   else{el.textContent='กรอกเลขมิเตอร์เพื่อคำนวณ';el.style.color='var(--t3)';}
 }
 async function saveMeters(){
@@ -2549,10 +2549,36 @@ function calcRentProrate(t,monthKey,checkoutDate){
   }
   return{rentAmt,rentRange,rentDays,isProrate};
 }
-function buildInvHTML(rn,t,m,month,invDate,mDate,vacant,extras=[],checkoutDate='',monthKey=''){
+// ===== ราคาต่อหน่วยไฟ/น้ำ =====
+// ใบที่ออกแล้ว: ใช้ราคาที่จดไว้ในใบ (elec_rate/water_rate) · ใบที่ยังไม่ออก: ใช้ราคาปัจจุบันจากหน้าตั้งค่า
+function invRates(inv){
+  const e=parseFloat(inv?.elec_rate),w=parseFloat(inv?.water_rate);
+  return {er:e>0?e:ELEC,wr:w>0?w:WATER};
+}
+// ดึงราคาของใบแจ้งหนี้ห้อง+เดือน (ถ้าใบเป็นของผู้เช่าคนก่อน ให้ใช้ราคาปัจจุบัน)
+async function getInvRates(room,monthKey,t){
+  try{
+    const {data}=await _sb.from('invoices').select('elec_rate,water_rate,tenant_name').eq('room',room).eq('month',monthKey).maybeSingle();
+    if(data&&!isInvTenantMismatch(data,t))return invRates(data);
+  }catch(e){}
+  return invRates(null);
+}
+// ราคาของแต่ละเดือน (หน้าประวัติมิเตอร์): ใช้ราคาจากใบแจ้งหนี้ของเดือนนั้น
+// เดือนที่เก่ากว่าใบแจ้งหนี้ใบแรกในระบบ = ราคาเดิม 6.5/22 · เดือนที่ยังไม่ออกใบ = ราคาปัจจุบัน
+const LEGACY_RATES={er:6.5,wr:22};
+async function getMonthRatesFn(){
+  const map={};let first=null;
+  try{
+    const {data}=await _sb.from('invoices').select('month,elec_rate,water_rate').not('elec_rate','is',null);
+    (data||[]).forEach(r=>{if(!map[r.month])map[r.month]=invRates(r);if(!first||r.month<first)first=r.month;});
+  }catch(e){}
+  return k=>map[k]||(first&&k<first?LEGACY_RATES:invRates(null));
+}
+function buildInvHTML(rn,t,m,month,invDate,mDate,vacant,extras=[],checkoutDate='',monthKey='',rates=null){
+  const _r=rates||invRates(null);
   const eu=Math.max(0,parseFloat(m?.elecCurr||0)-parseFloat(m?.elecPrev||0));
   const wu=Math.max(0,parseFloat(m?.waterCurr||0)-parseFloat(m?.waterPrev||0));
-  const ec=vacant?0:Math.round(eu*ELEC*100)/100,wc=vacant?0:Math.round(wu*WATER*100)/100;
+  const ec=vacant?0:Math.round(eu*_r.er*100)/100,wc=vacant?0:Math.round(wu*_r.wr*100)/100;
   // คำนวณค่าเช่า: รายวัน 117 บาท ถ้ากรอกวันออกกลางเดือน หรือเป็นเดือนแรกที่เข้าพักกลางเดือน
   const INV_DAY_RATE=DAY_RATE||117;
   let rentAmt=RENT,rentRange='—',rentDays=0,isProrate=false;
@@ -2574,8 +2600,8 @@ function buildInvHTML(rn,t,m,month,invDate,mDate,vacant,extras=[],checkoutDate='
       <tr style="background:#f9f9f9"><th style="border:1px solid #333;padding:6px 8px;width:22%">รายการ</th><th style="border:1px solid #333;padding:6px 8px;width:26%;text-align:center">หน่วย เก่า-ใหม่</th><th style="border:1px solid #333;padding:6px 8px;width:12%;text-align:center">จำนวน</th><th style="border:1px solid #333;padding:6px 8px;width:14%;text-align:center">ราคา/หน่วย</th><th style="border:1px solid #333;padding:6px 8px;width:16%;text-align:right">จำนวนเงิน</th></tr></thead>
       <tbody>
         <tr><td style="border:1px solid #333;padding:6px 9px">ค่าเช่าห้อง</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">${vacant?'—':isProrate?rentRange:'—'}</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">${(!vacant&&isProrate)?fmtN(rentDays):''}</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">${(!vacant&&isProrate)?fmtN(INV_DAY_RATE):''}</td><td style="border:1px solid #333;padding:6px 9px;text-align:right">${vacant?'—':fmt2(rentAmt)}</td></tr>
-        <tr><td style="border:1px solid #333;padding:6px 9px">ค่าไฟฟ้า</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">${fmtN1(m?.elecPrev||0)} - ${fmtN1(m?.elecCurr||0)}</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">${eu.toFixed(1)}</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">6.5</td><td style="border:1px solid #333;padding:6px 9px;text-align:right">${fmt2(ec)}</td></tr>
-        <tr><td style="border:1px solid #333;padding:6px 9px">ค่าน้ำประปา</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">${fmtN1(m?.waterPrev||0)} - ${fmtN1(m?.waterCurr||0)}</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">${wu.toFixed(1)}</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">22</td><td style="border:1px solid #333;padding:6px 9px;text-align:right">${fmt2(wc)}</td></tr>
+        <tr><td style="border:1px solid #333;padding:6px 9px">ค่าไฟฟ้า</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">${fmtN1(m?.elecPrev||0)} - ${fmtN1(m?.elecCurr||0)}</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">${eu.toFixed(1)}</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">${_r.er}</td><td style="border:1px solid #333;padding:6px 9px;text-align:right">${fmt2(ec)}</td></tr>
+        <tr><td style="border:1px solid #333;padding:6px 9px">ค่าน้ำประปา</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">${fmtN1(m?.waterPrev||0)} - ${fmtN1(m?.waterCurr||0)}</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">${wu.toFixed(1)}</td><td style="border:1px solid #333;padding:6px 9px;text-align:center">${_r.wr}</td><td style="border:1px solid #333;padding:6px 9px;text-align:right">${fmt2(wc)}</td></tr>
         ${extraRows}
         <tr><td colspan="4" style="border:1px solid #333;padding:7px 9px;text-align:center;font-weight:600">จำนวนเงินรวมทั้งสิ้น (บาท)</td><td style="border:1px solid #333;padding:7px 9px;text-align:right;font-weight:700;font-size:15px">${vacant?'—':fmt2(total)}</td></tr>
       </tbody>
@@ -2616,7 +2642,8 @@ async function renderInv(){
   try{const {data}=await _sb.from('invoices').select('*').eq('room',room).eq('month',monthKey).maybeSingle();if(data){existingInvoice=data;extras=typeof data.extras==='string'?JSON.parse(data.extras):data.extras||[];}}catch(e){}
   const _tenantMismatch=isInvTenantMismatch(existingInvoice,t);
   if(_tenantMismatch){extras=[];showInvTenantWarn(existingInvoice.tenant_name);}else{hideInvTenantWarn();}
-  _invMeterCache={meterData,monthKey,monthName,invDate,_room:room,_extras:extras,_tenantMismatch};
+  const _invRates=(existingInvoice&&!_tenantMismatch)?invRates(existingInvoice):invRates(null);
+  _invMeterCache={meterData,monthKey,monthName,invDate,_room:room,_extras:extras,_tenantMismatch,rates:_invRates};
   const m=meterData.find(x=>String(x.room)===String(room));
   const mDate=m?.currDate||document.getElementById('inv-mdate').value;
   // โชว์/ซ่อนปุ่มแก้ไข
@@ -2626,7 +2653,7 @@ async function renderInv(){
   const lineBtn=document.getElementById('inv-line-btn');
   if(lineBtn) lineBtn.style.display=t?.line_user_id?'':'none';
   const _coDateVal=document.getElementById('inv-checkout-date')?.value||'';
-  document.getElementById('inv-preview').innerHTML=buildInvHTML(room,t,m,monthName,invDate,mDate,false,extras,_coDateVal,monthKey);
+  document.getElementById('inv-preview').innerHTML=buildInvHTML(room,t,m,monthName,invDate,mDate,false,extras,_coDateVal,monthKey,_invRates);
 }
 async function editInv(){
   // เปิด popup ออกใบแจ้งหนี้พร้อมโหลด extras เดิมมาแก้ไข
@@ -2646,10 +2673,10 @@ async function editInv(){
   // โหลด extras เดิมจาก invoices — ถ้าใบเดิมเป็นของผู้เช่าคนก่อน (คนละคนกับตอนนี้) ห้ามดึงมาใช้
   let existingExtras=[];
   try{
-    const {data}=await _sb.from('invoices').select('extras,tenant_name').eq('room',room).eq('month',monthKey).maybeSingle();
+    const {data}=await _sb.from('invoices').select('extras,tenant_name,elec_rate,water_rate').eq('room',room).eq('month',monthKey).maybeSingle();
     if(data){
       if(isInvTenantMismatch(data,t)){showInvTenantWarn(data.tenant_name);}
-      else{hideInvTenantWarn();if(data.extras)existingExtras=typeof data.extras==='string'?JSON.parse(data.extras):data.extras||[];}
+      else{hideInvTenantWarn();_invMeterCache.rates=invRates(data);if(data.extras)existingExtras=typeof data.extras==='string'?JSON.parse(data.extras):data.extras||[];}
     }
   }catch(e){}
   // reset แล้วใส่ extras เดิม
@@ -2659,7 +2686,8 @@ async function editInv(){
   // preview
   const eu=Math.max(0,parseFloat(m?.elecCurr||0)-parseFloat(m?.elecPrev||0));
   const wu=Math.max(0,parseFloat(m?.waterCurr||0)-parseFloat(m?.waterPrev||0));
-  const ec=Math.round(eu*ELEC*100)/100,wc=Math.round(wu*WATER*100)/100;
+  const _er=(_invMeterCache.rates||invRates(null)).er,_wr=(_invMeterCache.rates||invRates(null)).wr;
+  const ec=Math.round(eu*_er*100)/100,wc=Math.round(wu*_wr*100)/100;
   const _coModal=document.getElementById('inv-checkout-date')?.value||'';
   const _INV_DR=DAY_RATE||117;
   const _pr=calcRentProrate(t,monthKey,_coModal);
@@ -2670,8 +2698,8 @@ async function editInv(){
       <thead><tr><th>รายการ</th><th class="c">หน่วย เก่า-ใหม่</th><th class="c">จำนวน</th><th class="c">ราคา/หน่วย</th><th class="r">เงิน</th></tr></thead>
       <tbody>
         <tr><td>ค่าเช่าห้อง</td><td class="c" style="color:var(--t3)">${_isPr?_rentRange:'—'}</td><td class="c">${_isPr?fmtN(_pDays):''}</td><td class="c">${_isPr?fmtN(_INV_DR):''}</td><td class="r">${fmt2(_rentModalAmt)}</td></tr>
-        <tr><td>ค่าไฟฟ้า</td><td class="c" style="color:var(--t3)">${fmtN1(m?.elecPrev||0)}–${fmtN1(m?.elecCurr||0)}</td><td class="c">${eu.toFixed(1)}</td><td class="c">6.5</td><td class="r">${fmt2(ec)}</td></tr>
-        <tr><td>ค่าน้ำประปา</td><td class="c" style="color:var(--t3)">${fmtN1(m?.waterPrev||0)}–${fmtN1(m?.waterCurr||0)}</td><td class="c">${wu.toFixed(1)}</td><td class="c">22</td><td class="r">${fmt2(wc)}</td></tr>
+        <tr><td>ค่าไฟฟ้า</td><td class="c" style="color:var(--t3)">${fmtN1(m?.elecPrev||0)}–${fmtN1(m?.elecCurr||0)}</td><td class="c">${eu.toFixed(1)}</td><td class="c">${_er}</td><td class="r">${fmt2(ec)}</td></tr>
+        <tr><td>ค่าน้ำประปา</td><td class="c" style="color:var(--t3)">${fmtN1(m?.waterPrev||0)}–${fmtN1(m?.waterCurr||0)}</td><td class="c">${wu.toFixed(1)}</td><td class="c">${_wr}</td><td class="r">${fmt2(wc)}</td></tr>
       </tbody>
     </table>`;
   openMo('mo-issue-inv');
@@ -2706,14 +2734,15 @@ async function issueInv(){
   const meterData=await api({action:'getMeters',month:monthKey})||[];
   const m=meterData.find(x=>String(x.room)===String(room));
   const mDate=m?.currDate||document.getElementById('inv-mdate').value;
-  _invMeterCache={meterData,monthKey,monthName,invDate,m,mDate,room,t,_room:room,_extras:[]};
+  _invMeterCache={meterData,monthKey,monthName,invDate,m,mDate,room,t,_room:room,_extras:[],rates:await getInvRates(room,monthKey,t)};
   // reset รายการพิเศษ
   _issueInvExtras=[];
   document.getElementById('inv-extra-list').innerHTML='';
   // แสดง preview ในmodal
   const eu=Math.max(0,parseFloat(m?.elecCurr||0)-parseFloat(m?.elecPrev||0));
   const wu=Math.max(0,parseFloat(m?.waterCurr||0)-parseFloat(m?.waterPrev||0));
-  const ec=Math.round(eu*ELEC*100)/100,wc=Math.round(wu*WATER*100)/100;
+  const {er:_er,wr:_wr}=_invMeterCache.rates;
+  const ec=Math.round(eu*_er*100)/100,wc=Math.round(wu*_wr*100)/100;
   const _coModal=document.getElementById('inv-checkout-date')?.value||'';
   const _INV_DR=DAY_RATE||117;
   const _pr2=calcRentProrate(t,monthKey,_coModal);
@@ -2724,8 +2753,8 @@ async function issueInv(){
       <thead><tr><th>รายการ</th><th class="c">หน่วย เก่า-ใหม่</th><th class="c">จำนวน</th><th class="c">ราคา/หน่วย</th><th class="r">เงิน</th></tr></thead>
       <tbody>
         <tr><td>ค่าเช่าห้อง</td><td class="c" style="color:var(--t3)">${_isPr2?_rentRange:'—'}</td><td class="c">${_isPr2?fmtN(_pDays):''}</td><td class="c">${_isPr2?fmtN(_INV_DR):''}</td><td class="r">${fmt2(_rentModalAmt)}</td></tr>
-        <tr><td>ค่าไฟฟ้า</td><td class="c" style="color:var(--t3)">${fmtN1(m?.elecPrev||0)}–${fmtN1(m?.elecCurr||0)}</td><td class="c">${eu.toFixed(1)}</td><td class="c">6.5</td><td class="r">${fmt2(ec)}</td></tr>
-        <tr><td>ค่าน้ำประปา</td><td class="c" style="color:var(--t3)">${fmtN1(m?.waterPrev||0)}–${fmtN1(m?.waterCurr||0)}</td><td class="c">${wu.toFixed(1)}</td><td class="c">22</td><td class="r">${fmt2(wc)}</td></tr>
+        <tr><td>ค่าไฟฟ้า</td><td class="c" style="color:var(--t3)">${fmtN1(m?.elecPrev||0)}–${fmtN1(m?.elecCurr||0)}</td><td class="c">${eu.toFixed(1)}</td><td class="c">${_er}</td><td class="r">${fmt2(ec)}</td></tr>
+        <tr><td>ค่าน้ำประปา</td><td class="c" style="color:var(--t3)">${fmtN1(m?.waterPrev||0)}–${fmtN1(m?.waterCurr||0)}</td><td class="c">${wu.toFixed(1)}</td><td class="c">${_wr}</td><td class="r">${fmt2(wc)}</td></tr>
       </tbody>
     </table>`;
   openMo('mo-issue-inv');
@@ -2737,7 +2766,8 @@ async function confirmIssueInv(){
   const extraTotal=extras.reduce((s,x)=>s+parseFloat(x.amount||0),0);
   const eu=Math.max(0,parseFloat(m?.elecCurr||0)-parseFloat(m?.elecPrev||0));
   const wu=Math.max(0,parseFloat(m?.waterCurr||0)-parseFloat(m?.waterPrev||0));
-  const ec=Math.round(eu*ELEC*100)/100,wc=Math.round(wu*WATER*100)/100;
+  const _rt=_invMeterCache.rates||invRates(null);
+  const ec=Math.round(eu*_rt.er*100)/100,wc=Math.round(wu*_rt.wr*100)/100;
   // คำนวณค่าเช่า: รายวัน 117 บาท ถ้ากรอกวันออก หรือเป็นเดือนแรกที่เข้าพักกลางเดือน
   const _coDateVal2=document.getElementById('inv-checkout-date')?.value||'';
   const rentAmtFinal=calcRentProrate(t,monthKey,_coDateVal2).rentAmt;
@@ -2748,6 +2778,7 @@ async function confirmIssueInv(){
     await _sb.from('invoices').insert({
       room,month:monthKey,issued_date:invDate,
       rent_amount:rentAmtFinal,elec_amount:ec,water_amount:wc,tenant_name:t.name,
+      elec_rate:_rt.er,water_rate:_rt.wr,
       extras:JSON.stringify(extras),total,status:'pending'
     });
     const idx=tenants.findIndex(x=>String(x.room)===String(room));
@@ -2758,7 +2789,7 @@ async function confirmIssueInv(){
     renderDash();
     closeMo('mo-issue-inv');
     hideInvTenantWarn();
-    document.getElementById('inv-preview').innerHTML=buildInvHTML(room,t,m,monthName,invDate,mDate,false,extras,_coDateVal2,monthKey);
+    document.getElementById('inv-preview').innerHTML=buildInvHTML(room,t,m,monthName,invDate,mDate,false,extras,_coDateVal2,monthKey,_rt);
     showToast(`ออกใบแจ้งหนี้ห้อง ${parseInt(room)} แล้ว`);
   }catch(e){showToast('ออกใบไม่สำเร็จ','err');}
   finally{hideLoad();}
@@ -2796,7 +2827,7 @@ async function printAllInv(){
         skipped++;
         let existingExtras=[];
         try{existingExtras=typeof existing.extras==='string'?JSON.parse(existing.extras):existing.extras||[];}catch(e){}
-        all.push(buildInvHTML(n,t||null,m||null,monthName,invDate,mDateRoom,!t,existingExtras,'',monthKey));
+        all.push(buildInvHTML(n,t||null,m||null,monthName,invDate,mDateRoom,!t,existingExtras,'',monthKey,invRates(existing)));
         continue;
       }
       all.push(buildInvHTML(n,t||null,m||null,monthName,invDate,mDateRoom,!t,[],'',monthKey));
@@ -2814,6 +2845,7 @@ async function printAllInv(){
         await _sb.from('invoices').insert({
           room:n,month:monthKey,issued_date:invDate,
           rent_amount:rentAmtRoom,elec_amount:ec,water_amount:wc,tenant_name:t.name,
+          elec_rate:ELEC,water_rate:WATER,
           extras:JSON.stringify([]),total,status:'pending'
         });
       }
@@ -3152,11 +3184,10 @@ async function openPayModal(room){
   const m=payMeterData.find(x=>String(x.room)===String(room))||{};
   const eu=Math.max(0,parseFloat(m.elecCurr||0)-parseFloat(m.elecPrev||0));
   const wu=Math.max(0,parseFloat(m.waterCurr||0)-parseFloat(m.waterPrev||0));
-  const ec=Math.round(eu*ELEC*100)/100,wc=Math.round(wu*WATER*100)/100;
   // ดึง invoice ของห้องนี้ในเดือนนี้ — ใช้ rent_amount จาก invoice เป็นหลัก
   // ถ้าใบเดิมเป็นของผู้เช่าคนก่อน (ห้องเปลี่ยนผู้เช่ากลางเดือน) ห้ามใช้ invoiceId/extras/ยอดเดิม
   // (ป้องกันการบันทึกจ่ายเงินไปทับใบแจ้งหนี้ของผู้เช่าคนก่อนโดยไม่ตั้งใจ)
-  let extras=[],invoiceId=null,rentAmt=RENT,payTenantMismatchOld=null;
+  let extras=[],invoiceId=null,rentAmt=RENT,payTenantMismatchOld=null,payRates=invRates(null);
   try{
     const {data}=await _sb.from('invoices').select('*').eq('room',room).eq('month',ovSel).maybeSingle();
     if(data&&isInvTenantMismatch(data,t)){
@@ -3164,16 +3195,19 @@ async function openPayModal(room){
       rentAmt=calcRentProrate(t,ovSel,'').rentAmt;
     } else if(data){
       invoiceId=data.id;
+      payRates=invRates(data);
       extras=typeof data.extras==='string'?JSON.parse(data.extras):data.extras||[];
       if(data.rent_amount) rentAmt=parseFloat(data.rent_amount);
     }
   }catch(e){}
+  // ค่าไฟ/น้ำ คิดด้วยราคาของใบแจ้งหนี้เดือนนั้น (ใบที่ยังไม่ออก = ราคาปัจจุบัน)
+  const ec=Math.round(eu*payRates.er*100)/100,wc=Math.round(wu*payRates.wr*100)/100;
   const isDayRate=rentAmt!==RENT;
   const extraTotal=extras.reduce((s,x)=>s+parseFloat(x.amount||0),0);
-  payCurrentRoom=room;payMethod=null;payData={t,m,eu,wu,ec,wc,rentAmt,extraTotal,invoiceId,extras};
+  payCurrentRoom=room;payMethod=null;payData={t,m,eu,wu,ec,wc,rentAmt,extraTotal,invoiceId,extras,er:payRates.er,wr:payRates.wr};
   document.getElementById('pay-sub').textContent='ห้อง '+room+' · '+t.name;
-  const er=document.getElementById('pay-elec-rate');if(er)er.textContent=ELEC;
-  const wr=document.getElementById('pay-water-rate');if(wr)wr.textContent=WATER;
+  const er=document.getElementById('pay-elec-rate');if(er)er.textContent=payRates.er;
+  const wr=document.getElementById('pay-water-rate');if(wr)wr.textContent=payRates.wr;
   // แสดงรายการพิเศษ
   const extrasEl=document.getElementById('pay-extras-tbody');
   if(extrasEl) extrasEl.innerHTML=extras.map(x=>`<tr><td colspan="4" style="padding:4px 8px;color:var(--text)">${x.desc||'อื่นๆ'}</td><td class="r" style="padding:4px 8px;color:var(--text)">${fmt2(x.amount)}</td></tr>`).join('');
@@ -3275,10 +3309,11 @@ async function confirmPay(){
       receipt_no:receiptNo,room:payCurrentRoom,month,date:today,
       rent_amount:finalRentAmt,elec_amount:finalEc,water_amount:finalWc,
       elec_used:payData.eu,water_used:payData.wu,
+      elec_rate:payData.er,water_rate:payData.wr,
       extras:JSON.stringify(finalExtras),total:grandTotal,
       channel:ch,tenant_name:t.name
     });
-    const d={room:payCurrentRoom,name:t.name,paid,method:payMethod,eu:payData.eu,wu:payData.wu,ec:finalEc,wc:finalWc,rentAmt:finalRentAmt,extras:finalExtras,date:fmtDate(today),receiptNo};
+    const d={room:payCurrentRoom,name:t.name,paid,method:payMethod,eu:payData.eu,wu:payData.wu,ec:finalEc,wc:finalWc,rentAmt:finalRentAmt,extras:finalExtras,date:fmtDate(today),receiptNo,er:payData.er,wr:payData.wr};
     receiptStore[payCurrentRoom]=d;
     closeMo('mo-pay');showReceiptModal(d);
     await loadTenants();renderOverdue();
@@ -3303,8 +3338,8 @@ function showReceiptModal(d){
     </div>
     <table style="width:100%;font-size:12px;border-collapse:collapse;margin-bottom:8px">
       <tr><td style="padding:3px 0;color:var(--t3)">ค่าเช่าห้อง</td><td style="text-align:right">${fmt2(rentAmt)}</td></tr>
-      <tr><td style="padding:3px 0;color:var(--t3)">ค่าไฟ (${d.eu!=null?d.eu.toFixed(1):'—'} × 6.50)</td><td style="text-align:right">${fmt2(d.ec||0)}</td></tr>
-      <tr><td style="padding:3px 0;color:var(--t3)">ค่าน้ำ (${d.wu!=null?d.wu.toFixed(1):'—'} × 22)</td><td style="text-align:right">${fmt2(d.wc||0)}</td></tr>
+      <tr><td style="padding:3px 0;color:var(--t3)">ค่าไฟ (${d.eu!=null?d.eu.toFixed(1):'—'} × ${d.er||ELEC})</td><td style="text-align:right">${fmt2(d.ec||0)}</td></tr>
+      <tr><td style="padding:3px 0;color:var(--t3)">ค่าน้ำ (${d.wu!=null?d.wu.toFixed(1):'—'} × ${d.wr||WATER})</td><td style="text-align:right">${fmt2(d.wc||0)}</td></tr>
       ${extraRows}
     </table>
     <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:600;border-top:2px solid var(--text);padding-top:7px">
@@ -3329,7 +3364,8 @@ async function viewReceipt(room){
         rentAmt:parseFloat(rec.rent_amount||0),ec:parseFloat(rec.elec_amount||0),wc:parseFloat(rec.water_amount||0),
         eu:rec.elec_used!=null?parseFloat(rec.elec_used):null,
         wu:rec.water_used!=null?parseFloat(rec.water_used):null,
-        extras,date:fmtDate(rec.date),receiptNo:rec.receipt_no
+        extras,date:fmtDate(rec.date),receiptNo:rec.receipt_no,
+        er:parseFloat(rec.elec_rate)||null,wr:parseFloat(rec.water_rate)||null
       };
       showReceiptModal(d);
       return;
@@ -4301,6 +4337,7 @@ async function renderMhMonth(){
     api({action:'getMeters',month},'กำลังโหลด...')||[],
     api({action:'getMeters',month:prevMonth})||[]
   ]);
+  const rateOf=await getMonthRatesFn();const R=rateOf(month),PR=rateOf(prevMonth);
   let totalE=0,totalW=0,prevTotalE=0,prevTotalW=0;
   let maxE={room:0,val:0},maxW={room:0,val:0};
   const roomData=tenants.map(t=>{
@@ -4315,8 +4352,8 @@ async function renderMhMonth(){
     if(wu>maxW.val){maxW={room:t.room,val:wu};}
     return{t,eu,wu,pEu,pWu};
   });
-  const elecCost=Math.round(totalE*ELEC);const waterCost=Math.round(totalW*WATER);
-  const prevElecCost=Math.round(prevTotalE*ELEC);const prevWaterCost=Math.round(prevTotalW*WATER);
+  const elecCost=Math.round(totalE*R.er);const waterCost=Math.round(totalW*R.wr);
+  const prevElecCost=Math.round(prevTotalE*PR.er);const prevWaterCost=Math.round(prevTotalW*PR.wr);
   const totalCost=elecCost+waterCost;const prevTotalCost=prevElecCost+prevWaterCost;
   const diffE=Math.round(totalE-prevTotalE);const diffW=Math.round((totalW-prevTotalW)*10)/10;
   const diffEC=elecCost-prevElecCost;const diffWC=waterCost-prevWaterCost;const diffTC=totalCost-prevTotalCost;
@@ -4342,7 +4379,7 @@ async function renderMhMonth(){
     return`<span style="font-size:10px;color:var(--t3)">—</span>`;
   };
   const rowsData=roomData.map(({t,eu,wu,pEu,pWu})=>{
-    const cost=Math.round(eu*ELEC+wu*WATER);const prevCost=Math.round(pEu*ELEC+pWu*WATER);
+    const cost=Math.round(eu*R.er+wu*R.wr);const prevCost=Math.round(pEu*PR.er+pWu*PR.wr);
     const dE=Math.round(eu-pEu);const dW=Math.round(wu-pWu);const dC=cost-prevCost;
     return{t,eu,wu,dE,dW,cost,dC};
   });
@@ -4385,13 +4422,14 @@ async function renderMhRoom(){
   const now=new Date(),cy=now.getFullYear();const keys=[];
   for(let y=2022;y<=cy;y++){const mx=y===cy?now.getMonth()+1:12;for(let m=1;m<=mx;m++)keys.push(y+'_'+String(m).padStart(2,'0'));}
   const results=await Promise.all(keys.map(k=>api({action:'getMeters',month:k})));
-  let totalE=0,totalW=0,cnt=0,maxE={lbl:'',val:0};
+  const rateOf=await getMonthRatesFn();
+  let totalE=0,totalW=0,cnt=0,maxE={lbl:'',val:0},totalCost=0;
   const chartLabels=[],chartE=[],chartW=[];
   const rows=results.map((data,i)=>{
     const m=(data||[]).find(x=>String(x.room)===String(room));if(!m)return'';
     const eu=Math.round(Math.max(0,parseFloat(m.elecCurr||0)-parseFloat(m.elecPrev||0))*10)/10;
     const wu=Math.round(Math.max(0,parseFloat(m.waterCurr||0)-parseFloat(m.waterPrev||0))*10)/10;
-    if(eu>0||wu>0){totalE+=eu;totalW+=wu;cnt++;}
+    if(eu>0||wu>0){const _mr=rateOf(keys[i]);totalE+=eu;totalW+=wu;totalCost+=eu*_mr.er+wu*_mr.wr;cnt++;}
     if(eu>maxE.val){const [yr2,mo2]=keys[i].split('_');maxE={lbl:MTH[parseInt(mo2)-1]+' '+(parseInt(yr2)+543),val:eu};}
     const [yr,mo]=keys[i].split('_');const lbl=MTH[parseInt(mo)-1]+' '+(parseInt(yr)+543);
     chartLabels.push(MTH[parseInt(mo)-1].replace('.','')+' '+(parseInt(yr)+543).toString().slice(-2));
@@ -4406,7 +4444,7 @@ async function renderMhRoom(){
   document.getElementById('mh-room-body').innerHTML=rows||'<div style="text-align:center;color:var(--t3);padding:20px;font-size:12px">ยังไม่มีข้อมูล</div>';
   const avgE=cnt>0?Math.round(totalE/cnt*10)/10:0;
   const avgW=cnt>0?Math.round(totalW/cnt*10)/10:0;
-  const avgCost=Math.round(avgE*ELEC+avgW*WATER);
+  const avgCost=cnt>0?Math.round(totalCost/cnt):0;
   document.getElementById('mh-room-summary').innerHTML=`
     <div style="background:var(--bg);border-radius:8px;padding:10px 12px"><div style="font-size:9px;color:var(--t2);margin-bottom:3px">ไฟเฉลี่ย/เดือน</div><div style="font-size:16px;font-weight:600;color:#185FA5">${avgE} <span style="font-size:10px;font-weight:400;color:var(--t3)">หน่วย</span></div></div>
     <div style="background:var(--bg);border-radius:8px;padding:10px 12px"><div style="font-size:9px;color:var(--t2);margin-bottom:3px">น้ำเฉลี่ย/เดือน</div><div style="font-size:16px;font-weight:600;color:#0F6E56">${avgW} <span style="font-size:10px;font-weight:400;color:var(--t3)">หน่วย</span></div></div>
@@ -4528,14 +4566,15 @@ async function sendLineInv(){
   const m=(_invMeterCache?.meterData||[]).find(x=>String(x.room)===String(room))||{};
   const eu=Math.max(0,parseFloat(m.elecCurr||0)-parseFloat(m.elecPrev||0));
   const wu=Math.max(0,parseFloat(m.waterCurr||0)-parseFloat(m.waterPrev||0));
+  const {er:_er,wr:_wr}=await getInvRates(room,monthKey,t);
   const rentAmtLine=calcRentProrate(t,monthKey,_coDateVal).rentAmt;
-  const total=rentAmtLine+Math.round(eu*ELEC)+Math.round(wu*WATER);
+  const total=rentAmtLine+Math.round(eu*_er)+Math.round(wu*_wr);
   // ใช้ความกว้างจริงของ #inv-preview
   const previewEl=document.getElementById('inv-preview');
   const A4W=previewEl?previewEl.offsetWidth:773;
   const tmpDiv=document.createElement('div');
   tmpDiv.style.cssText='width:'+A4W+'px;background:#fff;';
-  tmpDiv.innerHTML=buildInvHTML(room,t,m,monthName,invDate,m.currDate||mDate,false,[],_coDateVal,monthKey);
+  tmpDiv.innerHTML=buildInvHTML(room,t,m,monthName,invDate,m.currDate||mDate,false,[],_coDateVal,monthKey,{er:_er,wr:_wr});
   showLoad('กำลังสร้าง PDF...');
   let blob;
   try{blob=await htmlToPdfBlob(tmpDiv,A4W);}
@@ -4545,7 +4584,7 @@ async function sendLineInv(){
   const filename=`inv_r${String(room).padStart(2,'0')}_${monthKey}_${ts}.pdf`;
   const pdfUrl=await uploadPdfToSupabase(blob,filename);
   if(!pdfUrl)return;
-  const ok=await sendLineMessage(t.line_user_id,pdfUrl,parseInt(room),t.name,monthName,total,{rentAmt:rentAmtLine,eu,wu,ec:Math.round(eu*ELEC),wc:Math.round(wu*WATER),extras:[]});
+  const ok=await sendLineMessage(t.line_user_id,pdfUrl,parseInt(room),t.name,monthName,total,{rentAmt:rentAmtLine,eu,wu,ec:Math.round(eu*_er),wc:Math.round(wu*_wr),extras:[]});
   if(ok)showToast(`✓ ส่ง LINE ห้อง ${parseInt(room)} สำเร็จ`);
 }
 
@@ -4562,22 +4601,26 @@ async function sendLineAllInv(){
   if(!withLine.length){showToast('ไม่มีผู้เช่าที่มี LINE User ID','err');return;}
   if(!confirm(`ยืนยันส่ง LINE ใบแจ้งหนี้ ${withLine.length} ห้อง?`))return;
   const meterData=await api({action:'getMeters',month:monthKey})||[];
+  let monthInv=[];
+  try{const {data}=await _sb.from('invoices').select('room,elec_rate,water_rate,tenant_name').eq('month',monthKey);monthInv=data||[];}catch(e){}
   let ok=0,fail=0;
   for(const t of withLine){
     const m=meterData.find(x=>String(x.room)===String(t.room))||{};
     const eu=Math.max(0,parseFloat(m.elecCurr||0)-parseFloat(m.elecPrev||0));
     const wu=Math.max(0,parseFloat(m.waterCurr||0)-parseFloat(m.waterPrev||0));
+    const _inv=monthInv.find(x=>String(x.room)===String(t.room));
+    const {er:_er,wr:_wr}=(_inv&&!isInvTenantMismatch(_inv,t))?invRates(_inv):invRates(null);
     const rentAmtLineAll=calcRentProrate(t,monthKey,'').rentAmt;
-    const total=rentAmtLineAll+Math.round(eu*ELEC)+Math.round(wu*WATER);
+    const total=rentAmtLineAll+Math.round(eu*_er)+Math.round(wu*_wr);
     const previewW=document.getElementById('inv-preview')?.offsetWidth||773;
     const tmpDiv=document.createElement('div');
     tmpDiv.style.cssText='width:'+previewW+'px;background:#fff;';
-    tmpDiv.innerHTML=buildInvHTML(t.room,t,m,monthName,invDate,m.currDate||mDate,false,[],'',monthKey);
+    tmpDiv.innerHTML=buildInvHTML(t.room,t,m,monthName,invDate,m.currDate||mDate,false,[],'',monthKey,{er:_er,wr:_wr});
     try{
       const blob=await htmlToPdfBlob(tmpDiv,previewW);
       const filename=`inv_r${String(t.room).padStart(2,'0')}_${monthKey}_${Date.now()}.pdf`;
       const pdfUrl=await uploadPdfToSupabase(blob,filename);
-      if(pdfUrl){const sent=await sendLineMessage(t.line_user_id,pdfUrl,parseInt(t.room),t.name,monthName,total,{rentAmt:rentAmtLineAll,eu,wu,ec:Math.round(eu*ELEC),wc:Math.round(wu*WATER),extras:[]});if(sent)ok++;else fail++;}
+      if(pdfUrl){const sent=await sendLineMessage(t.line_user_id,pdfUrl,parseInt(t.room),t.name,monthName,total,{rentAmt:rentAmtLineAll,eu,wu,ec:Math.round(eu*_er),wc:Math.round(wu*_wr),extras:[]});if(sent)ok++;else fail++;}
       else fail++;
     }catch(e){fail++;}
     await new Promise(r=>setTimeout(r,1000));

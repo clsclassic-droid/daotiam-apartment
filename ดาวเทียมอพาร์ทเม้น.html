@@ -2563,6 +2563,11 @@ async function getInvRates(room,monthKey,t){
   }catch(e){}
   return invRates(null);
 }
+// รายการพิเศษ (extras) ของใบแจ้งหนี้ — คืนเฉพาะรายการที่มียอด > 0
+function invExtras(inv){
+  try{const x=typeof inv?.extras==='string'?JSON.parse(inv.extras):(inv?.extras||[]);return (x||[]).filter(e=>e&&parseFloat(e.amount)>0);}
+  catch(e){return [];}
+}
 // ราคาของแต่ละเดือน (หน้าประวัติมิเตอร์): ใช้ราคาจากใบแจ้งหนี้ของเดือนนั้น
 // เดือนที่เก่ากว่าใบแจ้งหนี้ใบแรกในระบบ = ราคาเดิม 6.5/22 · เดือนที่ยังไม่ออกใบ = ราคาปัจจุบัน
 const LEGACY_RATES={er:6.5,wr:22};
@@ -4506,6 +4511,8 @@ async function uploadPdfToSupabase(blob, filename){
 }
 
 async function sendLineMessage(lineUserId, pdfUrl, roomNo, tenantName, month, total, detail={}){
+  // แสดงยอดเงิน: ถ้ามีสตางค์แสดง 2 ตำแหน่ง ถ้าเป็นบาทเต็มแสดงแบบเดิม (ให้ตรงกับ PDF)
+  const fmtL=n=>{const v=Math.round((parseFloat(n)||0)*100)/100;return Number.isInteger(v)?fmtN(v):fmt2(v);};
   const token=window._lineToken||'';
   if(!token){showToast('ไม่พบ LINE Token ใน settings','err');return false;}
   showLoad('กำลังส่ง LINE...');
@@ -4522,14 +4529,14 @@ async function sendLineMessage(lineUserId, pdfUrl, roomNo, tenantName, month, to
     msg+=`ห้อง ${roomNo} · ${tenantName}\n`;
     msg+=`ประจำเดือน ${month}\n`;
     msg+=`──────────────────\n`;
-    msg+=`🏠 ค่าเช่าห้อง      ${fmtN(rentAmt)}\n`;
-    msg+=`⚡ ค่าไฟ (${Math.round(eu)} หน่วย) ${fmtN(ec)}\n`;
-    msg+=`💧 ค่าน้ำ (${Math.round(wu)} หน่วย) ${fmtN(wc)}\n`;
+    msg+=`🏠 ค่าเช่าห้อง      ${fmtL(rentAmt)}\n`;
+    msg+=`⚡ ค่าไฟ (${Math.round(eu)} หน่วย) ${fmtL(ec)}\n`;
+    msg+=`💧 ค่าน้ำ (${Math.round(wu)} หน่วย) ${fmtL(wc)}\n`;
     if(extras.length>0){
-      extras.forEach(x=>{if(x&&x.amount>0)msg+=`📌 ${x.desc||'อื่นๆ'}      ${fmtN(x.amount)}\n`;});
+      extras.forEach(x=>{if(x&&x.amount>0)msg+=`📌 ${x.desc||'อื่นๆ'}      ${fmtL(x.amount)}\n`;});
     }
     msg+=`──────────────────\n`;
-    msg+=`💰 รวมทั้งสิ้น     ${fmtN(total)}\n\n`;
+    msg+=`💰 รวมทั้งสิ้น     ${fmtL(total)}\n\n`;
     msg+=`📅 กรุณาชำระภายในวันที่ 5\n`;
     msg+=`🏦 TTB 629-7-17118-0\n`;
     msg+=`👤 นายโสภณ ภิญโญศาสตร์\n`;
@@ -4541,7 +4548,7 @@ async function sendLineMessage(lineUserId, pdfUrl, roomNo, tenantName, month, to
         'Authorization':'Bearer '+SUPABASE_KEY,
         'apikey':SUPABASE_KEY
       },
-      body:JSON.stringify({lineUserId,pdfUrl,roomNo,tenantName,month,total:fmtN(total),msg,token})
+      body:JSON.stringify({lineUserId,pdfUrl,roomNo,tenantName,month,total:fmtL(total),msg,token})
     });
     const data=await resp.json();
     if(!resp.ok||data.error)throw new Error(data.error||data.data?.message||'LINE API error');
@@ -4566,15 +4573,20 @@ async function sendLineInv(){
   const m=(_invMeterCache?.meterData||[]).find(x=>String(x.room)===String(room))||{};
   const eu=Math.max(0,parseFloat(m.elecCurr||0)-parseFloat(m.elecPrev||0));
   const wu=Math.max(0,parseFloat(m.waterCurr||0)-parseFloat(m.waterPrev||0));
-  const {er:_er,wr:_wr}=await getInvRates(room,monthKey,t);
+  // ดึงใบแจ้งหนี้ที่ออกแล้ว (ถ้ามี และเป็นผู้เช่าคนปัจจุบัน) เพื่อใช้ราคาและรายการพิเศษตามใบจริง
+  let _lineInv=null;
+  try{const {data}=await _sb.from('invoices').select('elec_rate,water_rate,tenant_name,extras').eq('room',room).eq('month',monthKey).maybeSingle();if(data&&!isInvTenantMismatch(data,t))_lineInv=data;}catch(e){}
+  const {er:_er,wr:_wr}=invRates(_lineInv);
+  const _lineExtras=invExtras(_lineInv);
+  const _lineEc=Math.round(eu*_er*100)/100,_lineWc=Math.round(wu*_wr*100)/100;
   const rentAmtLine=calcRentProrate(t,monthKey,_coDateVal).rentAmt;
-  const total=rentAmtLine+Math.round(eu*_er)+Math.round(wu*_wr);
+  const total=rentAmtLine+_lineEc+_lineWc+_lineExtras.reduce((s,x)=>s+parseFloat(x.amount||0),0);
   // ใช้ความกว้างจริงของ #inv-preview
   const previewEl=document.getElementById('inv-preview');
   const A4W=previewEl?previewEl.offsetWidth:773;
   const tmpDiv=document.createElement('div');
   tmpDiv.style.cssText='width:'+A4W+'px;background:#fff;';
-  tmpDiv.innerHTML=buildInvHTML(room,t,m,monthName,invDate,m.currDate||mDate,false,[],_coDateVal,monthKey,{er:_er,wr:_wr});
+  tmpDiv.innerHTML=buildInvHTML(room,t,m,monthName,invDate,m.currDate||mDate,false,_lineExtras,_coDateVal,monthKey,{er:_er,wr:_wr});
   showLoad('กำลังสร้าง PDF...');
   let blob;
   try{blob=await htmlToPdfBlob(tmpDiv,A4W);}
@@ -4584,7 +4596,7 @@ async function sendLineInv(){
   const filename=`inv_r${String(room).padStart(2,'0')}_${monthKey}_${ts}.pdf`;
   const pdfUrl=await uploadPdfToSupabase(blob,filename);
   if(!pdfUrl)return;
-  const ok=await sendLineMessage(t.line_user_id,pdfUrl,parseInt(room),t.name,monthName,total,{rentAmt:rentAmtLine,eu,wu,ec:Math.round(eu*_er),wc:Math.round(wu*_wr),extras:[]});
+  const ok=await sendLineMessage(t.line_user_id,pdfUrl,parseInt(room),t.name,monthName,total,{rentAmt:rentAmtLine,eu,wu,ec:_lineEc,wc:_lineWc,extras:_lineExtras});
   if(ok)showToast(`✓ ส่ง LINE ห้อง ${parseInt(room)} สำเร็จ`);
 }
 
@@ -4602,25 +4614,28 @@ async function sendLineAllInv(){
   if(!confirm(`ยืนยันส่ง LINE ใบแจ้งหนี้ ${withLine.length} ห้อง?`))return;
   const meterData=await api({action:'getMeters',month:monthKey})||[];
   let monthInv=[];
-  try{const {data}=await _sb.from('invoices').select('room,elec_rate,water_rate,tenant_name').eq('month',monthKey);monthInv=data||[];}catch(e){}
+  try{const {data}=await _sb.from('invoices').select('room,elec_rate,water_rate,tenant_name,extras').eq('month',monthKey);monthInv=data||[];}catch(e){}
   let ok=0,fail=0;
   for(const t of withLine){
     const m=meterData.find(x=>String(x.room)===String(t.room))||{};
     const eu=Math.max(0,parseFloat(m.elecCurr||0)-parseFloat(m.elecPrev||0));
     const wu=Math.max(0,parseFloat(m.waterCurr||0)-parseFloat(m.waterPrev||0));
     const _inv=monthInv.find(x=>String(x.room)===String(t.room));
-    const {er:_er,wr:_wr}=(_inv&&!isInvTenantMismatch(_inv,t))?invRates(_inv):invRates(null);
+    const _okInv=(_inv&&!isInvTenantMismatch(_inv,t))?_inv:null;
+    const {er:_er,wr:_wr}=invRates(_okInv);
+    const _lineExtras=invExtras(_okInv);
+    const _lineEc=Math.round(eu*_er*100)/100,_lineWc=Math.round(wu*_wr*100)/100;
     const rentAmtLineAll=calcRentProrate(t,monthKey,'').rentAmt;
-    const total=rentAmtLineAll+Math.round(eu*_er)+Math.round(wu*_wr);
+    const total=rentAmtLineAll+_lineEc+_lineWc+_lineExtras.reduce((s,x)=>s+parseFloat(x.amount||0),0);
     const previewW=document.getElementById('inv-preview')?.offsetWidth||773;
     const tmpDiv=document.createElement('div');
     tmpDiv.style.cssText='width:'+previewW+'px;background:#fff;';
-    tmpDiv.innerHTML=buildInvHTML(t.room,t,m,monthName,invDate,m.currDate||mDate,false,[],'',monthKey,{er:_er,wr:_wr});
+    tmpDiv.innerHTML=buildInvHTML(t.room,t,m,monthName,invDate,m.currDate||mDate,false,_lineExtras,'',monthKey,{er:_er,wr:_wr});
     try{
       const blob=await htmlToPdfBlob(tmpDiv,previewW);
       const filename=`inv_r${String(t.room).padStart(2,'0')}_${monthKey}_${Date.now()}.pdf`;
       const pdfUrl=await uploadPdfToSupabase(blob,filename);
-      if(pdfUrl){const sent=await sendLineMessage(t.line_user_id,pdfUrl,parseInt(t.room),t.name,monthName,total,{rentAmt:rentAmtLineAll,eu,wu,ec:Math.round(eu*_er),wc:Math.round(wu*_wr),extras:[]});if(sent)ok++;else fail++;}
+      if(pdfUrl){const sent=await sendLineMessage(t.line_user_id,pdfUrl,parseInt(t.room),t.name,monthName,total,{rentAmt:rentAmtLineAll,eu,wu,ec:_lineEc,wc:_lineWc,extras:_lineExtras});if(sent)ok++;else fail++;}
       else fail++;
     }catch(e){fail++;}
     await new Promise(r=>setTimeout(r,1000));

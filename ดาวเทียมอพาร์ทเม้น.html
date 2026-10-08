@@ -3000,6 +3000,13 @@ async function renderOverdue(){
 }
 async function goPageThenPay(room){
   goPage('overdue');
+  // ตั้งเดือนให้ตรงกับบิลค้างเก่าที่สุดของห้องนี้ (ไม่ใช่เดือนปัจจุบันเสมอ)
+  try{
+    const {data:pend}=await _sb.from('invoices').select('month').eq('room',room).eq('status','pending').order('month',{ascending:true}).limit(1);
+    const m=pend&&pend[0]&&pend[0].month;
+    const sel=document.getElementById('ov-sel');
+    if(m&&sel&&[...sel.options].some(o=>o.value===m))sel.value=m;
+  }catch(e){console.error('goPageThenPay month',e);}
   await renderOverdue();
   openPayModal(room);
 }

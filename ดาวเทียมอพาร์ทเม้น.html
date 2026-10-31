@@ -3091,6 +3091,13 @@ async function cancelOverdue(room){
   if(!confirm(`ยืนยันยกเลิกการออกใบแจ้งหนี้ห้อง ${parseInt(room)} เดือนนี้?`))return;
   // ลบ invoice ของเดือนนี้เท่านั้น (ไม่กระทบเดือนอื่น)
   await _sb.from('invoices').delete().eq('room',room).eq('month',month);
+  // ถ้าห้องนี้ไม่เหลือใบแจ้งหนี้ค้างชำระเลย ให้คืนสถานะผู้เช่าเป็น active
+  const {data:leftPend}=await _sb.from('invoices').select('id').eq('room',room).eq('status','pending');
+  if(!(leftPend&&leftPend.length)){
+    await _sb.from('tenants').update({status:'active'}).eq('room',room);
+    const idxC=tenants.findIndex(x=>String(x.room)===String(room));
+    if(idxC>-1)tenants[idxC].status='active';
+  }
   renderDash();
   renderOverdue();
   showToast(`ยกเลิกใบแจ้งหนี้ห้อง ${parseInt(room)} แล้ว`);

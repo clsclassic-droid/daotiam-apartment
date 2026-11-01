@@ -2987,6 +2987,12 @@ async function saveTx(){
   const month=document.getElementById('tx-month').value;
   const d={date:document.getElementById('tx-date').value,type:document.getElementById('tx-type').value,desc:document.getElementById('tx-desc').value,room:document.getElementById('tx-room').value,amount:document.getElementById('tx-amount').value,channel:document.getElementById('tx-channel').value,note:document.getElementById('tx-note').value,month};
   if(!d.desc||!d.amount){showToast('กรุณากรอกรายการและจำนวน','err');return;}
+  // เตือนเมื่อเดือนรอบบัญชีไม่ตรงกับเดือนของวันที่รายการ (กันบันทึกผิดเดือน)
+  const _dMon=(d.date||'').slice(0,7).replace('-','_');
+  if(_dMon&&month&&_dMon!==month){
+    const _fmtMon=k=>{const p=String(k).split('_');return (MTH[parseInt(p[1],10)-1]||p[1])+' '+(parseInt(p[0],10)+543);};
+    if(!confirm(`วันที่รายการอยู่ในเดือน ${_fmtMon(_dMon)}\nแต่เดือนรอบบัญชีเลือกไว้เป็น ${_fmtMon(month)}\n\nยืนยันบันทึกตามนี้หรือไม่?`))return;
+  }
   const editId=document.getElementById('mo-tx').dataset.editId;
   if(editId){
     // แก้ไข: ลบเก่าแล้วบันทึกใหม่

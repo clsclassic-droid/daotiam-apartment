@@ -273,7 +273,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
   <button class="ni" onclick="goPage('maintenance')"><i class="ti ti-tool ni-i"></i> ซ่อมบำรุง</button>
   <button class="ni" onclick="goPage('history')"><i class="ti ti-history ni-i"></i> ห้องพัก</button>
   <button class="ni" onclick="goPage('payment-history')"><i class="ti ti-receipt ni-i"></i> การชำระเงิน</button>
-  <button class="ni" onclick="goPage('reminders')"><i class="ti ti-bell ni-i"></i> แจ้งเตือน</button>
+  <button class="ni" onclick="goPage('reminders')"><i class="ti ti-bell ni-i"></i> แจ้งเตือน<span class="ni-badge" id="bdg-rem" style="display:none" title="นัดภายใน 3 วัน">0</span></button>
   <div class="sb-sec">ระบบ</div>
   <button class="ni" onclick="goPage('settings')"><i class="ti ti-settings ni-i"></i> ตั้งค่า</button>
   <button class="ni" onclick="goPage('guide')"><i class="ti ti-book ni-i"></i> คู่มือการใช้</button>
@@ -331,6 +331,10 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
           <div class="g7" id="room-map"></div>
         </div>
         <div>
+          <div class="card" style="margin-bottom:12px">
+            <div class="card-title"><i class="ti ti-calendar-event" style="color:var(--amber)"></i> นัดหมายวันนี้<span onclick="goPage('reminders')" style="margin-left:auto;font-size:11px;font-weight:500;color:var(--blue);cursor:pointer">ดูทั้งหมด →</span></div>
+            <div id="dash-today-rem"><div style="color:var(--t3);font-size:12px;padding:8px 0;text-align:center">กำลังโหลด...</div></div>
+          </div>
           <div class="card" style="margin-bottom:12px">
             <div class="card-title"><i class="ti ti-receipt-off" style="color:var(--red)"></i> ค้างชำระ</div>
             <div id="dash-overdue"></div>
@@ -2241,6 +2245,7 @@ function renderDash(){
   document.getElementById('room-map').innerHTML=rm;
   const odList=tenants.filter(t=>t.status==='overdue');
   document.getElementById('dash-overdue').innerHTML=odList.length?odList.map(t=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f5f5f5;font-size:12px"><div style="font-weight:500">ห้อง ${t.room} — ${t.name}</div><span class="bdg br">ค้างชำระ</span></div>`).join(''):'<div style="color:var(--t3);font-size:12px;padding:8px 0;text-align:center">ไม่มีห้องค้างชำระ 🎉</div>';
+  renderRemAlerts();
   document.getElementById('dash-repair').innerHTML='<div style="color:var(--t3);font-size:12px;padding:8px 0;text-align:center">ดูที่หน้าซ่อมบำรุง</div>';
   loadRevenueChart();
   const finEl=document.getElementById('fin-cards');
@@ -3961,6 +3966,32 @@ async function loadReminders(silent){
   finally{if(!silent)hideLoad();}
   renderReminders();
   sbCalRender();
+  renderRemAlerts();
+}
+// วันที่วันนี้ตามเวลาเครื่อง (ไม่ใช้ toISOString เพราะเป็นเวลา UTC — ก่อน 7 โมงเช้าจะได้วันที่ของเมื่อวาน)
+function localYMD(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+// เลขสีแดงที่เมนูแจ้งเตือน (นัดตั้งแต่วันนี้ถึงอีก 3 วัน) + การ์ด "นัดหมายวันนี้" ในหน้าหลัก
+function renderRemAlerts(){
+  const now=new Date();
+  const today=localYMD(now);
+  const end=new Date(now.getFullYear(),now.getMonth(),now.getDate()+3);
+  const endKey=localYMD(end);
+  const dOf=r=>String(r.appt_date||'').slice(0,10);
+  const soon=(remData||[]).filter(r=>{const k=dOf(r);return k>=today&&k<=endKey;});
+  const bdg=document.getElementById('bdg-rem');
+  if(bdg){bdg.textContent=soon.length;bdg.style.display=soon.length>0?'':'none';}
+  const box=document.getElementById('dash-today-rem');
+  if(!box)return;
+  const todayList=(remData||[]).filter(r=>dOf(r)===today);
+  const row=(r,tag)=>`<div onclick="goPage('reminders')" style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #f5f5f5;font-size:12px;cursor:pointer"><div><span style="font-weight:600">ห้อง ${escRem(r.room)}</span> — ${escRem(r.message)}</div>${tag}</div>`;
+  let html=todayList.length
+    ?todayList.map(r=>row(r,'<span class="bdg br">วันนี้</span>')).join('')
+    :'<div style="color:var(--t3);font-size:12px;padding:8px 0;text-align:center">ไม่มีนัดวันนี้</div>';
+  const next=soon.filter(r=>dOf(r)>today);
+  if(next.length){
+    html+=`<div style="font-size:11px;color:var(--t3);margin-top:8px">อีก 3 วันข้างหน้า</div>`+next.map(r=>row(r,`<span class="bdg ba">${fmtDate(r.appt_date)}</span>`)).join('');
+  }
+  box.innerHTML=html;
 }
 function renderReminders(){
   const tb=document.getElementById('rem-body');if(!tb)return;

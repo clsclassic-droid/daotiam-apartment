@@ -714,6 +714,11 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
             <tr><td>ค่าไฟ (บาท/หน่วย)</td><td class="r"><input type="number" id="cfg-elec" class="fc" style="width:120px;text-align:right" value="6.5" step="0.1"></td></tr>
             <tr><td>ค่าน้ำ (บาท/หน่วย)</td><td class="r"><input type="number" id="cfg-water" class="fc" style="width:120px;text-align:right" value="22"></td></tr>
             <tr><td>ค่าเช่ารายวัน (บาท/วัน)</td><td class="r"><input type="number" id="cfg-day" class="fc" style="width:120px;text-align:right" value="117"></td></tr>
+            <tr><td colspan="2" style="font-size:12px;font-weight:600;color:var(--t2);padding-top:12px">ค่าปรับชำระล่าช้า</td></tr>
+            <tr><td>กำหนดชำระภายในวันที่</td><td class="r"><input type="number" id="cfg-late-due" class="fc" style="width:120px;text-align:right" value="5"></td></tr>
+            <tr><td>ช่วงแรก (บาท/วัน)</td><td class="r"><input type="number" id="cfg-late-r1" class="fc" style="width:120px;text-align:right" value="50"></td></tr>
+            <tr><td>ช่วงแรกถึงวันที่</td><td class="r"><input type="number" id="cfg-late-tier" class="fc" style="width:120px;text-align:right" value="10"></td></tr>
+            <tr><td>หลังจากนั้น (บาท/วัน)</td><td class="r"><input type="number" id="cfg-late-r2" class="fc" style="width:120px;text-align:right" value="100"></td></tr>
           </tbody>
         </table>
         <button class="btn btn-green btn-sm" onclick="saveSettings()"><i class="ti ti-device-floppy"></i> บันทึกตั้งค่า</button>
@@ -844,6 +849,17 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
           <div style="display:flex;gap:10px;align-items:flex-start">
             <div style="min-width:24px;height:24px;border-radius:50%;background:var(--blue);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">4</div>
             <div><div style="font-size:13px;font-weight:600;margin-bottom:2px">รับชำระภายในวันที่ 5</div><div style="font-size:12px;color:var(--t2)">เมื่อผู้เช่าโอนเงินมา → ไปหน้า <b>ใบแจ้งหนี้</b> → กด <b>บันทึกรับชำระ</b> → ระบบออกใบเสร็จอัตโนมัติ<br><span style="color:#E85D04;font-size:11px">• ถ้าไม่ชำระภายวันที่ 5 → จะขึ้นหน้า “ค้างชำระ” อัตโนมัติ</span></div></div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <div style="min-width:24px;height:24px;border-radius:50%;background:var(--blue);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">5</div>
+            <div><div style="font-size:13px;font-weight:600;margin-bottom:2px">ผู้เช่าจ่ายช้า → คิดค่าปรับ</div><div style="font-size:12px;color:var(--t2)">ไปหน้า <b>ค้างชำระ</b> → กดรับชำระห้องนั้น → เลือก <b>วันที่ชำระ</b> ให้ตรงวันที่ได้รับเงินจริง → ระบบคิด <b>ค่าปรับชำระล่าช้า</b> ให้อัตโนมัติ และบวกเข้ายอดรวม<br>• จะลดค่าปรับหรือไม่ปรับ พิมพ์ตัวเลขทับในช่องค่าปรับได้เลย (ใส่ 0 = ไม่ปรับ)<br>• ค่าปรับจะลงกระแสเงินสดเป็น “รายรับอื่นๆ” และแสดงในใบเสร็จให้เอง ไม่ต้องบันทึกแยก<br><span style="color:#E85D04;font-size:11px">• ถ้ารับชำระไปแล้ว แต่มาจ่ายค่าปรับทีหลัง → บันทึกเองที่หน้า <b>กระแสเงินสด</b> → ประเภท “รายรับอื่นๆ” → เลือก <b>เดือนรอบบัญชี</b> เป็นเดือนของบิลที่จ่ายช้า</span></div></div>
+          </div>
+          <div style="background:var(--bg2);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--t2);line-height:1.8">
+            <b style="color:var(--t1)">อัตราค่าปรับชำระล่าช้า</b><br>
+            ✅ ชำระภายในวันที่ <span id="guide-late-due">5</span> → ไม่มีค่าปรับ<br>
+            ⚠️ วันที่ <span id="guide-late-start">6</span>–<span id="guide-late-tier">10</span> → วันละ <span id="guide-late-r1">50</span> บาท<br>
+            🔴 ตั้งแต่วันที่ <span id="guide-late-tier2">11</span> เป็นต้นไป → วันละ <span id="guide-late-r2">100</span> บาท (ไม่มีเพดาน)<br>
+            <span style="color:var(--t3);font-size:11px">ตัวอย่าง: บิล ต.ค. จ่าย 12 พ.ย. = ช้า 7 วัน → 5×<span class="guide-late-r1b">50</span> + 2×<span class="guide-late-r2b">100</span> · เปลี่ยนอัตราได้ที่หน้า <b>ตั้งค่า</b></span>
           </div>
         </div>
       </div>
@@ -1081,7 +1097,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
     <div style="font-size:11px;color:var(--t2);margin-bottom:5px;font-weight:500">วันที่ชำระ</div>
     <div style="display:flex;align-items:center;gap:7px">
       <i class="ti ti-calendar" style="color:var(--t3);font-size:16px"></i>
-      <input type="date" id="pay-date" style="flex:1;font-size:14px;font-weight:600;padding:7px 9px;border:1px solid var(--border);border-radius:7px;background:#fff;color:var(--text)">
+      <input type="date" id="pay-date" onchange="updatePayLate()" style="flex:1;font-size:14px;font-weight:600;padding:7px 9px;border:1px solid var(--border);border-radius:7px;background:#fff;color:var(--text)">
     </div>
   </div>
   <table class="tbl" style="margin-bottom:10px">
@@ -1092,6 +1108,9 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
       <tr><td>ค่าน้ำประปา</td><td class="c" id="pay-wr" style="color:var(--t3)"></td><td class="c" id="pay-wu"></td><td class="c" style="color:var(--t3)" id="pay-water-rate">22</td><td class="r" id="pay-wc"></td></tr>
     </tbody>
     <tbody id="pay-extras-tbody"></tbody>
+    <tbody>
+      <tr id="pay-late-row"><td colspan="4">ค่าปรับชำระล่าช้า <span id="pay-late-info" style="font-size:11px;color:var(--t3)"></span></td><td class="r"><input type="text" id="pay-late" inputmode="decimal" value="0" oninput="calcPayTotal()" style="width:90px;text-align:right;font-size:13px;padding:4px 7px;border:1px solid var(--border);border-radius:6px;background:#fff;color:var(--text);-webkit-appearance:none;appearance:none;box-sizing:border-box"></td></tr>
+    </tbody>
     <tbody>
       <tr style="background:#f9f9f9;font-weight:600"><td colspan="4" class="r" style="padding-right:11px">รวมทั้งสิ้น</td><td class="r" id="pay-total" style="color:var(--green);font-size:14px"></td></tr>
     </tbody>
@@ -1231,6 +1250,8 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
 const SUPABASE_URL = 'https://uokxrijfhezojnasnzps.supabase.co';
 const SUPABASE_KEY = 'sb_publishable__zegOiikfSqkWUTPv_lsXQ_Q02YPz-K';
 let RENT=3500, ELEC=6.5, WATER=22, DAY_RATE=117;
+// ค่าปรับชำระล่าช้า: หลังวันที่ LATE_DUE วันละ LATE_R1 ถึงวันที่ LATE_TIER จากนั้นวันละ LATE_R2 (ไม่มีเพดาน)
+let LATE_DUE=5, LATE_TIER=10, LATE_R1=50, LATE_R2=100;
 const MTH=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 function thShort(v){
   if(!v)return'—';
@@ -3123,6 +3144,10 @@ async function loadSettings(){
       ELEC=parseFloat(data.elec)||6.5;
       WATER=parseFloat(data.water)||22;
       DAY_RATE=parseFloat(data.day_rate)||117;
+      if(data.late_due!=null)LATE_DUE=parseInt(data.late_due)||5;
+      if(data.late_tier!=null)LATE_TIER=parseInt(data.late_tier)||10;
+      if(data.late_rate1!=null)LATE_R1=parseFloat(data.late_rate1);
+      if(data.late_rate2!=null)LATE_R2=parseFloat(data.late_rate2);
       if(data.line_token) window._lineToken=data.line_token;
       _notifyIds=(data.notify_line_ids||'').split(',').map(s=>s.trim()).filter(Boolean);
     }
@@ -3131,7 +3156,17 @@ async function loadSettings(){
   const el=document.getElementById('cfg-elec');if(el)el.value=ELEC;
   const w=document.getElementById('cfg-water');if(w)w.value=WATER;
   const d=document.getElementById('cfg-day');if(d)d.value=DAY_RATE;
+  [['cfg-late-due',LATE_DUE],['cfg-late-r1',LATE_R1],['cfg-late-tier',LATE_TIER],['cfg-late-r2',LATE_R2]].forEach(([id,v])=>{const x=document.getElementById(id);if(x)x.value=v;});
+  renderGuideLate();
   renderNotifyList();
+}
+// แสดงอัตราค่าปรับปัจจุบันในหน้าคู่มือการใช้
+function renderGuideLate(){
+  const set=(id,v)=>{const x=document.getElementById(id);if(x)x.textContent=v;};
+  set('guide-late-due',LATE_DUE);set('guide-late-start',LATE_DUE+1);set('guide-late-tier',LATE_TIER);
+  set('guide-late-tier2',LATE_TIER+1);set('guide-late-r1',fmtN(LATE_R1));set('guide-late-r2',fmtN(LATE_R2));
+  document.querySelectorAll('.guide-late-r1b').forEach(x=>x.textContent=fmtN(LATE_R1));
+  document.querySelectorAll('.guide-late-r2b').forEach(x=>x.textContent=fmtN(LATE_R2));
 }
 
 // ===== LINE แจ้งเตือนผู้ดูแล =====
@@ -3180,6 +3215,11 @@ async function saveSettings(){
   try{
     await _sb.from('settings').upsert({id:'main',rent,elec,water,day_rate},{onConflict:'id'});
     RENT=rent;ELEC=elec;WATER=water;DAY_RATE=day_rate;
+    const num=(id,def)=>{const v=parseFloat(document.getElementById(id)?.value);return isNaN(v)?def:v;};
+    const late={late_due:Math.round(num('cfg-late-due',5)),late_tier:Math.round(num('cfg-late-tier',10)),late_rate1:num('cfg-late-r1',50),late_rate2:num('cfg-late-r2',100)};
+    const {error:lateErr}=await _sb.from('settings').update(late).eq('id','main');
+    if(lateErr){showToast('บันทึกค่าปรับไม่สำเร็จ: '+lateErr.message,'err');}
+    else{LATE_DUE=late.late_due;LATE_TIER=late.late_tier;LATE_R1=late.late_rate1;LATE_R2=late.late_rate2;renderGuideLate();}
     const msg=document.getElementById('cfg-msg');
     msg.style.display='block';setTimeout(()=>msg.style.display='none',2000);
   }catch(e){showToast('บันทึกไม่สำเร็จ','err');}
@@ -3281,12 +3321,35 @@ async function openPayModal(room){
   document.getElementById('pay-wc').textContent=fmt2(wc);
   ['pb-cash','pb-bank'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.background='#f8f9fa';});
   document.getElementById('pay-confirm').style.opacity='0.35';
-  document.getElementById('pay-date').value=new Date().toISOString().split('T')[0];
-  calcPayTotal();openMo('mo-pay');
+  document.getElementById('pay-date').value=localYMD(new Date());
+  updatePayLate();openMo('mo-pay');
 }
-function calcPayTotal(){if(!payData.t)return;const rentAmt=payData.rentAmt||RENT;const extraTotal=payData.extraTotal||0;payCurrentTotal=rentAmt+(payData.ec||0)+(payData.wc||0)+extraTotal;document.getElementById('pay-total').textContent=fmt2(payCurrentTotal);document.getElementById('pay-amount').value=payCurrentTotal.toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});checkPayDiff();}
+function calcPayTotal(){if(!payData.t)return;const rentAmt=payData.rentAmt||RENT;const extraTotal=payData.extraTotal||0;payCurrentTotal=Math.round((rentAmt+(payData.ec||0)+(payData.wc||0)+extraTotal+getPayLate())*100)/100;document.getElementById('pay-total').textContent=fmt2(payCurrentTotal);document.getElementById('pay-amount').value=payCurrentTotal.toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});checkPayDiff();}
 function checkPayDiff(){const paid=parseFloat((document.getElementById('pay-amount').value||'0').replace(/,/g,''))||0;const diff=paid-payCurrentTotal;const el=document.getElementById('pay-diff');const btn=document.getElementById('pay-confirm');if(Math.abs(diff)<0.01){el.textContent='✓ ครบจำนวน';el.style.color='var(--green)';}else if(Math.abs(diff)<=1){el.textContent=(diff<0?'ขาด':'เกิน')+' '+Math.abs(diff).toFixed(2)+' (ยืนยันได้)';el.style.color='var(--amber)';}else if(diff<0){el.textContent='ขาด '+Math.abs(diff).toFixed(2)+' — กรุณาชำระให้ครบก่อน';el.style.color='var(--red)';}else{el.textContent='เกิน '+diff.toFixed(2);el.style.color='var(--amber)';}const canConfirm=payMethod&&paid>0&&(Math.abs(diff)<=1);btn.style.opacity=canConfirm?'1':'0.35';btn.style.pointerEvents=canConfirm?'auto':'none';}
 function selPayMethod(m){payMethod=m;const sel='background:var(--gl);border:1.5px solid var(--green);color:var(--gd);font-weight:500';const def='background:#f8f9fa';document.getElementById('pb-cash').style.cssText=`flex:1;padding:9px;border-radius:7px;border:1px solid var(--border);font-size:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;${m==='cash'?sel:def}`;document.getElementById('pb-bank').style.cssText=`flex:1;padding:9px;border-radius:7px;border:1px solid var(--border);font-size:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;${m==='bank'?sel:def}`;checkPayDiff();}
+// คำนวณค่าปรับ: บิลเดือน monthKey ('YYYY_MM') ครบกำหนดวันที่ LATE_DUE ของเดือนถัดไป
+function calcLateFee(monthKey,payDateStr){
+  if(!monthKey||!payDateStr)return {days:0,fee:0};
+  const [y,m]=monthKey.split('_').map(Number);
+  const [py,pm,pd]=payDateStr.split('-').map(Number);
+  if(!y||!m||!py||!pm||!pd)return {days:0,fee:0};
+  const due=new Date(y,m,LATE_DUE); // m เป็นเดือน 1-12 → new Date(y,m,...) = เดือนถัดไป
+  const pay=new Date(py,pm-1,pd);
+  const days=Math.round((pay-due)/86400000);
+  if(days<=0)return {days:0,fee:0};
+  const d1=Math.min(days,Math.max(0,LATE_TIER-LATE_DUE));
+  const d2=days-d1;
+  return {days,fee:d1*LATE_R1+d2*LATE_R2};
+}
+function getPayLate(){return Math.max(0,parseFloat((document.getElementById('pay-late')?.value||'0').replace(/,/g,''))||0);}
+let payLateDays=0;
+function updatePayLate(){
+  const r=calcLateFee(document.getElementById('ov-sel')?.value||'',document.getElementById('pay-date')?.value||'');
+  payLateDays=r.days;
+  const inp=document.getElementById('pay-late');if(inp)inp.value=String(r.fee);
+  const info=document.getElementById('pay-late-info');if(info)info.textContent=r.days>0?`(ช้า ${r.days} วัน)`:'(ไม่ล่าช้า)';
+  calcPayTotal();
+}
 async function confirmPay(){
   const paid=parseFloat((document.getElementById('pay-amount').value||'0').replace(/,/g,''))||0;
   if(!payMethod||!payCurrentRoom||paid<=0)return;
@@ -3297,7 +3360,8 @@ async function confirmPay(){
   const ch=payMethod==='cash'?'cash':'bank';
   const today=document.getElementById('pay-date')?.value||new Date().toISOString().split('T')[0];
   const rentAmt=payData.rentAmt||RENT;
-  const extras=payData.extras||[];
+  const lateFee=getPayLate();
+  const extras=[...(payData.extras||[]),...(lateFee>0?[{desc:'ค่าปรับชำระล่าช้า'+(payLateDays>0?' '+payLateDays+' วัน':''),amount:lateFee}]:[])];
   showLoad('กำลังบันทึกการชำระ...');
   try{
     // สร้าง transaction rows ตามปกติก่อน

@@ -4486,10 +4486,16 @@ async function renderMhMonth(){
   const [yr,mo]=month.split('_').map(Number);
   let prevYr=yr,prevMo=mo-1;if(prevMo<1){prevMo=12;prevYr--;}
   const prevMonth=prevYr+'_'+String(prevMo).padStart(2,'0');
-  const [data,prevData]=await Promise.all([
+  const [data,prevData,txCur,txPrev]=await Promise.all([
     api({action:'getMeters',month},'กำลังโหลด...')||[],
-    api({action:'getMeters',month:prevMonth})||[]
+    api({action:'getMeters',month:prevMonth})||[],
+    api({action:'getTransactions',month}),
+    api({action:'getTransactions',month:prevMonth})
   ]);
+  // ค่าไฟ/ค่าน้ำที่จ่ายจริง (การไฟฟ้า/ประปา) ตามเดือนรอบบัญชี — null = ยังไม่บันทึก
+  const paidOf=(txs,tp)=>{const l=(txs||[]).filter(t=>t.type===tp);return l.length?l.reduce((s,t)=>s+parseFloat(t.amount||0),0):null;};
+  const paidE=paidOf(txCur,'elec-out'),paidW=paidOf(txCur,'water-out');
+  const prevPaidE=paidOf(txPrev,'elec-out'),prevPaidW=paidOf(txPrev,'water-out');
   const rateOf=await getMonthRatesFn();const R=rateOf(month),PR=rateOf(prevMonth);
   let totalE=0,totalW=0,prevTotalE=0,prevTotalW=0;
   let maxE={room:0,val:0},maxW={room:0,val:0};
@@ -4524,7 +4530,28 @@ async function renderMhMonth(){
     <div style="background:var(--bg);border-radius:8px;padding:10px 12px"><div style="font-size:9px;color:var(--t2);margin-bottom:3px">ค่าไฟรวม(ที่เก็บจากผู้เช่า)</div><div style="font-size:16px;font-weight:600;color:#185FA5">${fmtN(elecCost)}</div>${badge(diffEC,' บาท')}</div>
     <div style="background:var(--bg);border-radius:8px;padding:10px 12px"><div style="font-size:9px;color:var(--t2);margin-bottom:3px">ค่าน้ำรวม(ที่เก็บจากผู้เช่า)</div><div style="font-size:16px;font-weight:600;color:#0F6E56">${fmtN(waterCost)}</div>${badge(diffWC,' บาท')}</div>
     <div style="background:var(--bg);border-radius:8px;padding:10px 12px"><div style="font-size:9px;color:var(--t2);margin-bottom:3px">ค่าไฟ+น้ำรวม</div><div style="font-size:16px;font-weight:600">${fmtN(totalCost)}</div>${badge(diffTC,' บาท')}</div>
-    <div style="background:var(--bg);border-radius:8px;padding:10px 12px"><div style="font-size:9px;color:var(--t2);margin-bottom:3px">เฉลี่ยต่อห้อง</div><div style="font-size:16px;font-weight:600">${fmtN(Math.round(totalCost/Math.max(1,tenants.length)))}</div><div style="font-size:10px;color:var(--t3);margin-top:3px">${tenants.length} ห้อง</div></div>`;
+    <div style="background:var(--bg);border-radius:8px;padding:10px 12px"><div style="font-size:9px;color:var(--t2);margin-bottom:3px">เฉลี่ยต่อห้อง</div><div style="font-size:16px;font-weight:600">${fmtN(Math.round(totalCost/Math.max(1,tenants.length)))}</div><div style="font-size:10px;color:var(--t3);margin-top:3px">${tenants.length} ห้อง</div></div>`+mhPaidCards();
+  function mhPaidCards(){
+    const NR='<span style="font-size:12px;font-weight:500;color:var(--t3)">ยังไม่บันทึก</span>';
+    const r2=v=>Math.round(v*100)/100;
+    const dBadge=(cur,prev,good)=>{ // good=true: เพิ่มขึ้นแล้วดี (สีเขียว)
+      if(cur==null||prev==null)return'<span style="font-size:10px;color:var(--t3);margin-top:3px">—</span>';
+      const v=Math.round(cur-prev);if(!v)return'<span style="font-size:10px;color:var(--t3);margin-top:3px">—</span>';
+      const ok=good?v>0:v<0;
+      return`<span style="font-size:10px;color:${ok?'#0F6E56':'#A32D2D'};display:flex;align-items:center;gap:2px;margin-top:3px"><i class="ti ti-trending-${v>0?'up':'down'}" style="font-size:10px"></i>${v>0?'+':''}${fmtN(v)} บาท</span>`;
+    };
+    const card=(lbl,val,color,badgeHtml)=>`<div style="background:var(--bg);border-radius:8px;padding:10px 12px"><div style="font-size:9px;color:var(--t2);margin-bottom:3px">${lbl}</div><div style="font-size:16px;font-weight:600;color:${color}">${val==null?NR:fmt2(val)}</div>${badgeHtml}</div>`;
+    const both=(x,y)=>(x==null||y==null)?null:r2(x+y);
+    const paidT=both(paidE,paidW),prevPaidT=both(prevPaidE,prevPaidW);
+    const net=paidT==null?null:r2(totalCost-paidT);
+    const prevNet=prevPaidT==null?null:r2(prevTotalCost-prevPaidT);
+    const netColor=net==null?'var(--t3)':(net>=0?'#0F6E56':'#A32D2D');
+    const netCard=`<div style="background:var(--bg);border-radius:8px;padding:10px 12px"><div style="font-size:9px;color:var(--t2);margin-bottom:3px">ส่วนต่าง เก็บ − จ่าย</div><div style="font-size:16px;font-weight:600;color:${netColor}">${net==null?'<span style="font-size:12px;font-weight:500;color:var(--t3)">ยังไม่บันทึกครบ</span>':(net>=0?'+':'')+fmt2(net)}</div>${dBadge(net,prevNet,true)}</div>`;
+    return card('ค่าไฟจ่าย (การไฟฟ้า)',paidE,'#185FA5',dBadge(paidE,prevPaidE,false))
+      +card('ค่าน้ำจ่าย (ประปา)',paidW,'#0F6E56',dBadge(paidW,prevPaidW,false))
+      +card('ค่าไฟ+น้ำจ่ายรวม',paidT,'var(--text)',dBadge(paidT,prevPaidT,false))
+      +netCard;
+  }
   // table
   const tbBadge=(v,u='')=>{
     if(v>0)return`<span style="display:inline-flex;align-items:center;gap:2px;font-size:10px;padding:1px 6px;border-radius:8px;background:#FCEBEB;color:#A32D2D"><i class="ti ti-trending-up" style="font-size:9px"></i>+${v}${u}</span>`;

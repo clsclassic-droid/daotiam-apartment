@@ -887,11 +887,43 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
           </div>
           <div style="display:flex;gap:10px;align-items:flex-start">
             <div style="min-width:24px;height:24px;border-radius:50%;background:var(--red);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">5</div>
-            <div><div style="font-size:13px;font-weight:600;margin-bottom:2px">คืนเงินประกัน</div><div style="font-size:12px;color:var(--t2)">ไปหน้า <b>กระแสเงินสด</b> → <b>+ เพิ่ม</b> → เลือก <b>คืนเงินประกัน</b> (deposit-out) 3,500 บาท<br><span style="color:#E85D04;font-size:11px">• ถ้าออกก่อน 4 เดือน → ไม่ต้องบันทึกรายการนี้ (ไม่คืน)</span></div></div>
+            <div><div style="font-size:13px;font-weight:600;margin-bottom:2px">โอนเงินคืนผู้เช่า</div><div style="font-size:12px;color:var(--t2)">โอนคืน เงินประกัน 3,500 + ค่าเช่าล่วงหน้า 3,500 (หักบิลงวดสุดท้ายออกได้ถ้าตกลงกับผู้เช่าไว้)<br>• <b>ไม่ต้องบันทึกเองที่หน้ากระแสเงินสด</b> — ระบบบันทึกการคืนเงินให้อัตโนมัติตอน Checkout ในขั้นถัดไป (ถ้าบันทึกเองด้วยจะซ้ำ 2 ครั้ง)<br><span style="color:#E85D04;font-size:11px">• ถ้าออกก่อน 4 เดือน → ไม่คืน ดูวิธีบันทึกที่หัวข้อ <b>“ย้ายออกก่อนครบสัญญา / ค้างค่าเช่า”</b> ด้านล่าง</span></div></div>
           </div>
           <div style="display:flex;gap:10px;align-items:flex-start">
             <div style="min-width:24px;height:24px;border-radius:50%;background:var(--red);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">6</div>
-            <div><div style="font-size:13px;font-weight:600;margin-bottom:2px">ปิดห้อง (Checkout)</div><div style="font-size:12px;color:var(--t2)">ไปหน้า <b>ผู้เช่า</b> → กด <b>Checkout</b> ผู้เช่าคนนั้น → ระบบย้ายไปประวัติและห้องจะกลับเป็นว่างอัตโนมัติ</div></div>
+            <div><div style="font-size:13px;font-weight:600;margin-bottom:2px">ปิดห้อง (Checkout)</div><div style="font-size:12px;color:var(--t2)">ไปหน้า <b>ผู้เช่า</b> → กด <b>Checkout</b> ผู้เช่าคนนั้น → ใส่ <b>คืนค่าเช่าล่วงหน้า 3,500</b> และ <b>คืนเงินประกัน 3,500</b> (ใส่ยอดเต็ม แม้จะหักบิลงวดสุดท้ายไปแล้ว เพราะขั้นที่ 4 บันทึกรับชำระบิลไว้แล้ว) → ระบบบันทึกการคืนเงิน ย้ายไปประวัติ และห้องกลับเป็นว่างอัตโนมัติ</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:14px">
+        <div class="section-hd">
+          <div class="card-title" style="margin-bottom:0"><i class="ti ti-alert-triangle" style="color:#B45309"></i> ย้ายออกก่อนครบสัญญา / ค้างค่าเช่า</div>
+        </div>
+        <div style="font-size:12px;color:var(--t2);margin-bottom:10px">ใช้เมื่อผู้เช่าอยู่ไม่ครบ 4 เดือน (ยึดเงินประกัน) และเอาค่าเช่าล่วงหน้ามาหักบิลเดือนสุดท้าย — รวมถึงกรณีผู้เช่าไม่จ่ายส่วนที่เหลือแล้วหนีไป<br><span style="color:var(--t3);font-size:11px">ไม่ต้องใช้หน้าบันทึกรับชำระ เพราะหน้านั้นต้องจ่ายครบยอดถึงจะยืนยันได้</span></div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <div style="min-width:24px;height:24px;border-radius:50%;background:#B45309;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">1</div>
+            <div><div style="font-size:13px;font-weight:600;margin-bottom:2px">เก็บหลักฐานบิลไว้ก่อน</div><div style="font-size:12px;color:var(--t2)">ไปหน้า <b>ใบแจ้งหนี้</b> → เปิดบิลเดือนสุดท้ายของห้องนั้น → <b>บันทึกภาพหรือพิมพ์เก็บไว้</b> เผื่อใช้ทวงเงินภายหลัง (ขั้นต่อไปบิลจะถูกลบจากระบบ)</div></div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <div style="min-width:24px;height:24px;border-radius:50%;background:#B45309;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">2</div>
+            <div><div style="font-size:13px;font-weight:600;margin-bottom:2px">ยกเลิกใบแจ้งหนี้เดือนสุดท้าย</div><div style="font-size:12px;color:var(--t2)">ไปหน้า <b>ค้างชำระ</b> → เลือกเดือนของบิล → กด <b>X</b> ท้ายแถวห้องนั้น<br>• เลขมิเตอร์ไม่หาย ผู้เช่าคนใหม่จะนับต่อจากเลขเดิมถูกต้อง<br><span style="color:#E85D04;font-size:11px">• ถ้าไม่ยกเลิก บิลจะค้างตลอดและไปปนกับผู้เช่าคนใหม่</span></div></div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <div style="min-width:24px;height:24px;border-radius:50%;background:#B45309;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">3</div>
+            <div><div style="font-size:13px;font-weight:600;margin-bottom:2px">บันทึกค่าเช่าที่หักจากค่าเช่าล่วงหน้า</div><div style="font-size:12px;color:var(--t2)">ไปหน้า <b>กระแสเงินสด</b> → <b>+ เพิ่ม</b><br>• ประเภท <b>ค่าเช่าห้อง</b> · จำนวน <b>3,500</b> · ห้องนั้น<br>• วันที่ = วันย้ายออก · <b>เดือนรอบบัญชี = เดือนของบิล</b><br>• หมายเหตุ เช่น <i>หักจากค่าเช่าล่วงหน้า ผู้เช่าหนี ค้างค่าไฟ+น้ำ 1,998.75</i> (จดยอดค้างไว้เป็นหลักฐาน)</div></div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <div style="min-width:24px;height:24px;border-radius:50%;background:#B45309;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">4</div>
+            <div><div style="font-size:13px;font-weight:600;margin-bottom:2px">ย้ายออก (Checkout)</div><div style="font-size:12px;color:var(--t2)">ไปหน้า <b>ผู้เช่า</b> → ห้องนั้น → <b>ย้ายออก</b><br>• วันที่ย้ายออก = วันที่ออกจริง · เหตุผล <b>ออกก่อนกำหนด</b><br>• คืนค่าเช่าล่วงหน้า <b>3,500</b> (ปิดยอดค่าเช่าล่วงหน้า ไม่ได้โอนคืนจริง — คู่กับขั้นที่ 3 เงินสดจึงไม่เปลี่ยน)<br>• คืนเงินประกัน <b>0</b> → ระบบบันทึก <b>“ริบเงินประกัน 3,500”</b> เป็นรายได้ให้อัตโนมัติ</div></div>
+          </div>
+          <div style="background:var(--bg2);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--t2);line-height:1.8">
+            <b style="color:var(--t1)">ผลที่ได้</b><br>
+            ✅ รายได้ = ค่าเช่า 3,500 + เงินประกันที่ยึด 3,500 · เงินสดไม่เปลี่ยน (ไม่มีเงินเข้า-ออกจริง)<br>
+            ⚠️ ค่าน้ำ ค่าไฟ ค่าทำความสะอาดที่ผู้เช่าไม่จ่าย <b>ไม่ต้องบันทึก</b> — ไม่นับเป็นรายได้ และไม่ต้องนับตอนยื่นภาษี (ค่าไฟที่จ่ายการไฟฟ้ายังเป็นรายจ่ายตามปกติ)<br>
+            💰 ถ้าผู้เช่ากลับมาจ่ายทีหลัง → <b>กระแสเงินสด</b> → ประเภท “รายรับอื่นๆ” เช่น <i>ค่าน้ำไฟค้าง ต.ค. ห้อง 14</i> · เดือนรอบบัญชี = เดือนของบิล<br>
+            <span style="color:var(--t3);font-size:11px">ถ้าผู้เช่าจ่ายส่วนที่เหลือครบก่อนย้ายออก → ใช้หน้าบันทึกรับชำระตามปกติได้เลย</span>
           </div>
         </div>
       </div>

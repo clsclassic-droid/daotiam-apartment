@@ -1052,8 +1052,8 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
     <div class="fg"><label>ชื่อ-นามสกุล *</label><input type="text" id="t-name" class="fc"></div>
     <div class="fg"><label>เบอร์โทร</label><input type="tel" id="t-phone" class="fc"></div>
     <div class="fg"><label>บัตรประชาชน</label><input type="text" id="t-idcard" class="fc"></div>
-    <div class="fg"><label>วันเข้าพัก</label><input type="text" id="t-checkin" class="fc" placeholder="15/01/68"></div>
-    <div class="fg"><label>สัญญาถึง</label><input type="text" id="t-contract" class="fc" placeholder="15/05/68"></div>
+    <div class="fg"><label>วันเข้าพัก</label><input type="date" id="t-checkin" class="fc"></div>
+    <div class="fg"><label>สัญญาถึง</label><input type="date" id="t-contract" class="fc"></div>
     <div class="fg"><label>ค่าประกัน</label><input type="number" id="t-deposit" class="fc" value="3500"></div>
     <div class="fg"><label>สถานะ</label><select id="t-status" class="fc"><option value="active">มีผู้เช่า</option><option value="overdue">ค้างชำระ</option></select></div>
   </div>
@@ -2526,8 +2526,10 @@ function openTenantModal(t=null){
   document.getElementById('mo-tenant-title').textContent=t?'แก้ไขผู้เช่า':'เพิ่มผู้เช่าใหม่';
   ['room','name','phone','idcard','note'].forEach(f=>document.getElementById('t-'+f).value=t?t[f]||'':'');
   document.getElementById('t-line').value=t?.line_user_id||'';
-  document.getElementById('t-checkin').value=t?fmtDate(t.checkin):'';
-  document.getElementById('t-contract').value=t?fmtDate(t.contract):'';
+  // ช่องวันที่เป็น type=date ต้องใส่ค่า YYYY-MM-DD (ห้ามใส่ข้อความไทย ไม่งั้นบันทึกกลับลงฐานข้อมูลผิดรูปแบบ)
+  const _toYMD=v=>{const d=parseCheckinDate(v);return d?localYMD(d):'';};
+  document.getElementById('t-checkin').value=t?_toYMD(t.checkin):'';
+  document.getElementById('t-contract').value=t?_toYMD(t.contract):'';
   document.getElementById('t-deposit').value=t?.deposit||3500;
   if(t)document.getElementById('t-status').value=t.status||'active';
   // ช่องมิเตอร์เริ่มต้น: แสดงเฉพาะตอนเพิ่มผู้เช่าใหม่
